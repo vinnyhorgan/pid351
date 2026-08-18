@@ -9,6 +9,7 @@
 # the host side. The device binary is static and depends on nothing at all.
 
 CROSS   ?= aarch64-linux-gnu-
+# No mDNS on ArkOS, so pass the address: make push RG=ark@192.168.1.x
 RG      ?= ark@rg351p
 
 WARN     = -std=c11 -Wall -Wextra -Wpedantic -Wshadow -Wconversion

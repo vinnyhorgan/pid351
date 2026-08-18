@@ -183,3 +183,31 @@ ran correctly on this 4.4.189 kernel. Phase 1 can be built on that assumption.
 Running services include `NetworkManager`, `wpa_supplicant`, `systemd-resolved`,
 `systemd-timesyncd` and `networkd-dispatcher` — on a device with no wifi
 hardware at all.
+
+## Getting a shell on ArkOS
+
+All eleven USB ethernet drivers ship on the rootfs — `usbnet`, `cdc_ether`,
+`cdc_ncm`, `r8152`, `asix`, `ax88179_178a`, `rndis_host`, `smsc95xx` and
+friends — and `modules.alias` carries 4237 USB aliases, so a dongle autoloads
+its driver on enumeration. Nothing needs installing. `ip link` showed only `lo`
+during recon simply because nothing was plugged in.
+
+sshd is installed with host keys already generated, but **is not enabled**.
+ArkOS's own toggle is `/opt/system/Enable Remote Services.sh`, reachable from
+EmulationStation's Options menu. Reading it:
+
+- it bails out unless a default gateway exists, so plug the dongle in *first*
+- it runs `systemctl start ssh` — the `systemctl enable` lines are commented
+  out, so **this does not survive a reboot** and must be re-run each time,
+  until we enable it properly ourselves over the first ssh session
+- it prints the device's IP on screen, which is how we find it (there is no
+  avahi, so no `.local` mDNS)
+- it also starts samba and a filebrowser on port 80, neither of which we want
+
+Users are `root` and `ark` (uid 1002). `ark` is in `sudo`, `video`, `input` and
+`audio`, so **pid351 can open `/dev/dri/card0` and `/dev/input/event2` without
+root**. Hostname is `rg351p`.
+
+> ⚠️ EmulationStation will be holding DRM master. Phase 1 has to stop it before
+> it can modeset — expect `systemctl stop emulationstation` or equivalent to be
+> step zero of every device test.
