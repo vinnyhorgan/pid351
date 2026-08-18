@@ -61,8 +61,7 @@ done
 
 sec "attempt: load ethernet gadget"
 sudo modprobe libcomposite 2>&1
-sudo modprobe usb_f_ecm 2>&1
-sudo modprobe g_ether 2>&1
+sudo modprobe g_ether dev_addr=02:51:03:51:00:02 host_addr=02:51:03:51:00:01 2>&1
 sleep 3
 run cat /sys/class/udc/ff300000.usb/state
 run ip link

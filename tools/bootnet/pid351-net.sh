@@ -30,10 +30,35 @@ publish() {
     sync
 }
 
+# Gadget mode turns the handheld into a USB device so it appears as an
+# ethernet adapter to the laptop. It is gated on a marker file living on the
+# ROMs partition, so the laptop can switch it on and off by creating or
+# deleting one file - no menus, no shell on the device.
+#
+# It is gated rather than unconditional because the internal gamepad is a USB
+# device on this same dwc2 controller, which holds one role at a time. Gadget
+# mode may well cost the controls until reboot.
+setup_gadget() {
+    [ -f /roms/pid351/gadget-mode ] || return
+    lsmod | grep -q "^g_ether" && return
+
+    echo "--- $(date) gadget-mode marker present, loading g_ether ---"
+    modprobe libcomposite 2>&1
+    # Pin both MACs so the interface name on the laptop stays stable across
+    # reboots instead of changing every time.
+    modprobe g_ether dev_addr=02:51:03:51:00:02 host_addr=02:51:03:51:00:01 2>&1
+    sleep 2
+    echo "udc state: $(cat /sys/class/udc/ff300000.usb/state 2>/dev/null)"
+    echo "interfaces now: $(ls /sys/class/net/ | tr '\n' ' ')"
+}
+
 systemctl start ssh.service
 echo "sshd: $(systemctl is-active ssh.service)"
+setup_gadget
 
 while true; do
+    setup_gadget   # retried, in case /roms mounted after we first looked
+
     for n in /sys/class/net/*; do
         [ -d "$n" ] || continue
         IF=$(basename "$n")
