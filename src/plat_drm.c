@@ -975,6 +975,22 @@ int plat_boot_init(void)
     mount_or_warn("proc",     "/proc", "proc");
     mount_or_warn("sysfs",    "/sys",  "sysfs");
 
+    /* /dev/kmsg rate limits a userspace writer to ten messages every five
+     * seconds by default, and drops the rest on the floor without a word.
+     * That silently truncated four rows out of the blit table and most of a
+     * diagnostic census before anyone noticed, because the surviving lines
+     * looked complete. Turn it off: this machine has exactly one process, it
+     * is not going to flood anybody, and a log that lies by omission is worse
+     * than no log. Also set on the command line, in case /proc is not there. */
+    {
+        int r = open("/proc/sys/kernel/printk_devkmsg", O_WRONLY | O_CLOEXEC);
+        if (r >= 0) {
+            if (write(r, "on\n", 3) < 0)
+                fprintf(stderr, "pid351: could not unlimit /dev/kmsg\n");
+            close(r);
+        }
+    }
+
     /* Our own output has nowhere to go: no shell is capturing stdout and the
      * serial port is not wired to anything reachable. Writing it into the
      * kernel ring buffer instead puts our lines in the same place, in the

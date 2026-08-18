@@ -11,3 +11,7 @@ image/linux-*.tar.xz
 
 # Editor state, not project state.
 .vscode/
+
+# Local insurance copy of the card boot partition. 24 MB of vendor binary,
+# useful on this laptop, not something to push.
+docs/card-backup/
