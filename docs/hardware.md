@@ -308,6 +308,38 @@ there is no `typec`, `fusb302`, `tcpm` or CC GPIO anywhere in either device
 tree. **Networking is blocked on a passive USB-C-to-USB-A-female adapter and a
 bus-powered device, not on software.**
 
+### The CC pins are grounded — measured, not inferred
+
+An Android phone connected to the console over a C-to-C cable reports
+**"analog audio accessory attached"**. Android prints that on detecting
+Audio Adapter Accessory Mode, which the Type-C spec defines as *both CC1 and
+CC2 pulled to ground*. The phone measured the port for us: the console's
+receptacle has **CC1 and CC2 tied low**.
+
+That closes the question. A USB-C device attaches only after seeing a pull-up
+(Rp, a resistor to VBUS) telling it a source is present. Ground is not Rp, so
+every compliant C device correctly concludes nothing is attached — which is
+precisely what the dock did with 5V live and a mass-storage device behind it.
+It also explains why the console charges happily from a USB-A-to-C cable,
+which puts 5V on VBUS irrespective of CC.
+
+Rp is a resistor on the PCB and it is not there. **No device tree change,
+kernel option or role switch can ever make this port present as a USB-C
+source.** Anything with a USB-C plug is out, permanently.
+
+Passive C-to-A adapters are unaffected: they ask the console to signal
+nothing, and VBUS and D+/D- pass straight through. A USB-A device attaches
+normally. The known-good chain, once such an adapter exists, is
+
+    console -> [C plug / A socket adapter] -> bus-powered USB 2.0 hub
+            -> [A plug / C socket adapter, which supplies the Rp] -> dock
+
+with the second adapter being what finally makes the dock's AX88179A
+reachable, since it emulates the legacy USB-A host the dock is waiting for.
+
+**[predicted, untested]** A USB-C charger on a C-to-C cable should fail to
+charge this console, since it will read Ra/Ra and refuse to source.
+
 ## Corrections to the ArkOS-era notes above
 
 - **"mainline's OPP table declares lower points" is wrong.** ROCKNIX's
