@@ -1,7 +1,15 @@
 # pid351 — plan
 
-A single-process OS for one Anbernic RG351P. Five consoles: GBC, GBA, NES,
-SNES, Genesis. Priorities, in order: **battery life, minimalism, performance.**
+A single-process OS for one Anbernic RG351P. Four consoles: GBA, NES, SNES,
+Genesis.
+
+GB and GBC were dropped once the panel was measured. They are 10:9 against a
+3:2 screen - a 35% mismatch that no amount of stretch hides and only black
+bars accommodate. The four that remain are either an exact fit (GBA at 240x160
+is precisely half the panel) or a uniform 12.5% stretch from 4:3, so every
+console fills the screen and there is one display path instead of five.
+mGBA still carries GB and GBC incidentally, so the decision is reversible;
+what it buys is that nothing in the scaling policy has to bend for them. Priorities, in order: **battery life, minimalism, performance.**
 
 ## Constraints
 
@@ -64,8 +72,8 @@ border edges visible, d-pad moves the box, paced at 59.727Hz and measured.
 
 ## Phase 2 — it plays games
 
-- [ ] 2.1 mGBA, statically linked — covers GB, GBC and GBA, three of five
-      systems from one core.
+- [ ] 2.1 mGBA, statically linked — covers GBA, and GB/GBC for free if we
+      ever want them back.
 - [ ] 2.2 Per-core symbol prefixing so multiple cores can coexist in one binary.
       Every core exports `retro_run`; without this, core #2 will not link.
 - [ ] 2.3 snes9x, a NES core, Genesis Plus GX.

@@ -568,6 +568,156 @@ static void blit_rotated(struct dumb_buf *b, const px_t *src, int w, int h)
     }
 }
 
+/* ------------------------------------------------ candidate rotate+scale */
+
+/* Bring-up only, and on their way to being one of them replacing the above.
+ *
+ * The measurement that motivates these: at 480x320 the blit above takes
+ * 2487 us, and the same loop writing the same bytes with a sequential source
+ * takes 695. Nearly three quarters of the cost is not the work, it is walking
+ * down a column of the source and touching a fresh cache line for every two
+ * bytes we keep.
+ *
+ * Both candidates fix that by turning the source read around. The difference
+ * between them is where the awkwardness gets pushed to, and that matters
+ * because nobody here knows whether the dumb buffer is cached or
+ * write-combined - which decides whether scattered writes are nearly free or
+ * ruinous. Rather than guess, both get built and both get measured. */
+
+/* Destination x picks a source row, destination y picks a source column.
+ * Resolving both once per frame is also what makes a non-integer scale free
+ * later: an arbitrary mapping is the same table lookup as an integer one. */
+static int map_row[PHYS_W];
+static int map_col[PHYS_H];
+
+static void build_maps(const rect_t *r, int scale)
+{
+    for (int px = 0; px < PHYS_W; px++) {
+#if ROTATE_CW
+        int ly = PANEL_H - 1 - px;
+#else
+        int ly = px;
+#endif
+        map_row[px] = (ly >= r->y && ly < r->y + r->h)
+                    ? (ly - r->y) / scale : -1;
+    }
+    for (int py = 0; py < PHYS_H; py++) {
+#if ROTATE_CW
+        int lx = py;
+#else
+        int lx = PANEL_W - 1 - py;
+#endif
+        map_col[py] = (lx >= r->x && lx < r->x + r->w)
+                    ? (lx - r->x) / scale : -1;
+    }
+}
+
+/* Sequential reads, strided writes. Within a tile the same handful of
+ * destination lines are revisited by every column, so they should stay in L1
+ * for the whole tile - if the destination is cacheable at all. */
+static void blit_tiled(struct dumb_buf *b, const px_t *src, int w, int h,
+                       int tile)
+{
+    rect_t r = fit_integer(w, h, PANEL_W, PANEL_H);
+    int scale = r.w / w;
+    int stride = (int)(b->pitch / sizeof(px_t));
+
+    build_maps(&r, scale);
+
+    for (int py0 = 0; py0 < PHYS_H; py0 += tile) {
+        int pyN = py0 + tile < PHYS_H ? py0 + tile : PHYS_H;
+
+        for (int px0 = 0; px0 < PHYS_W; px0 += tile) {
+            int pxN = px0 + tile < PHYS_W ? px0 + tile : PHYS_W;
+
+            for (int px = px0; px < pxN; px++) {
+                int sy = map_row[px];
+                const px_t *row = (sy < 0) ? NULL
+                                : src + (size_t)sy * (size_t)w;
+
+                for (int py = py0; py < pyN; py++) {
+                    int sx = map_col[py];
+                    b->px[(size_t)py * (size_t)stride + (size_t)px] =
+                        (!row || sx < 0) ? (px_t)0 : row[sx];
+                }
+            }
+        }
+    }
+}
+
+/* Sequential both ways. Gathers a tile into a staging block small enough to
+ * live in L1, transposing it there where a scattered write costs nothing,
+ * then writes each destination row out as one contiguous run. This is the
+ * variant that should survive a write-combined destination, where partial
+ * line writes are exactly what hurts. */
+#define STAGE_MAX 64
+
+static void blit_staged(struct dumb_buf *b, const px_t *src, int w, int h,
+                        int tile)
+{
+    static px_t stage[STAGE_MAX * STAGE_MAX];
+
+    rect_t r = fit_integer(w, h, PANEL_W, PANEL_H);
+    int scale = r.w / w;
+    int stride = (int)(b->pitch / sizeof(px_t));
+
+    if (tile > STAGE_MAX)
+        tile = STAGE_MAX;
+
+    build_maps(&r, scale);
+
+    for (int py0 = 0; py0 < PHYS_H; py0 += tile) {
+        int pyN = py0 + tile < PHYS_H ? py0 + tile : PHYS_H;
+
+        for (int px0 = 0; px0 < PHYS_W; px0 += tile) {
+            int pxN = px0 + tile < PHYS_W ? px0 + tile : PHYS_W;
+
+            for (int px = px0; px < pxN; px++) {
+                int sy = map_row[px];
+                const px_t *row = (sy < 0) ? NULL
+                                : src + (size_t)sy * (size_t)w;
+
+                for (int py = py0; py < pyN; py++) {
+                    int sx = map_col[py];
+                    stage[(size_t)(py - py0) * (size_t)tile
+                          + (size_t)(px - px0)] =
+                        (!row || sx < 0) ? (px_t)0 : row[sx];
+                }
+            }
+
+            for (int py = py0; py < pyN; py++)
+                memcpy(b->px + (size_t)py * (size_t)stride + (size_t)px0,
+                       stage + (size_t)(py - py0) * (size_t)tile,
+                       (size_t)(pxN - px0) * sizeof(px_t));
+        }
+    }
+}
+
+/* The control from the first round, kept as a variant: same writes, same loop
+ * shape, sequential source. It is the floor any candidate is aiming at. */
+static void blit_linear(struct dumb_buf *b, const px_t *src)
+{
+    int stride = (int)(b->pitch / sizeof(px_t));
+
+    for (int py = 0; py < PHYS_H; py++) {
+        px_t *dst = b->px + (size_t)py * (size_t)stride;
+        const px_t *row = src + (size_t)py * (size_t)PHYS_W;
+        for (int px = 0; px < PHYS_W; px++)
+            dst[px] = row[px];
+    }
+}
+
+static void run_variant(struct dumb_buf *b, const px_t *src, int w, int h,
+                        int variant, int tile)
+{
+    switch (variant) {
+    case PLAT_BLIT_LINEAR:  blit_linear(b, src);                 break;
+    case PLAT_BLIT_TILED:   blit_tiled(b, src, w, h, tile);      break;
+    case PLAT_BLIT_STAGED:  blit_staged(b, src, w, h, tile);     break;
+    default:                blit_rotated(b, src, w, h);          break;
+    }
+}
+
 /* ------------------------------------------------------- platform surface */
 
 int plat_init(void)
@@ -756,10 +906,10 @@ void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us)
     if (wait_us) *wait_us = g.wait_us;
 }
 
-int plat_bench(const px_t *src, int src_w, int src_h,
+int plat_bench(const px_t *src, int src_w, int src_h, int variant, int tile,
                uint32_t *samples, int n)
 {
-    if (g.fd < 0 || !src || !samples || n <= 0)
+    if (g.fd < 0 || !src || !samples || n <= 0 || tile <= 0)
         return -1;
 
     /* fit_integer clamps the scale to at least 1, so a source larger than the
@@ -775,34 +925,38 @@ int plat_bench(const px_t *src, int src_w, int src_h,
 
     for (int i = 0; i < n; i++) {
         uint64_t t0 = plat_now_us();
-        blit_rotated(b, src, src_w, src_h);
+        run_variant(b, src, src_w, src_h, variant, tile);
         samples[i] = (uint32_t)(plat_now_us() - t0);
     }
     return 0;
 }
 
-int plat_bench_linear(const px_t *src, uint32_t *samples, int n)
+int plat_blit_verify(const px_t *src, int src_w, int src_h,
+                     int variant, int tile)
 {
-    if (g.fd < 0 || !src || !samples || n <= 0)
+    static px_t ref[PHYS_W * PHYS_H];
+
+    if (g.fd < 0 || !src || tile <= 0)
+        return -1;
+    if (src_w <= 0 || src_h <= 0 || src_w > PANEL_W || src_h > PANEL_H)
         return -1;
 
     struct dumb_buf *b = &g.buf[g.front ^ 1];
     int stride = (int)(b->pitch / sizeof(px_t));
 
-    for (int i = 0; i < n; i++) {
-        uint64_t t0 = plat_now_us();
-        /* Deliberately the same scalar loop as blit_rotated rather than a
-         * memcpy, so the comparison isolates the access pattern. The compiler
-         * is free to vectorise this one and not the strided one, and that is
-         * fair: a tiled rewrite would unlock the same thing, so it belongs in
-         * what the pattern is costing us. */
-        for (int py = 0; py < PHYS_H; py++) {
-            px_t *dst = b->px + (size_t)py * (size_t)stride;
-            const px_t *row = src + (size_t)py * (size_t)PHYS_W;
-            for (int px = 0; px < PHYS_W; px++)
-                dst[px] = row[px];
-        }
-        samples[i] = (uint32_t)(plat_now_us() - t0);
-    }
-    return 0;
+    blit_rotated(b, src, src_w, src_h);
+    for (int py = 0; py < PHYS_H; py++)
+        memcpy(ref + (size_t)py * (size_t)PHYS_W,
+               b->px + (size_t)py * (size_t)stride,
+               (size_t)PHYS_W * sizeof(px_t));
+
+    run_variant(b, src, src_w, src_h, variant, tile);
+
+    int bad = 0;
+    for (int py = 0; py < PHYS_H; py++)
+        for (int px = 0; px < PHYS_W; px++)
+            if (b->px[(size_t)py * (size_t)stride + (size_t)px]
+                != ref[(size_t)py * (size_t)PHYS_W + (size_t)px])
+                bad++;
+    return bad;
 }

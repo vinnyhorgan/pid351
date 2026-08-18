@@ -454,7 +454,7 @@ positive.
 
 The left stick now stands in for the d-pad, resolved inside `plat_drm.c` with
 a 45% deadzone so that nothing above the platform layer learns this machine
-has a stick at all - the cores must not, since none of the five consoles has
+has a stick at all - the cores must not, since none of the consoles we target has
 one. The inversion is why that mapping is measured rather than assumed: taking
 the obvious convention would have produced a stick that moves the wrong way in
 all four directions.

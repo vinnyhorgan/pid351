@@ -130,22 +130,24 @@ void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us)
     if (wait_us) *wait_us = present_us;
 }
 
-int plat_bench(const px_t *src, int src_w, int src_h,
+int plat_bench(const px_t *src, int src_w, int src_h, int variant, int tile,
                uint32_t *samples, int n)
 {
-    (void)src; (void)src_w; (void)src_h; (void)samples; (void)n;
+    (void)src; (void)src_w; (void)src_h; (void)variant; (void)tile;
+    (void)samples; (void)n;
 
     /* Refused on purpose. This measurement exists to decide whether to move
      * work off a 1.3 GHz in-order Cortex-A35 with small caches; timing the
-     * same loop on an out-of-order laptop core would produce a confident
+     * same loops on an out-of-order laptop core would produce a confident
      * number that says nothing about that question. */
     return -1;
 }
 
-int plat_bench_linear(const px_t *src, uint32_t *samples, int n)
+int plat_blit_verify(const px_t *src, int src_w, int src_h,
+                     int variant, int tile)
 {
-    (void)src; (void)samples; (void)n;
-    return -1;   /* same reason */
+    (void)src; (void)src_w; (void)src_h; (void)variant; (void)tile;
+    return -1;   /* there is no rotate blit on this backend to compare against */
 }
 
 uint64_t plat_now_us(void)

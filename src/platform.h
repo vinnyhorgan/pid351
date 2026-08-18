@@ -74,27 +74,29 @@ void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us);
  * samples[] with the duration of each in microseconds. Nothing is presented.
  *
  * Separate from the live timing above because the live path only ever runs
- * one source size, and the blit's cost is dominated by whether the source
- * fits in cache - so the number that matters is different for every console.
- * Sweeping the sizes here is the only way to learn that before there is an
- * emulator to run.
+ * one source size and one implementation, and the measurement said the cost
+ * is dominated by the access pattern - so the interesting comparison is
+ * between implementations, on every console's native size, before any of them
+ * ships.
  *
  * src must hold at least src_w * src_h pixels and must not exceed the panel.
- * Returns 0, or -1 if the backend cannot do this meaningfully. */
-int plat_bench(const px_t *src, int src_w, int src_h,
+ * tile is ignored except by the tiled variants. Returns 0, or -1 if the
+ * backend cannot do this meaningfully. */
+enum {
+    PLAT_BLIT_LINEAR = 0, /* control: same writes, sequential reads, no rotate */
+    PLAT_BLIT_STRIDED,    /* what ships today: linear writes, strided reads */
+    PLAT_BLIT_TILED,      /* inverted: sequential reads, strided writes */
+    PLAT_BLIT_STAGED,     /* sequential both ways, transposing via a cache tile */
+};
+
+int plat_bench(const px_t *src, int src_w, int src_h, int variant, int tile,
                uint32_t *samples, int n);
 
-/* The control for the above. Writes the same number of bytes into the same
- * back buffer with the same loop shape, but reads its source sequentially
- * instead of striding down a column.
- *
- * Without this the sweep only says the blit is expensive, not why. If the
- * control is nearly as slow, the cost is the sheer volume of writes and only
- * moving the work off the CPU helps. If the control is much faster, the cost
- * is the access pattern, and tiling the loop fixes it for twenty lines and no
- * device tree at all. Those two answers point at completely different work.
- *
- * src must hold at least a full panel. Returns 0, or -1 if unavailable. */
-int plat_bench_linear(const px_t *src, uint32_t *samples, int n);
+/* Number of pixels where the variant disagrees with what ships today. A blit
+ * that is faster and wrong is worth nothing, and the three implementations
+ * walk the buffer in three different orders, so this is checked rather than
+ * eyeballed. 0 means identical output. -1 if unavailable. */
+int plat_blit_verify(const px_t *src, int src_w, int src_h,
+                     int variant, int tile);
 
 #endif /* PLATFORM_H */

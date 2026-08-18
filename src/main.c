@@ -119,21 +119,31 @@ static void clock_calibrate(void)
            (unsigned long)((t1 - t0) * 1000u / (uint64_t)N), N);
 }
 
-/* The blit's cost is dominated by whether the source fits in cache, and every
- * console has a different native size - so the number this demo produces at
- * 480x320 is the worst case and applies to nothing we will actually run.
- * Sweep the real sizes instead. */
+/* The blit's cost is dominated by the access pattern - measured, 480x320
+ * strided 2487 us against 695 us for the same writes read sequentially - and
+ * separately by whether the source fits in cache, which differs for every
+ * console. So the sweep runs every console's size against every candidate
+ * implementation, and the winner is whatever the panel's own silicon says it
+ * is rather than whatever the argument says it should be. */
 static void bench_blit(void)
 {
     static const struct { const char *name; int w, h; } sizes[] = {
-        { "GB/GBC",  160, 144 },
         { "GBA",     240, 160 },
         { "NES",     256, 240 },
         { "SNES",    256, 224 },
         { "GENESIS", 320, 224 },
         { "NATIVE",  480, 320 },
+        /* Not a target since the Game Boy was dropped - kept because it is
+         * the one source small enough to sit entirely in cache, which is the
+         * other end of the range everything above is measured against. */
+        { "PROBE",   160, 144 },
     };
-    enum { ITER = 200 };
+    static const struct { const char *name; int id; } variants[] = {
+        { "STRIDED", PLAT_BLIT_STRIDED },
+        { "TILED",   PLAT_BLIT_TILED   },
+        { "STAGED",  PLAT_BLIT_STAGED  },
+    };
+    enum { ITER = 200, TILE = 32 };
     static uint32_t samples[ITER];
 
     /* Real data rather than a cleared buffer, so nothing downstream can be
@@ -141,43 +151,77 @@ static void bench_blit(void)
     for (int i = 0; i < PANEL_W * PANEL_H; i++)
         framebuffer[i] = (px_t)(i ^ (i >> 5));
 
-    printf("pid351: blit bench, %d iterations per size, into the real back "
-           "buffer, no page flip\n", ITER);
+    /* Correctness before speed. The three walk the buffer in three different
+     * orders and a faster blit that draws the wrong thing is worth nothing. */
+    for (size_t v = 1; v < sizeof variants / sizeof variants[0]; v++) {
+        for (size_t k = 0; k < sizeof sizes / sizeof sizes[0]; k++) {
+            int bad = plat_blit_verify(framebuffer, sizes[k].w, sizes[k].h,
+                                       variants[v].id, TILE);
+            if (bad != 0) {
+                printf("pid351: VERIFY %s %s: %d pixels differ\n",
+                       variants[v].name, sizes[k].name, bad);
+                fflush(stdout);
+            }
+        }
+    }
+    printf("pid351: verify done (only mismatches are printed above)\n");
+
+    printf("pid351: blit variants, %d iterations each, tile %d, into the real "
+           "back buffer, no page flip\n", ITER, TILE);
 
     for (size_t k = 0; k < sizeof sizes / sizeof sizes[0]; k++) {
-        if (plat_bench(framebuffer, sizes[k].w, sizes[k].h,
-                       samples, ITER) < 0) {
-            printf("pid351:   unavailable on this backend\n");
-            fflush(stdout);
-            return;
-        }
-
-        stat_t s = stat_of(samples, ITER);
         rect_t r = fit_integer(sizes[k].w, sizes[k].h, PANEL_W, PANEL_H);
-        unsigned pct = s.min * 1000u / (unsigned)FRAME_US;
+        int sc = r.w / sizes[k].w;
 
-        printf("pid351:   %-8s %3dx%-3d x%d  src %4uKB  "
-               "min %5u  med %5u  max %6u us   %u.%u%% of a %d us frame\n",
-               sizes[k].name, sizes[k].w, sizes[k].h, r.w / sizes[k].w,
+        printf("pid351:   %-8s %3dx%-3d x%d  src %4uKB  %6u sourced px",
+               sizes[k].name, sizes[k].w, sizes[k].h, sc,
                (unsigned)((size_t)sizes[k].w * (size_t)sizes[k].h
                           * sizeof(px_t) / 1024),
-               s.min, s.med, s.max, pct / 10u, pct % 10u, FRAME_US);
+               (unsigned)(r.w * r.h));
+
+        for (size_t v = 0; v < sizeof variants / sizeof variants[0]; v++) {
+            if (plat_bench(framebuffer, sizes[k].w, sizes[k].h,
+                           variants[v].id, TILE, samples, ITER) < 0) {
+                printf("   unavailable on this backend");
+                break;
+            }
+            stat_t s = stat_of(samples, ITER);
+            printf("   %s %5u/%5u", variants[v].name, s.min, s.med);
+        }
+        printf("\n");
+        fflush(stdout);
     }
 
-    if (plat_bench_linear(framebuffer, samples, ITER) == 0) {
+    if (plat_bench(framebuffer, PANEL_W, PANEL_H, PLAT_BLIT_LINEAR, TILE,
+                   samples, ITER) == 0) {
         stat_t s = stat_of(samples, ITER);
-        unsigned pct = s.min * 1000u / (unsigned)FRAME_US;
-        printf("pid351:   %-8s %3dx%-3d x1  src %4uKB  "
-               "min %5u  med %5u  max %6u us   %u.%u%% of a %d us frame"
-               "   <- control: same writes, sequential reads\n",
-               "LINEAR", PANEL_W, PANEL_H,
+        printf("pid351:   %-8s %3dx%-3d x1  src %4uKB  %6u sourced px"
+               "   LINEAR  %5u/%5u   <- floor: same writes, sequential reads\n",
+               "CONTROL", PANEL_W, PANEL_H,
                (unsigned)(sizeof framebuffer / 1024),
-               s.min, s.med, s.max, pct / 10u, pct % 10u, FRAME_US);
+               (unsigned)(PANEL_W * PANEL_H), s.min, s.med);
     }
 
-    /* Flushed here rather than at the first report: if the 300 second kill
-     * lands before then, this is the half of the output that cannot be
-     * gathered any other way. */
+    /* Tile size is a compile-time constant in the end, so it gets chosen the
+     * same way everything else here does. Swept at full screen because that
+     * is where every console lands once the black bars go. */
+    static const int tiles[] = { 8, 16, 32, 64 };
+    for (size_t v = 1; v < sizeof variants / sizeof variants[0]; v++) {
+        printf("pid351:   tile sweep 480x320  %-7s", variants[v].name);
+        for (size_t t = 0; t < sizeof tiles / sizeof tiles[0]; t++) {
+            if (plat_bench(framebuffer, PANEL_W, PANEL_H, variants[v].id,
+                           tiles[t], samples, ITER) < 0)
+                break;
+            stat_t s = stat_of(samples, ITER);
+            printf("   %2d:%5u/%5u", tiles[t], s.min, s.med);
+        }
+        printf("\n");
+        fflush(stdout);
+    }
+
+    /* Flushed at every step. first-light.sh kills the process with SIGTERM
+     * after 300 seconds and stdout here is a file on the SD card, so a block
+     * buffer would throw away the run that told us the most. */
     fflush(stdout);
 }
 
