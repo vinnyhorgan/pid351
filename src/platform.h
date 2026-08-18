@@ -70,6 +70,22 @@ int plat_axes(plat_axis_t *out, int max);
  * Either may be left 0 by a backend where the quantity does not exist. */
 void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us);
 
+/* Being PID 1. plat_boot_init mounts what an init has to mount and returns
+ * non-zero only when we really are PID 1; everything else here is inert
+ * otherwise, so the same binary still runs as an ordinary process. On the
+ * laptop these are stubs - there is no init to be.
+ *
+ * plat_boot_save_log copies the kernel ring buffer to the boot partition.
+ * With no serial port that is the only way a boot can explain itself, so it
+ * is called on the way out and again if anything goes wrong.
+ *
+ * plat_boot_shutdown does not return when we are PID 1: returning from main
+ * as PID 1 is a kernel panic, so exiting has to be an explicit act. */
+int  plat_boot_init(void);
+int  plat_is_init(void);
+int  plat_boot_save_log(const char *name);
+void plat_boot_shutdown(int power_off);
+
 /* Time n blits of a src_w x src_h source into the back buffer, filling
  * samples[] with the duration of each in microseconds. Nothing is presented.
  *
@@ -128,9 +144,8 @@ int plat_mem_probe(plat_mem_t *out, int iters);
  * with no sleep at all and counting how long they took, which is what we will
  * actually get.
  *
- * We have been pacing to a hardcoded 59.727 Hz and reading back 59.72, which
- * proves only that the sleep works. Per-console timing in phase 2 needs the
- * real number. Both are in millihertz. */
+ * Settled: 60.0186 Hz, from a 17.000000 MHz pixel clock (cpll 408 MHz over an
+ * exact divide by 24) and 584x485 totals. Both are in millihertz. */
 void plat_mode_timing(uint32_t *exact_mhz, uint32_t *clock_khz,
                       uint32_t *htotal, uint32_t *vtotal);
 

@@ -28,7 +28,13 @@
 #include "gfx.h"
 #include "scale.h"
 
-#define FRAME_US 16743          /* 59.727 Hz, the GBA's real rate */
+/* The panel's real period, not a console's. cpll runs at 408 MHz and the VOP
+ * divides it by exactly 24 for a 17.000000 MHz pixel clock, so 584x485 totals
+ * give 60.0186 Hz with no rounding anywhere - the two flip-rate measurements
+ * (60.109 and 60.050 Hz) bracket that within their own start/stop alignment
+ * error, they do not contradict it. We pace the panel and resample audio,
+ * rather than the reverse, because the panel cannot be retuned. */
+#define FRAME_US 16661          /* 60.0186 Hz, the panel */
 
 #define C_BG     RGB565(  8, 10, 14)
 #define C_PANEL  RGB565( 20, 24, 32)
@@ -177,8 +183,11 @@ static void bench_blit(void)
     printf("pid351: verify: %d comparisons run, only mismatches printed\n",
            checked);
 
-    printf("pid351: blit variants, %d iterations each, tile %d, into the real "
-           "back buffer, no page flip\n", ITER, TILE);
+    /* ROW clamps its band height internally, so saying "tile 64" for it would
+     * be a lie in the log a year from now. */
+    printf("pid351: blit variants, %d iterations each, into the real back "
+           "buffer, no page flip (STAGED tile %d, ROW clamped to 32 rows)\n",
+           ITER, TILE);
 
     for (size_t k = 0; k < sizeof sizes / sizeof sizes[0]; k++) {
         /* Every console fills the panel now, so the destination is always
@@ -402,86 +411,30 @@ static int write_governor(const char *g)
     return ok ? 0 : -1;
 }
 
-/* ------------------------------------------------ measuring ROCKNIX itself */
+/* -------------------------------------------- pinning an operating point */
 
-/* Every power figure this project has produced includes about twenty daemons
- * we intend to delete, and the cost of them has only ever been estimated.
- * SIGSTOP is the honest way to ask: it takes them out of the scheduler
- * entirely without unmounting anything, and SIGCONT puts it all back.
+/* We run our own device tree now, and mainline's carries two OPPs ROCKNIX
+ * deleted: 816 MHz at 1.050 V and 600 MHz at 0.950 V. Dynamic power goes as
+ * f*V^2 and vdd_arm drops with the OPP, so this is the largest untested lever
+ * left in the project - and it only exists because we stopped running someone
+ * else's kernel.
  *
- * Matched on exact comm, never on a prefix, and pid 1 is never a candidate -
- * stopping systemd would take the machine with it. */
-static int signal_daemons(int sig)
-{
-    static const char *const names[] = {
-        "sway", "swaybg", "mako", "pipewire", "wireplumber", "pipewire-pulse",
-        "NetworkManager", "iwd", "sshd", "rpcbind", "seatd", "dbus-daemon",
-        "psimon", "powerstate", "battery_led_sta", "rocknix-touchsc",
-        "input_sense", "emulationstatio", "systemd-journal", "systemd-udevd",
-        "systemd-logind", NULL };
+ * With the performance governor the core sits at scaling_max_freq, so writing
+ * that pins the frequency without needing the userspace governor. */
+#define MAXF_PATH "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq"
+#define MINF_PATH "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq"
 
-    DIR *d = opendir("/proc");
-    if (!d)
+static int pin_freq(long khz)
+{
+    /* Order matters: lower the floor before the ceiling when descending, or
+     * the write is rejected for crossing it. Doing both twice is simpler than
+     * reasoning about which direction we are going. */
+    write_long(MINF_PATH, khz);
+    if (write_long(MAXF_PATH, khz) != 0)
         return -1;
-
-    pid_t self = getpid();
-    int n = 0;
-    struct dirent *e;
-
-    while ((e = readdir(d))) {
-        long pid = strtol(e->d_name, NULL, 10);
-        if (pid <= 1 || pid == (long)self)
-            continue;
-
-        char path[64], comm[64];
-        snprintf(path, sizeof path, "/proc/%ld/comm", pid);
-        if (!read_text(path, comm, sizeof comm))
-            continue;
-
-        for (int i = 0; names[i]; i++) {
-            if (strcmp(comm, names[i]) != 0)
-                continue;
-            if (kill((pid_t)pid, sig) == 0)
-                n++;
-            break;
-        }
-    }
-    closedir(d);
-    return n;
+    return write_long(MINF_PATH, khz);
 }
 
-/* A crash, or anything else that kills us between the stop and the resume,
- * would leave the console wedged with its session daemons frozen until
- * someone power cycles it. This is the last run before the image, so it gets
- * a net: a child that outlives us and puts everything back regardless.
- *
- * It only sleeps and signals - it never touches the display, and a SIGCONT to
- * a process that is already running is a no-op, so the normal path resuming
- * first costs nothing. */
-static void arm_resume_net(unsigned seconds)
-{
-    pid_t p = fork();
-    if (p != 0)
-        return;                     /* parent, or fork failed: carry on */
-
-    sleep(seconds);                 /* a signal cutting this short is fine */
-    signal_daemons(SIGCONT);
-    _exit(0);
-}
-
-/* delete_module has no libc wrapper, and syscall() is a GNU extension that
- * _POSIX_C_SOURCE hides. Declared here rather than widening the feature test
- * macros for the whole build, which exist precisely to keep POSIX and only
- * POSIX visible. Bring-up only; nothing in pid351 proper needs it. */
-extern long syscall(long number, ...);
-
-/* panfrost is a module here, so the GPU's cost can be measured rather than
- * guessed at. It will refuse while a compositor holds it, which is why this
- * is attempted twice - once before the daemons are stopped and once after. */
-static int remove_module(const char *name)
-{
-    return (int)syscall(__NR_delete_module, name, O_NONBLOCK);
-}
 
 /* ------------------------------------------------------------- info column */
 
@@ -990,8 +943,20 @@ static void power_phase(canvas_t *c, const char *name, const char *gov,
 
 int main(void)
 {
+    /* First, because everything below assumes /dev, /proc and /sys exist,
+     * and as PID 1 none of them do. No-op when we are not PID 1. */
+    int as_init = plat_boot_init();
+
+    if (as_init)
+        printf("pid351: running as PID 1\n");
+    fflush(stdout);
+
     if (plat_init() != 0) {
         fprintf(stderr, "pid351: platform init failed\n");
+        /* A failed display bring-up is exactly the case where the screen
+         * cannot tell us anything, so the kernel log has to. */
+        plat_boot_save_log("pid351-fail.log");
+        plat_boot_shutdown(0);
         return 1;
     }
 
@@ -1030,10 +995,10 @@ int main(void)
         fflush(stdout);
     }
 
-    /* We have been pacing to a hardcoded 59.727 Hz and reading back 59.72,
-     * which proves the sleep works and nothing else. Per-console timing needs
-     * the panel's real rate, so take it from the mode's own arithmetic and
-     * then from flipping as fast as the hardware allows. */
+    /* Kept as a standing check, not an open question: the mode arithmetic is
+     * exact and the flip rate should agree with it to within the alignment
+     * error of however many flips we time. A disagreement larger than that
+     * would mean the VOP is not running the mode it reports. */
     {
         uint32_t exact = 0, ck = 0, ht = 0, vt = 0, meas = 0;
         plat_mode_timing(&exact, &ck, &ht, &vt);
@@ -1060,51 +1025,44 @@ int main(void)
     sysinfo_read(&si);
     conditions("after bench ", &si);
 
-    /* Four phases, about two and a half minutes. Three at the high operating
-     * point with rising load give the slope of current against CPU time; the
-     * fourth repeats the idle point at the low one, which puts both levers on
-     * the same scale for the first time. */
+    /* The OPP sweep. This is the first measurement in the project that could
+     * not have been taken on ROCKNIX at all: their device tree deletes every
+     * operating point below 1008 MHz, so 816 and 600 simply did not exist as
+     * things the machine could be asked to do.
+     *
+     * 1296 is measured first and last. Identical conditions at the two ends
+     * bound the drift over the whole sweep, which is the only way to know
+     * whether a 10 mA difference in the middle means anything. */
     long bl0 = si.backlight;
     {
-        /* The last two estimates in this project, replaced by measurements.
-         * Both were quoted as ranges and both feed straight into what our own
-         * image is worth, so guessing at them would have made the whole
-         * battery case for the project a guess. */
-        struct phase_result pr[4];
+        static const long khz[] = { 1296000, 1200000, 1008000, 816000,
+                                    600000, 1296000 };
+        static const char *const label[] = { "1296", "1200", "1008", "816",
+                                             "600", "1296-again" };
+        enum { NPHASE = (int)(sizeof khz / sizeof khz[0]) };
+        struct phase_result pr[NPHASE];
 
-        power_phase(&c, "base",       NULL, 0, (int)bl0, 35, &pr[0]);
+        if (write_governor("performance") != 0)
+            printf("pid351: WARN could not select performance governor\n");
 
-        int gpu = remove_module("panfrost");
-        printf("pid351: panfrost removal before stopping daemons: %s\n",
-               gpu == 0 ? "removed" : strerror(errno));
-        fflush(stdout);
-        power_phase(&c, "no-gpu",     NULL, 0, -1, 35, &pr[1]);
-
-        arm_resume_net(150);
-        int n = signal_daemons(SIGSTOP);
-        printf("pid351: SIGSTOP sent to %d ROCKNIX processes "
-               "(resume net armed for 150 s)\n", n);
-        if (gpu != 0) {
-            gpu = remove_module("panfrost");
-            printf("pid351: panfrost removal after stopping daemons: %s\n",
-                   gpu == 0 ? "removed" : strerror(errno));
+        for (int i = 0; i < NPHASE; i++) {
+            if (pin_freq(khz[i]) != 0)
+                printf("pid351: WARN could not pin %ld kHz (does this DT "
+                       "carry that OPP?)\n", khz[i]);
+            power_phase(&c, label[i], NULL, 0, i == 0 ? (int)bl0 : -1,
+                        35, &pr[i]);
         }
-        fflush(stdout);
-        power_phase(&c, "no-daemons", NULL, 0, -1, 35, &pr[2]);
 
-        signal_daemons(SIGCONT);
-        printf("pid351: SIGCONT sent\n");
-        fflush(stdout);
-        power_phase(&c, "restored",   NULL, 0, -1, 35, &pr[3]);
-
-        printf("pid351: WHAT ROCKNIX COSTS  base=%ld  no-gpu=%ld  "
-               "no-daemons=%ld  restored=%ld uA (current_avg %ld %ld %ld %ld)\n",
-               pr[0].ua_implied, pr[1].ua_implied, pr[2].ua_implied,
-               pr[3].ua_implied, pr[0].ua_avg, pr[1].ua_avg, pr[2].ua_avg,
-               pr[3].ua_avg);
-        printf("pid351:   adjacent pairs are the trustworthy ones: gpu = base "
-               "minus no-gpu, daemons = no-gpu minus no-daemons, and restored "
-               "against base bounds the drift over the whole programme\n");
+        printf("pid351: OPP SWEEP (current_avg uA, then charge-implied)\n");
+        for (int i = 0; i < NPHASE; i++)
+            printf("pid351:   %-11s %8ld   %8ld   fps=%.2f work_med=%u us\n",
+                   label[i], pr[i].ua_avg, pr[i].ua_implied,
+                   pr[i].fps, pr[i].work_med);
+        printf("pid351:   trust current_avg over charge-implied: the coulomb "
+               "counter only ticks every 6-7 s, which is four steps in a 29 s "
+               "window and not enough to resolve 20 mA. The two 1296 phases "
+               "bound the drift; anything smaller than their difference is "
+               "noise, not a result.\n");
         fflush(stdout);
     }
 
@@ -1249,6 +1207,12 @@ int main(void)
 
     printf("pid351: exit (%s) after %u frames, %.2f fps\n",
            reason, frames, fps);
+    fflush(stdout);
     plat_shutdown();
+
+    /* Does not return when we are PID 1 - reaching the end of main as PID 1
+     * is a kernel panic, so leaving has to be deliberate. */
+    plat_boot_save_log("pid351-boot.log");
+    plat_boot_shutdown(1);
     return 0;
 }

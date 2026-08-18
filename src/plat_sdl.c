@@ -210,3 +210,27 @@ int plat_axes(plat_axis_t *out, int max)
     (void)max;
     return 0;
 }
+
+
+/* There is no init to be on a laptop. These exist so main.c can call them
+ * unconditionally rather than growing an #ifdef around the boot path. */
+int plat_boot_init(void)
+{
+    return 0;
+}
+
+int plat_is_init(void)
+{
+    return 0;
+}
+
+int plat_boot_save_log(const char *name)
+{
+    (void)name;
+    return 0;
+}
+
+void plat_boot_shutdown(int power_off)
+{
+    (void)power_off;
+}

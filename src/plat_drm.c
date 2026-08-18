@@ -7,21 +7,24 @@
  * nothing at link time.
  *
  * The panel is natively portrait 320x480 and advertises no other mode, so
- * every frame has to be rotated 90 degrees. That rotation belongs in the RGA,
- * which is idle silicon sitting on the die - but ROCKNIX ships no device tree
- * node for it, so there is nothing to open yet. Until there is, the CPU does
- * it, structured so the rotate and the integer scale happen in a single pass
- * with contiguous writes. See docs/hardware.md.
+ * every frame has to be rotated 90 degrees. Every property on every plane was
+ * dumped on the device and there is no rotation property anywhere on the
+ * pipeline, so the CPU doing it is not a fallback - it is the only mechanism
+ * that exists. The rotate and the scale happen in one pass with contiguous
+ * writes into write-combined memory, which is what the whole design is bent
+ * around. See docs/hardware.md.
+ *
+ * This file also contains what it takes to be PID 1, because mounting /dev is
+ * as much a property of this machine as opening card0 is.
  *
  * Deliberately not here yet:
- *   - RGA. Needs a device tree overlay first; the CPU path is the fallback it
- *     will hide behind, which is why the fallback exists at all.
  *   - ALSA. The platform interface has no audio entry point yet.
- *   - Suspend, backlight and governor control. Phase 3.
+ *   - Suspend and savestate-on-poweroff.
  */
 #include <drm/drm.h>
 #include <drm/drm_mode.h>
 #include <linux/input.h>
+#include <linux/reboot.h>
 
 #include <dirent.h>
 #include <errno.h>
@@ -32,6 +35,9 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -45,6 +51,12 @@
 #define DRM_CARD    "/dev/dri/card0"
 #define PAD_VENDOR  0x1209
 #define PAD_PRODUCT 0x3100
+
+/* How long to let hardware turn up before giving up on it. Only ever reached
+ * when we are PID 1 - under another init everything is long since probed. */
+#define DRM_WAIT_MS  8000
+#define PAD_WAIT_MS  8000
+#define MMC_WAIT_MS  8000
 
 /* The panel's own orientation: a scanline is 320 pixels and there are 480 of
  * them. Our framebuffer is landscape, so physical width is our height. */
@@ -82,12 +94,17 @@
 #define STICK_Y_AXIS  ABS_RX
 #define STICK_DEADZONE_PCT 45
 
-/* Which rotate blit the live path uses, and its tile size. Compile-time
- * because they are settled by measurement once and then never vary - there
- * are no config files and there will not be any. Set from what the sweep in
- * main.c reports on this panel. */
-#define BLIT_IMPL PLAT_BLIT_STAGED
-#define BLIT_TILE 64
+/* Which rotate blit the live path uses. Settled by measurement on this panel
+ * and then fixed, because there are no config files and there will not be
+ * any. The full-panel-width variant won on every emulated source and lost by
+ * 20% on a native 480x320 one: its gather touches one cache line per panel
+ * column, and that working set only stays resident while the source is small.
+ * The crossover sits between the largest console frame (320x224, 71680 px)
+ * and a native one (153600 px), so split on source area rather than pick a
+ * single loser. Sizes below are the winning tile from the same sweep. */
+#define BLIT_ROW_MAX_PX 100000
+#define BLIT_ROW_ROWS   32
+#define BLIT_TILE       64
 
 #define NBUF 2
 
@@ -381,13 +398,11 @@ static void discover_axes(int fd)
  * numbers. So match on the USB id, and among this device's three nodes take
  * the one with absolute axes, which is the pad rather than the keyboard or
  * mouse it also presents. */
-static int open_pad(void)
+static int scan_pad(void)
 {
     DIR *d = opendir("/dev/input");
-    if (!d) {
-        fail("opendir /dev/input");
+    if (!d)
         return -1;
-    }
 
     struct dirent *e;
     int found = -1;
@@ -418,11 +433,40 @@ static int open_pad(void)
         close(fd);
     }
     closedir(d);
-
-    if (found < 0)
-        fprintf(stderr, "pid351: no pad matching %04x:%04x with abs axes\n",
-                PAD_VENDOR, PAD_PRODUCT);
     return found;
+}
+
+/* The pad is a full speed USB device behind an internal high speed hub, and
+ * enumerating it takes about 2.4 seconds from power on - measured, see the
+ * boot log in docs/. Under another system's init that wait was absorbed by
+ * everything else starting up; as PID 1 there is nobody to absorb it, so we
+ * do it ourselves.
+ *
+ * Sleeping between looks is not the busy-waiting the project forbids: that
+ * rule is about burning a core to pass time we could have blocked through.
+ * There is nothing here to block on - device nodes appear without announcing
+ * themselves - and 20 ms of sleep per look costs nothing measurable. */
+static int open_pad(void)
+{
+    struct timespec ts = { 0, 20 * 1000 * 1000 };
+    int waited = 0;
+
+    for (;;) {
+        int fd = scan_pad();
+        if (fd >= 0) {
+            if (waited)
+                printf("pid351: pad appeared after %d ms\n", waited);
+            return fd;
+        }
+        if (waited >= PAD_WAIT_MS)
+            break;
+        nanosleep(&ts, NULL);
+        waited += 20;
+    }
+
+    fprintf(stderr, "pid351: no pad matching %04x:%04x with abs axes "
+            "after %d ms\n", PAD_VENDOR, PAD_PRODUCT, PAD_WAIT_MS);
+    return -1;
 }
 
 /* The pad reports a plain sequential HID button order starting at BTN_A
@@ -857,6 +901,190 @@ static void wait_flip(void)
     g.flip_pending = 0;
 }
 
+/* ---- being PID 1 -------------------------------------------------------
+ *
+ * A process normally inherits /dev, /proc and /sys from whatever started it.
+ * PID 1 inherits nothing, and CONFIG_DEVTMPFS_MOUNT says in as many words
+ * that it does not apply to an initramfs root - so we mount them ourselves.
+ *
+ * Every function here is a no-op unless we really are PID 1, which is what
+ * lets the identical binary still run as an ordinary process under another
+ * system. That is not politeness, it is the only way to compare the two.
+ *
+ * reboot() and klogctl() are glibc extensions that _POSIX_C_SOURCE hides, so
+ * they go through syscall() rather than widening the feature-test macros for
+ * the whole build. <linux/reboot.h> is a uapi header in the same sense as
+ * <drm/drm.h>, so the constants cost nothing. */
+extern long syscall(long number, ...);
+
+/* sync() is another _POSIX_C_SOURCE casualty; same treatment as the rest. */
+static void flush_disks(void)
+{
+    syscall(__NR_sync);
+}
+
+#define BOOT_DEV   "/dev/mmcblk0p1"
+#define BOOT_MOUNT "/boot"
+
+static int is_init;
+
+/* Wait for a device node to be created by devtmpfs as its driver probes. See
+ * the note above open_pad for why sleeping here is not the busy-waiting the
+ * project forbids. */
+static int wait_for_node(const char *path, int timeout_ms)
+{
+    struct timespec ts = { 0, 20 * 1000 * 1000 };
+    int waited = 0;
+
+    while (access(path, F_OK) != 0) {
+        if (waited >= timeout_ms)
+            return -1;
+        nanosleep(&ts, NULL);
+        waited += 20;
+    }
+    if (waited)
+        printf("pid351: %s appeared after %d ms\n", path, waited);
+    return 0;
+}
+
+int plat_is_init(void)
+{
+    return is_init;
+}
+
+/* mount(2) failing with EBUSY means someone already mounted it, which is a
+ * success for our purposes. Anything else is worth knowing about but is not
+ * worth dying for: a missing /sys costs us the battery readings, not the
+ * frame loop. */
+static void mount_or_warn(const char *src, const char *dst, const char *type)
+{
+    mkdir(dst, 0755);
+    if (mount(src, dst, type, 0, NULL) == 0 || errno == EBUSY)
+        return;
+    fprintf(stderr, "pid351: mount %s on %s failed: %s\n",
+            type, dst, strerror(errno));
+}
+
+int plat_boot_init(void)
+{
+    if (getpid() != 1)
+        return 0;
+    is_init = 1;
+
+    mount_or_warn("devtmpfs", "/dev",  "devtmpfs");
+    mount_or_warn("proc",     "/proc", "proc");
+    mount_or_warn("sysfs",    "/sys",  "sysfs");
+
+    /* Our own output has nowhere to go: no shell is capturing stdout and the
+     * serial port is not wired to anything reachable. Writing it into the
+     * kernel ring buffer instead puts our lines in the same place, in the
+     * same order and with the same timestamps as the kernel's own - so one
+     * dump at exit saves both, and a driver that failed to probe sits right
+     * next to the line where we noticed. It still reaches the panel through
+     * fbcon until we take DRM master, which is exactly the window where a
+     * failure needs to be readable off the screen. */
+    int k = open("/dev/kmsg", O_WRONLY | O_CLOEXEC);
+    if (k >= 0) {
+        dup2(k, STDOUT_FILENO);
+        dup2(k, STDERR_FILENO);
+        if (k > STDERR_FILENO)
+            close(k);
+        setvbuf(stdout, NULL, _IOLBF, 0);
+        setvbuf(stderr, NULL, _IONBF, 0);
+    }
+
+    /* The DRM device is not there yet either. rockchip-drm binds a panel over
+     * DSI and that chain finishes its deferred probe after the initramfs is
+     * already executing, so plat_init would open a node that does not exist. */
+    if (wait_for_node(DRM_CARD, DRM_WAIT_MS) != 0)
+        fprintf(stderr, "pid351: %s never appeared\n", DRM_CARD);
+
+    return 1;
+}
+
+/* The boot partition is where a post-mortem has to land, since a panel that
+ * never lit cannot show us anything. Mounted here rather than in
+ * plat_boot_init because mmcblk0p1 does not exist yet at that point - the MMC
+ * host is still probing the card we booted from. */
+static int mount_boot(void)
+{
+    static int mounted;
+
+    if (mounted)
+        return 0;
+    if (wait_for_node(BOOT_DEV, MMC_WAIT_MS) != 0) {
+        fprintf(stderr, "pid351: %s never appeared\n", BOOT_DEV);
+        return -1;
+    }
+    mkdir(BOOT_MOUNT, 0755);
+    if (mount(BOOT_DEV, BOOT_MOUNT, "vfat", 0, NULL) != 0 && errno != EBUSY) {
+        fprintf(stderr, "pid351: mount %s failed: %s\n",
+                BOOT_DEV, strerror(errno));
+        return -1;
+    }
+    mounted = 1;
+    return 0;
+}
+
+/* SYSLOG_ACTION_READ_ALL. The ring buffer is the only account of what the
+ * kernel did before we existed, and with no serial port it is the only thing
+ * that can explain a driver that failed to probe. */
+int plat_boot_save_log(const char *name)
+{
+    enum { READ_ALL = 3, BUF = 256 * 1024 };
+    char path[256];
+    char *buf;
+    long n;
+    int fd;
+
+    if (!is_init)
+        return 0;
+    if (mount_boot() != 0)
+        return -1;
+
+    buf = malloc(BUF);
+    if (!buf)
+        return -1;
+    n = syscall(__NR_syslog, READ_ALL, buf, (long)BUF);
+    if (n < 0) {
+        free(buf);
+        return -1;
+    }
+
+    snprintf(path, sizeof path, "%s/%s", BOOT_MOUNT, name);
+    fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) {
+        free(buf);
+        return -1;
+    }
+    if (write(fd, buf, (size_t)n) < 0)
+        n = -1;
+    close(fd);
+    free(buf);
+    flush_disks();
+    return n < 0 ? -1 : 0;
+}
+
+/* PID 1 returning from main is a kernel panic, so this never returns and the
+ * caller is not given the option of continuing. */
+void plat_boot_shutdown(int power_off)
+{
+    if (!is_init)
+        return;
+
+    flush_disks();
+    umount(BOOT_MOUNT);
+    flush_disks();
+    syscall(__NR_reboot, LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2,
+            power_off ? LINUX_REBOOT_CMD_POWER_OFF : LINUX_REBOOT_CMD_RESTART,
+            (void *)0);
+
+    /* Unreachable unless the reboot syscall itself failed, and a panic with a
+     * message beats a silent hang. */
+    for (;;)
+        pause();
+}
+
 void plat_present(const px_t *fb, int w, int h)
 {
     if (g.fd < 0)
@@ -870,7 +1098,11 @@ void plat_present(const px_t *fb, int w, int h)
     uint64_t t1 = plat_now_us();
 
     int back = g.front ^ 1;
-    run_variant(&g.buf[back], fb, w, h, BLIT_IMPL, BLIT_TILE);
+    if (w * h <= BLIT_ROW_MAX_PX)
+        run_variant(&g.buf[back], fb, w, h, PLAT_BLIT_STAGED_ROW,
+                    BLIT_ROW_ROWS);
+    else
+        run_variant(&g.buf[back], fb, w, h, PLAT_BLIT_STAGED, BLIT_TILE);
     uint64_t t2 = plat_now_us();
 
     g.wait_us = (uint32_t)(t1 - t0);

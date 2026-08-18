@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * pid351's board file for the Anbernic RG351P.
+ *
+ * Mainline's rk3326-anbernic-rg351m.dts is right about this hardware in every
+ * respect we have checked against the running device - panel, rotation, reset
+ * GPIO, supplies, and a CPU OPP table carrying two operating points that
+ * ROCKNIX deletes. It is missing exactly one thing: the battery.
+ *
+ * Without a `battery` node and a `charger` subnode pointing at it,
+ * rk817_charger bails out of probe on power_supply_get_battery_info and the
+ * machine has no fuel gauge at all. On a project whose first priority is
+ * battery life, that is not a detail - it cost us an entire measurement run.
+ *
+ * Every number below is corroborated twice. The pack parameters match what we
+ * read out of sysfs on this device before we ever built a kernel
+ * (charge_full_design 3500000, voltage_min_design 3500000,
+ * voltage_max_design 4100000, constant_charge_voltage_max 4200000), and the
+ * OCV curve and charger tuning are upstream's odroid-go table, which this
+ * board shares exactly - ROCKNIX's vendor tree carries the identical values.
+ * Only the pack capacity differs from the OGA's, 3500 mAh against 3000.
+ *
+ * M and P differ in the shell, not the board, which is why U-Boot's ADC probe
+ * selects the rg351m tree for this console. compatible is left alone so that
+ * stays true; only the model string says which one is in our hands.
+ */
+#include "rk3326-anbernic-rg351m.dts"
+
+/ {
+	model = "Anbernic RG351P (pid351)";
+
+	battery: battery {
+		compatible = "simple-battery";
+		charge-full-design-microamp-hours = <3500000>;
+		charge-term-current-microamp = <350000>;
+		constant-charge-current-max-microamp = <2000000>;
+		constant-charge-voltage-max-microvolt = <4200000>;
+		factory-internal-resistance-micro-ohms = <180000>;
+		voltage-max-design-microvolt = <4100000>;
+		voltage-min-design-microvolt = <3500000>;
+
+		ocv-capacity-celsius = <20>;
+		ocv-capacity-table-0 =  <4046950 100>, <4001920 95>, <3967900 90>, <3919950 85>,
+					<3888450 80>, <3861850 75>, <3831540 70>, <3799130 65>,
+					<3768190 60>, <3745650 55>, <3726610 50>, <3711630 45>,
+					<3696720 40>, <3685660 35>, <3674950 30>, <3663050 25>,
+					<3649470 20>, <3635260 15>, <3616920 10>, <3592440 5>,
+					<3574170 0>;
+	};
+};
+
+&rk817 {
+	charger {
+		rockchip,resistor-sense-micro-ohms = <10000>;
+		rockchip,sleep-enter-current-microamp = <300000>;
+		rockchip,sleep-filter-current-microamp = <100000>;
+		monitored-battery = <&battery>;
+	};
+};
