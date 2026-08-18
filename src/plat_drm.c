@@ -64,6 +64,23 @@
  * different shell ever turns up. */
 #define PAD_TRACE 0
 
+/* The left stick stands in for the d-pad, which is more comfortable for long
+ * sessions. It is resolved down here so that nothing above the platform layer
+ * ever learns this machine has an analog stick - the cores certainly must not,
+ * since not one console pid351 targets has one.
+ *
+ * ABS_Z and ABS_RX are the left stick and are inverted on BOTH axes relative
+ * to the right one (docs/hardware.md). Assuming the usual convention would
+ * have produced a stick that moves the wrong way in all four directions.
+ *
+ * The deadzone is large because this is a d-pad substitute, not an analog
+ * control: an accidental brush must not register, and there is no benefit to
+ * resolving anything finer than the eight directions a hat gives. */
+#define STICK_AS_DPAD 1
+#define STICK_X_AXIS  ABS_Z
+#define STICK_Y_AXIS  ABS_RX
+#define STICK_DEADZONE_PCT 45
+
 #define NBUF 2
 
 struct dumb_buf {
@@ -91,6 +108,11 @@ static struct {
     plat_axis_t axis[PLAT_AXIS_MAX];
     uint16_t    axis_code[PLAT_AXIS_MAX];
     int         axis_count;
+
+    /* Kept apart so that a stick pushed one way and the hat pushed the other
+     * do not fight over the same bits; plat_input merges them. */
+    uint32_t hat_dirs;
+    uint32_t stick_dirs;
 } g;
 
 /* ---------------------------------------------------------------- helpers */
@@ -413,6 +435,39 @@ static uint32_t map_key(uint16_t code)
     }
 }
 
+#if STICK_AS_DPAD
+/* Centre and half range come from the driver rather than being assumed, so a
+ * stick that does not report a full 0..4095 still deadzones correctly. */
+static uint32_t stick_dir(unsigned code, uint32_t low, uint32_t high)
+{
+    for (int i = 0; i < g.axis_count; i++) {
+        if (g.axis_code[i] != code)
+            continue;
+
+        int span = g.axis[i].max - g.axis[i].min;
+        if (span <= 0)
+            return 0;
+
+        int centre = g.axis[i].min + span / 2;
+        int offset = g.axis[i].value - centre;
+        int limit  = (span / 2) * STICK_DEADZONE_PCT / 100;
+
+        if (offset >  limit) return high;
+        if (offset < -limit) return low;
+        return 0;
+    }
+    return 0;
+}
+
+static void update_stick_dirs(void)
+{
+    /* Inverted on both axes: a low value on X is right, a low value on Y is
+     * down. Measured, not assumed. */
+    g.stick_dirs = stick_dir(STICK_X_AXIS, PAD_RIGHT, PAD_LEFT)
+                 | stick_dir(STICK_Y_AXIS, PAD_DOWN,  PAD_UP);
+}
+#endif
+
 static void pump_input(void)
 {
     if (g.pad_fd < 0)
@@ -437,17 +492,22 @@ static void pump_input(void)
                 g.buttons &= ~bit;
         } else if (ev.type == EV_ABS) {
             if (ev.code == ABS_HAT0X) {
-                g.buttons &= ~(uint32_t)(PAD_LEFT | PAD_RIGHT);
-                if (ev.value < 0) g.buttons |= PAD_LEFT;
-                if (ev.value > 0) g.buttons |= PAD_RIGHT;
+                g.hat_dirs &= ~(uint32_t)(PAD_LEFT | PAD_RIGHT);
+                if (ev.value < 0) g.hat_dirs |= PAD_LEFT;
+                if (ev.value > 0) g.hat_dirs |= PAD_RIGHT;
             } else if (ev.code == ABS_HAT0Y) {
-                g.buttons &= ~(uint32_t)(PAD_UP | PAD_DOWN);
-                if (ev.value < 0) g.buttons |= PAD_UP;
-                if (ev.value > 0) g.buttons |= PAD_DOWN;
+                g.hat_dirs &= ~(uint32_t)(PAD_UP | PAD_DOWN);
+                if (ev.value < 0) g.hat_dirs |= PAD_UP;
+                if (ev.value > 0) g.hat_dirs |= PAD_DOWN;
             } else {
                 for (int i = 0; i < g.axis_count; i++)
                     if (g.axis_code[i] == ev.code) {
                         g.axis[i].value = ev.value;
+#if STICK_AS_DPAD
+                        if (ev.code == STICK_X_AXIS
+                            || ev.code == STICK_Y_AXIS)
+                            update_stick_dirs();
+#endif
                         break;
                     }
             }
@@ -641,7 +701,7 @@ void plat_present(const px_t *fb, int w, int h)
 uint32_t plat_input(void)
 {
     pump_input();
-    return g.buttons;
+    return g.buttons | g.hat_dirs | g.stick_dirs;
 }
 
 uint64_t plat_now_us(void)

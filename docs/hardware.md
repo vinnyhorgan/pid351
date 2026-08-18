@@ -450,9 +450,14 @@ agree about sign:
 
 So the **left stick is inverted on both axes** relative to the right, and the
 right stick follows the usual evdev convention of down and right being
-positive. Nothing pid351 targets uses a stick, so this is recorded rather than
-acted on - but a menu driven by a stick would be upside down and backwards on
-the left one if this were assumed rather than measured.
+positive.
+
+The left stick now stands in for the d-pad, resolved inside `plat_drm.c` with
+a 45% deadzone so that nothing above the platform layer learns this machine
+has a stick at all - the cores must not, since none of the five consoles has
+one. The inversion is why that mapping is measured rather than assumed: taking
+the obvious convention would have produced a stick that moves the wrong way in
+all four directions.
 
 `ABS_THROTTLE` is advertised by the pad and never moves. Presumably a field in
 the HID report with nothing behind it.

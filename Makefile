@@ -22,7 +22,11 @@ HOST_SRC    = $(COMMON) src/plat_sdl.c
 
 # -static so the device binary carries no runtime dependency whatsoever, which
 # is the point: eventually it is the only thing in userspace.
-DEV_CFLAGS  = $(CFLAGS) -static
+#
+# -mcpu=cortex-a35 because that is exactly what an RK3326 has, four of. The
+# A35 is in-order, so instruction scheduling actually matters here in a way it
+# does not on the out-of-order core gcc assumes by default.
+DEV_CFLAGS  = $(CFLAGS) -static -mcpu=cortex-a35 -flto
 DEV_SRC     = $(COMMON) src/plat_drm.c
 
 .PHONY: all host device run push clean
