@@ -59,6 +59,13 @@
  * exist for. */
 #define ROTATE_CW 0
 
+/* Log every key event with its raw code during bring-up. The pad turns out to
+ * speak the legacy BTN_A..BTN_Z range rather than BTN_SOUTH/EAST/NORTH/WEST -
+ * the two overlap only partly, so which physical button carries which code
+ * has to be read off one deliberate pass over the pad. Goes to 0 once the map
+ * below is confirmed. */
+#define PAD_TRACE 1
+
 #define NBUF 2
 
 struct dumb_buf {
@@ -348,11 +355,14 @@ static void pump_input(void)
     while ((n = read(g.pad_fd, &ev, sizeof ev)) == (ssize_t)sizeof ev) {
         if (ev.type == EV_KEY) {
             uint32_t bit = map_key(ev.code);
-            if (!bit) {
-                if (ev.value)
-                    printf("pid351: unmapped key 0x%x\n", ev.code);
+#if PAD_TRACE
+            if (ev.value != 2)   /* 2 is autorepeat, not a state change */
+                printf("pid351: key 0x%03x %s%s\n", ev.code,
+                       ev.value ? "down" : "up  ",
+                       bit ? "" : "   UNMAPPED");
+#endif
+            if (!bit)
                 continue;
-            }
             if (ev.value)
                 g.buttons |= bit;
             else

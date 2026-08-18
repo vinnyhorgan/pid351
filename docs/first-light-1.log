@@ -1,0 +1,43 @@
+=== pid351 first light ===
+Linux RK3326 6.12.79 #1 SMP Sat Aug  1 04:35:16 UTC 2026 aarch64 GNU/Linux
+uptime: 26.45 46.09
+
+pid351: connector 40, crtc 36, mode 320x480@60
+pid351: pad on /dev/input/event5 (OpenSimHardware OSH PB Controller)
+pid351: display up, rotating counter-clockwise
+input: 0040
+input: 0060
+input: 0020
+input: 00a0
+input: 0080
+input: 0090
+input: 0010
+input: 0090
+input: 0080
+input: 0090
+input: 0010
+input: 0000
+input: 0040
+input: 0060
+input: 0020
+input: 0000
+input: 0080
+input: 00a0
+input: 0080
+input: 0000
+input: 0080
+input: 0090
+input: 0000
+input: 0010
+input: 0050
+input: 0040
+input: 0060
+input: 0020
+input: 0000
+pid351: unmapped key 0x135
+input: 0008 Y
+input: 0000
+input: 1000 SELECT
+input: 3000 START SELECT
+pid351: exit (combo) after 2063 frames
+exit status: 0

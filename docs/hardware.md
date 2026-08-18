@@ -381,3 +381,34 @@ lever, because the panel needs a 90-degree rotation on every frame.
   vibrator, power key and jack detect now take `event0`-`event2`.
   **Never hardcode an event number.** Match on the `1209:3100` VID/PID or the
   device name, and pick the node that reports absolute axes.
+
+## Phase 1, confirmed on hardware
+
+`plat_drm.c` ran on the panel on 2026-08-18. Raw DRM ioctls, two RGB565 dumb
+buffers, page flip on vblank, evdev input. Log in `first-light-1.log`.
+
+    pid351: connector 40, crtc 36, mode 320x480@60
+    pid351: pad on /dev/input/event5 (OpenSimHardware OSH PB Controller)
+    pid351: display up, rotating counter-clockwise
+    pid351: exit (combo) after 2063 frames
+
+- **Rotation is counter-clockwise.** Clockwise put the red top-left marker in
+  the bottom-right and the green top-right marker in the bottom-left - both
+  exactly 180 degrees out, green still wide rather than tall, so a pure
+  rotation error with no mirroring.
+- **The mode is exactly 320x480** and the one-pixel border reaches all four
+  edges, so nothing crops or overscans and the 2x GBA blit lands pixel
+  perfect. A dark band along one edge in a photograph is the glass margin,
+  not the framebuffer.
+- **2063 frames in 90 seconds** with a clean exit: the flip loop is stable and
+  never stalled.
+- **The pad is `/dev/input/event5`**, found by USB id plus having absolute
+  axes. A hardcoded event number would have picked the keyboard node.
+- **The d-pad is `ABS_HAT0X`/`ABS_HAT0Y`**, diagonals included; all eight
+  directions observed.
+- **`BTN_SELECT` (0x13a) and `BTN_START` (0x13b) are correct.**
+
+**[todo]** The pad speaks the **legacy `BTN_A`..`BTN_Z` range** (0x130-0x135),
+not `BTN_SOUTH/EAST/NORTH/WEST`. Those alias only partly, so `BTN_C` (0x132)
+and `BTN_Z` (0x135) currently fall through unmapped - 0x135 was observed. One
+deliberate pass over every button with `PAD_TRACE` on completes the map.
