@@ -1,0 +1,893 @@
+
+===== gadget modules available =====
+function
+legacy
+libcomposite.ko
+u_ether.ko
+usb_f_ecm.ko
+usb_f_ecm_subset.ko
+usb_f_eem.ko
+usb_f_ncm.ko
+usb_f_rndis.ko
+g_ether.ko
+g_ncm.ko
+
+===== current role =====
+--- $ cat /sys/class/udc/ff300000.usb/state ---
+not attached
+--- candidate mode knobs ---
+/sys/devices/platform/ff300000.usb/udc/ff300000.usb/is_otg = 1
+
+===== attempt: force peripheral =====
+
+===== attempt: load ethernet gadget =====
+--- $ cat /sys/class/udc/ff300000.usb/state ---
+not attached
+--- $ ip link ---
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: usb0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc fq_codel state DOWN mode DEFAULT group default qlen 1000
+    link/ether 02:51:03:51:00:02 brd ff:ff:ff:ff:ff:ff
+
+===== configure usb0 =====
+RTNETLINK answers: File exists
+usb0 configured as 192.168.7.2/24
+
+===== sshd =====
+--- $ systemctl is-active ssh.service ---
+active
+
+===== result =====
+--- $ ip addr ---
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: usb0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc fq_codel state DOWN group default qlen 1000
+    link/ether 02:51:03:51:00:02 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.7.2/24 scope global usb0
+       valid_lft forever preferred_lft forever
+--- $ dmesg ---
+[    0.000000] Booting Linux on physical CPU 0x0
+[    0.000000] Initializing cgroup subsys cpuset
+[    0.000000] Initializing cgroup subsys cpu
+[    0.000000] Initializing cgroup subsys cpuacct
+[    0.000000] Linux version 4.4.189 (root@live) (gcc version 6.3.1 20170404 (Linaro GCC 6.3-2017.05) ) #1 SMP Wed Mar 3 21:55:30 EST 2021
+[    0.000000] Boot CPU: AArch64 Processor [410fd042]
+[    0.000000] Machine model: Anbernic RG351P
+[    0.000000] On node 0 totalpages: 253952
+[    0.000000]   DMA zone: 4088 pages used for memmap
+[    0.000000]   DMA zone: 0 pages reserved
+[    0.000000]   DMA zone: 253952 pages, LIFO batch:31
+[    0.000000] psci: probing for conduit method from DT.
+[    0.000000] psci: PSCIv1.0 detected in firmware.
+[    0.000000] psci: Using standard PSCI v0.2 function IDs
+[    0.000000] psci: Trusted OS migration not required
+[    0.000000] PERCPU: Embedded 19 pages/cpu @ffffffc03ff3b000 s40936 r8192 d28696 u77824
+[    0.000000] pcpu-alloc: s40936 r8192 d28696 u77824 alloc=19*4096
+[    0.000000] pcpu-alloc: [0] 0 [0] 1 [0] 2 [0] 3 
+[    0.000000] Detected VIPT I-cache on CPU0
+[    0.000000] Built 1 zonelists in Zone order, mobility grouping on.  Total pages: 249864
+[    0.000000] Kernel command line: root=UUID=e139ce78-9841-40fe-8823-96a304a09859 rootwait rw fsck.repair=yes net.ifnames=0 fbcon=rotate:3 console=/dev/ttyFIQ0 quiet splash plymouth.ignore-serial-consoles consoleblank=0
+[    0.000000] PID hash table entries: 4096 (order: 3, 32768 bytes)
+[    0.000000] Dentry cache hash table entries: 131072 (order: 8, 1048576 bytes)
+[    0.000000] Inode-cache hash table entries: 65536 (order: 7, 524288 bytes)
+[    0.000000] software IO TLB: mapped [mem 0x39f00000-0x3df00000] (64MB)
+[    0.000000] Memory: 899640K/1015808K available (9982K kernel code, 732K rwdata, 2980K rodata, 512K init, 2609K bss, 116168K reserved, 0K cma-reserved)
+[    0.000000] Virtual kernel memory layout:
+                   modules : 0xffffff8000000000 - 0xffffff8008000000   (   128 MB)
+                   vmalloc : 0xffffff8008000000 - 0xffffffbdbfff0000   (   246 GB)
+                     .init : 0xffffff8008d30000 - 0xffffff8008db0000   (   512 KB)
+                     .text : 0xffffff8008080000 - 0xffffff8008a40000   (  9984 KB)
+                   .rodata : 0xffffff8008a40000 - 0xffffff8008d30000   (  3008 KB)
+                     .data : 0xffffff8008db0000 - 0xffffff8008e67008   (   733 KB)
+                   vmemmap : 0xffffffbdc0000000 - 0xffffffbfc0000000   (     8 GB maximum)
+                             0xffffffbdc0008000 - 0xffffffbdc1000000   (    15 MB actual)
+                   fixed   : 0xffffffbffe7fb000 - 0xffffffbffec00000   (  4116 KB)
+                   PCI I/O : 0xffffffbffee00000 - 0xffffffbfffe00000   (    16 MB)
+                   memory  : 0xffffffc000200000 - 0xffffffc040000000   (  1022 MB)
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+[    0.000000] Hierarchical RCU implementation.
+[    0.000000] 	Build-time adjustment of leaf fanout to 64.
+[    0.000000] NR_IRQS:64 nr_irqs:64 0
+[    0.000000] GIC: Using split EOI/Deactivate mode
+[    0.000000] rockchip_mmc_get_phase: invalid clk rate
+[    0.000000] rockchip_mmc_get_phase: invalid clk rate
+[    0.000000] rockchip_mmc_get_phase: invalid clk rate
+[    0.000000] rockchip_mmc_get_phase: invalid clk rate
+[    0.000000] rockchip_mmc_get_phase: invalid clk rate
+[    0.000000] rockchip_mmc_get_phase: invalid clk rate
+[    0.000000] Architected cp15 timer(s) running at 24.00MHz (phys).
+[    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+[    0.000009] sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+[    0.001516] Console: colour dummy device 80x25
+[    0.001554] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+[    0.001576] pid_max: default: 32768 minimum: 301
+[    0.001771] Mount-cache hash table entries: 2048 (order: 2, 16384 bytes)
+[    0.001789] Mountpoint-cache hash table entries: 2048 (order: 2, 16384 bytes)
+[    0.002709] Initializing cgroup subsys devices
+[    0.002736] Initializing cgroup subsys freezer
+[    0.002762] Initializing cgroup subsys net_cls
+[    0.003174] sched-energy: CPU device node has no sched-energy-costs
+[    0.003193] Invalid sched_group_energy for CPU0
+[    0.003205] CPU0: update cpu_capacity 1024
+[    0.003225] ASID allocator initialised with 32768 entries
+[    0.005453] Detected VIPT I-cache on CPU1
+[    0.005532] Invalid sched_group_energy for CPU1
+[    0.005539] CPU1: update cpu_capacity 1024
+[    0.005545] CPU1: Booted secondary processor [410fd042]
+[    0.006336] Detected VIPT I-cache on CPU2
+[    0.006390] Invalid sched_group_energy for CPU2
+[    0.006396] CPU2: update cpu_capacity 1024
+[    0.006402] CPU2: Booted secondary processor [410fd042]
+[    0.007148] Detected VIPT I-cache on CPU3
+[    0.007199] Invalid sched_group_energy for CPU3
+[    0.007205] CPU3: update cpu_capacity 1024
+[    0.007211] CPU3: Booted secondary processor [410fd042]
+[    0.007314] Brought up 4 CPUs
+[    0.007390] SMP: Total of 4 processors activated.
+[    0.007406] CPU features: detected feature: 32-bit EL0 Support
+[    0.007480] CPU: All CPU(s) started at EL2
+[    0.007721] Invalid sched_group_energy for CPU3
+[    0.007740] Invalid sched_group_energy for Cluster3
+[    0.007751] Invalid sched_group_energy for CPU2
+[    0.007762] Invalid sched_group_energy for Cluster2
+[    0.007773] Invalid sched_group_energy for CPU1
+[    0.007785] Invalid sched_group_energy for Cluster1
+[    0.007795] Invalid sched_group_energy for CPU0
+[    0.007807] Invalid sched_group_energy for Cluster0
+[    0.008578] devtmpfs: initialized
+[    0.038805] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+[    0.038844] futex hash table entries: 1024 (order: 4, 65536 bytes)
+[    0.039306] pinctrl core: initialized pinctrl subsystem
+[    0.039812] regulator-dummy: no parameters
+[    0.040905] NET: Registered protocol family 16
+[    0.051799] cpuidle: using governor ladder
+[    0.063812] cpuidle: using governor menu
+[    0.063852] Registered FIQ tty driver
+[    0.064258] vdso: 2 pages (1 code @ ffffff8008a46000, 1 data @ ffffff8008db5000)
+[    0.064287] hw-breakpoint: found 6 breakpoint and 4 watchpoint registers.
+[    0.064503] DMA: preallocated 256 KiB pool for atomic allocations
+[    0.089552] gpiochip_add_data: registered GPIOs 0 to 31 on device: gpio0
+[    0.089711] gpiochip_add_data: registered GPIOs 32 to 63 on device: gpio1
+[    0.089865] gpiochip_add_data: registered GPIOs 64 to 95 on device: gpio2
+[    0.090011] gpiochip_add_data: registered GPIOs 96 to 127 on device: gpio3
+[    0.102935] genirq: Setting trigger mode 8 for irq 170 failed (0xffffff80083703d0)
+[    0.104484] console [pstore-1] enabled
+[    0.104500] pstore: Registered ramoops as persistent store backend
+[    0.104517] ramoops: attached 0xf0000@0x110000, ecc: 0/0
+[    0.114691] console [ttyFIQ0] enabled
+[    0.115094] Registered fiq debugger ttyFIQ0
+[    0.140838] rockchip-pm rockchip-suspend: not set pwm-regulator-config
+[    0.141795] of_get_named_gpiod_flags: can't parse 'gpio' property of node '/vccsys[0]'
+[    0.141849] vcc3v8_sys: 3800 mV 
+[    0.142214] reg-fixed-voltage vccsys: vcc3v8_sys supplying 3800000uV
+[    0.143199] iommu: Adding device ff440000.hevc_service to group 0
+[    0.143343] iommu: Adding device ff442000.vpu_service to group 1
+[    0.143485] iommu: Adding device ff460000.vop to group 2
+[    0.143622] iommu: Adding device ff4a0000.rkisp1 to group 3
+[    0.144252] rockchip-pm-domain ff000000.power-management:power-controller: Looking up pd_vpu-supply from device tree
+[    0.144282] rockchip-pm-domain ff000000.power-management:power-controller: Looking up pd_vpu-supply property in node /power-management@ff000000/power-controller failed
+[    0.144497] rk_iommu ff440440.iommu: can't get sclk
+[    0.144999] rk_iommu ff442800.iommu: can't get sclk
+[    0.145316] rk_iommu ff460f00.iommu: can't get sclk
+[    0.145527] rockchip-pm-domain ff000000.power-management:power-controller: Looking up pd_vi-supply from device tree
+[    0.145555] rockchip-pm-domain ff000000.power-management:power-controller: Looking up pd_vi-supply property in node /power-management@ff000000/power-controller failed
+[    0.145727] rk_iommu ff490800.iommu: can't get sclk
+[    0.146020] rk_iommu ff4a8000.iommu: can't get sclk
+[    0.146761] SCSI subsystem initialized
+[    0.147187] usbcore: registered new interface driver usbfs
+[    0.147280] usbcore: registered new interface driver hub
+[    0.147466] usbcore: registered new device driver usb
+[    0.147601] pps_core: LinuxPPS API ver. 1 registered
+[    0.147618] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+[    0.147653] PTP clock support registered
+[    0.149297] Advanced Linux Sound Architecture Driver Initialized.
+[    0.150200] Bluetooth: Core ver 2.21
+[    0.150266] NET: Registered protocol family 31
+[    0.150282] Bluetooth: HCI device and connection manager initialized
+[    0.150312] Bluetooth: HCI socket layer initialized
+[    0.150335] Bluetooth: L2CAP socket layer initialized
+[    0.150385] Bluetooth: SCO socket layer initialized
+[    0.151766] rockchip-cpuinfo cpuinfo: Serial		: 58f47903235c92d8
+[    0.152648] clocksource: Switched to clocksource arch_sys_counter
+[    0.153015] FS-Cache: Loaded
+[    0.169022] thermal thermal_zone1: power_allocator: sustainable_power will be estimated
+[    0.169195] NET: Registered protocol family 2
+[    0.170097] TCP established hash table entries: 8192 (order: 4, 65536 bytes)
+[    0.170272] TCP bind hash table entries: 8192 (order: 6, 262144 bytes)
+[    0.170619] TCP: Hash tables configured (established 8192 bind 8192)
+[    0.170786] UDP hash table entries: 512 (order: 3, 49152 bytes)
+[    0.170874] UDP-Lite hash table entries: 512 (order: 3, 49152 bytes)
+[    0.171294] NET: Registered protocol family 1
+[    0.171849] RPC: Registered named UNIX socket transport module.
+[    0.171869] RPC: Registered udp transport module.
+[    0.171883] RPC: Registered tcp transport module.
+[    0.171896] RPC: Registered tcp NFSv4.1 backchannel transport module.
+[    0.173121] Trying to unpack rootfs image as initramfs...
+[    0.509197] Freeing initrd memory: 12884K
+[    0.510131] hw perfevents: enabled with armv8_cortex_a53 PMU driver, 7 counters available
+[    0.511563] kvm [1]: 8-bit VMID
+[    0.511579] kvm [1]: Hyp mode initialized successfully
+[    0.511877] kvm [1]: interrupt-controller@ff134000 IRQ11
+[    0.512308] kvm [1]: timer IRQ3
+[    0.517147] Initialise system trusted keyring
+[    0.533575] squashfs: version 4.0 (2009/01/31) Phillip Lougher
+[    0.535036] NFS: Registering the id_resolver key type
+[    0.535103] Key type id_resolver registered
+[    0.535118] Key type id_legacy registered
+[    0.535450] FS-Cache: Netfs 'cifs' registered for caching
+[    0.535986] Key type cifs.idmap registered
+[    0.536295] fuse init (API version 7.23)
+[    0.543091] NET: Registered protocol family 38
+[    0.543136] Key type asymmetric registered
+[    0.543152] Asymmetric key parser 'x509' registered
+[    0.543532] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 248)
+[    0.543555] io scheduler noop registered
+[    0.543570] io scheduler deadline registered
+[    0.544018] io scheduler cfq registered (default)
+[    0.545345] phy phy-ff2c0000.syscon:usb2-phy@100.0: Looking up phy-supply from device tree
+[    0.545378] phy phy-ff2c0000.syscon:usb2-phy@100.0: Looking up phy-supply property in node /syscon@ff2c0000/usb2-phy@100/host-port failed
+[    0.545903] phy phy-ff2c0000.syscon:usb2-phy@100.1: Looking up phy-supply from device tree
+[    0.545932] phy phy-ff2c0000.syscon:usb2-phy@100.1: Looking up phy-supply property in node /syscon@ff2c0000/usb2-phy@100/otg-port failed
+[    0.546100] phy phy-ff2c0000.syscon:usb2-phy@100.1: Looking up vbus-supply from device tree
+[    0.546124] phy phy-ff2c0000.syscon:usb2-phy@100.1: Looking up vbus-supply property in node /syscon@ff2c0000/usb2-phy@100/otg-port failed
+[    0.546147] phy phy-ff2c0000.syscon:usb2-phy@100.1: Failed to get VBUS supply regulator
+[    0.548688] phy phy-ff2e0000.video-phy.2: Looking up phy-supply from device tree
+[    0.548729] phy phy-ff2e0000.video-phy.2: Looking up phy-supply property in node /video-phy@ff2e0000 failed
+[    0.551742] pwm-backlight backlight: GPIO lookup for consumer enable
+[    0.551777] pwm-backlight backlight: using device tree for GPIO lookup
+[    0.551799] of_get_named_gpiod_flags: can't parse 'enable-gpios' property of node '/backlight[0]'
+[    0.551819] of_get_named_gpiod_flags: can't parse 'enable-gpio' property of node '/backlight[0]'
+[    0.551837] pwm-backlight backlight: using lookup tables for GPIO lookup
+[    0.551858] pwm-backlight backlight: lookup for GPIO enable failed
+[    0.551883] pwm-backlight backlight: Looking up power-supply from device tree
+[    0.551905] pwm-backlight backlight: Looking up power-supply property in node /backlight failed
+[    0.551926] backlight supply power not found, using dummy regulator
+[    0.553001] rk-vcodec vpu_combo: Looking up vcodec-supply from device tree
+[    0.553039] rk-vcodec vpu_combo: Looking up vcodec-supply property in node /vpu_combo failed
+[    0.553066] rk-vcodec vpu_combo: no regulator for vcodec
+[    0.553555] rk-vcodec vpu_combo: failed on clk_get clk_cabac
+[    0.559428] platform ff442000.vpu_service: probe device
+[    0.559919] platform ff442000.vpu_service: drm allocator with mmu enabled
+[    0.561201] platform ff440000.hevc_service: probe device
+[    0.561718] platform ff440000.hevc_service: drm allocator with mmu enabled
+[    0.562543] rk-vcodec vpu_combo: could not find power_model node
+[    0.568647] rk-vcodec vpu_combo: init success
+[    0.574353] dma-pl330 ff240000.dmac: Loaded driver for PL330 DMAC-241330
+[    0.574392] dma-pl330 ff240000.dmac: 	DBUFF-128x8bytes Num_Chans-8 Num_Peri-32 Num_Events-16
+[    0.574966] rockchip-pvtm ff010000.syscon:pmu-pvtm: failed to get rst 0 pmu
+[    0.575221] rockchip-pvtm ff148000.syscon:pvtm: failed to get rst 0 core
+[    0.576375] rockchip-system-monitor rockchip-system-monitor: system monitor probe
+[    0.577569] Serial: 8250/16550 driver, 5 ports, IRQ sharing disabled
+[    0.578601] ff158000.serial: ttyS1 at MMIO 0xff158000 (irq = 12, base_baud = 2500000) is a 16550A
+[    0.580810] [drm] Initialized drm 1.1.0 20060810
+[    0.584127] [drm] Rockchip DRM driver version: v1.0.1
+[    0.584464] rockchip-drm display-subsystem: devfreq is not set
+[    0.585386] rockchip-drm display-subsystem: bound ff460000.vop (ops 0xffffff8008add658)
+[    0.585428] rockchip-drm display-subsystem: failed to bind ff450000.dsi (ops 0xffffff8008ad4e78): -517
+[    0.595280] rockchip-drm display-subsystem: master bind failed: -517
+[    0.598401] panel-simple-dsi ff450000.dsi.0: Looking up power-supply from device tree
+[    0.598469] panel-simple-dsi ff450000.dsi.0: failed to get power regulator: -517
+[    0.606322] rockchip-pm-domain ff000000.power-management:power-controller: Looking up pd_gpu-supply from device tree
+[    0.606352] rockchip-pm-domain ff000000.power-management:power-controller: Looking up pd_gpu-supply property in node /power-management@ff000000/power-controller failed
+[    0.606452] mali ff400000.gpu: Looking up mali-supply from device tree
+[    0.606486] mali ff400000.gpu: Failed to get regulator
+[    0.611669] mali ff400000.gpu: Power control initialization failed
+[    0.618403] Unable to detect cache hierarchy for CPU 0
+[    0.619863] brd: module loaded
+[    0.629551] loop: module loaded
+[    0.630609] zram: Added device: zram0
+[    0.631514] ehci_hcd: USB 2.0 'Enhanced' Host Controller (EHCI) Driver
+[    0.631535] ehci-platform: EHCI generic platform driver
+[    0.632146] ohci_hcd: USB 1.1 'Open' Host Controller (OHCI) Driver
+[    0.632177] ohci-platform: OHCI generic platform driver
+[    0.632706] usbcore: registered new interface driver cdc_acm
+[    0.632727] cdc_acm: USB Abstract Control Model driver for USB modems and ISDN adapters
+[    0.632813] usbcore: registered new interface driver cdc_wdm
+[    0.632957] usbcore: registered new interface driver usbserial
+[    0.633021] usbcore: registered new interface driver usbserial_generic
+[    0.633082] usbserial: USB Serial support registered for generic
+[    0.633770] i2c /dev entries driver
+[    0.636017] rk808 0-0020: Pmic Chip id: 0x8170
+[    0.636450] rk808 0-0020: source: on=0x80, off=0x80
+[    0.637390] rk808 0-0020: support dcdc3 fb mode:-22, 934393856
+[    0.637692] rk808 0-0020: support pmic reset mode:0,1
+[    0.637996] gpiochip_find_base: found new base at 509
+[    0.638184] gpiochip_add_data: registered GPIOs 509 to 511 on device: rk817-gpio
+[    0.638326] GPIO chip rk817-gpio: created GPIO range 0->2 ==> rk805-pinctrl PIN 0->2
+[    0.641619] rk808 0-0020: GPIO lookup for consumer dvs
+[    0.641650] rk808 0-0020: using device tree for GPIO lookup
+[    0.641678] of_get_named_gpiod_flags: can't parse 'dvs-gpios' property of node '/i2c@ff180000/pmic@20[0]'
+[    0.641699] of_get_named_gpiod_flags: can't parse 'dvs-gpio' property of node '/i2c@ff180000/pmic@20[0]'
+[    0.641717] rk808 0-0020: using lookup tables for GPIO lookup
+[    0.641738] rk808 0-0020: lookup for GPIO dvs failed
+[    0.641758] rk808-regulator rk808-regulator: there is no dvs0 gpio
+[    0.641777] rk808 0-0020: GPIO lookup for consumer dvs
+[    0.641793] rk808 0-0020: using device tree for GPIO lookup
+[    0.641812] of_get_named_gpiod_flags: can't parse 'dvs-gpios' property of node '/i2c@ff180000/pmic@20[1]'
+[    0.641832] of_get_named_gpiod_flags: can't parse 'dvs-gpio' property of node '/i2c@ff180000/pmic@20[1]'
+[    0.641849] rk808 0-0020: using lookup tables for GPIO lookup
+[    0.641866] rk808 0-0020: lookup for GPIO dvs failed
+[    0.641884] rk808-regulator rk808-regulator: there is no dvs1 gpio
+[    0.641973] rk808 0-0020: Looking up vcc1-supply from device tree
+[    0.642129] DCDC_REG1: supplied by vcc3v8_sys
+[    0.643325] vdd_logic: 950 <--> 1150 mV at 1100 mV 
+[    0.644196] rk808 0-0020: Looking up vcc2-supply from device tree
+[    0.644343] DCDC_REG2: supplied by vcc3v8_sys
+[    0.645492] vdd_arm: 950 <--> 1350 mV at 1100 mV 
+[    0.646339] rk808 0-0020: Looking up vcc3-supply from device tree
+[    0.646479] DCDC_REG3: supplied by vcc3v8_sys
+[    0.647315] vcc_ddr: at 500 mV 
+[    0.648177] rk808 0-0020: Looking up vcc4-supply from device tree
+[    0.648310] DCDC_REG4: supplied by vcc3v8_sys
+[    0.649158] vcc_3v3: 3300 mV 
+[    0.650015] rk808 0-0020: Looking up vcc5-supply from device tree
+[    0.650152] LDO_REG1: supplied by vcc3v8_sys
+[    0.650536] vcc_1v0: 1000 mV 
+[    0.651165] rk808 0-0020: Looking up vcc5-supply from device tree
+[    0.651288] LDO_REG2: supplied by vcc3v8_sys
+[    0.652515] vcc1v8_soc: 1800 mV 
+[    0.653365] rk808 0-0020: Looking up vcc5-supply from device tree
+[    0.653503] LDO_REG3: supplied by vcc3v8_sys
+[    0.654699] vcc1v0_soc: 1000 mV 
+[    0.655545] rk808 0-0020: Looking up vcc6-supply from device tree
+[    0.655684] LDO_REG4: supplied by vcc3v8_sys
+[    0.656879] vcc3v3_pmu: 3300 mV 
+[    0.657719] rk808 0-0020: Looking up vcc6-supply from device tree
+[    0.657862] LDO_REG5: supplied by vcc3v8_sys
+[    0.659214] vccio_sd: 1800 <--> 3300 mV at 3000 mV 
+[    0.660020] rk808 0-0020: Looking up vcc6-supply from device tree
+[    0.660153] LDO_REG6: supplied by vcc3v8_sys
+[    0.661421] vcc_sd: 3300 mV 
+[    0.662073] rk808 0-0020: Looking up vcc7-supply from device tree
+[    0.662208] LDO_REG7: supplied by vcc3v8_sys
+[    0.662597] vcc_backlight: 3300 mV 
+[    0.663287] rk808 0-0020: Looking up vcc7-supply from device tree
+[    0.663420] LDO_REG8: supplied by vcc3v8_sys
+[    0.663816] vcc_lcd: 2800 mV 
+[    0.664524] rk808 0-0020: Looking up vcc7-supply from device tree
+[    0.664722] LDO_REG9: supplied by vcc3v8_sys
+[    0.665923] vcc_wifi: 3300 mV 
+[    0.666755] rk808 0-0020: Looking up vcc8-supply from device tree
+[    0.666890] BOOST: supplied by vcc3v8_sys
+[    0.667298] boost: Bringing 4700000uV into 5000000-5000000uV
+[    0.668064] boost: ramp_delay not set
+[    0.669046] boost: 5000 <--> 5400 mV at 5000 mV 
+[    0.669859] rk808 0-0020: Looking up vcc9-supply from device tree
+[    0.669923] OTG_SWITCH: supplied by boost
+[    0.670711] otg_switch: at 5000 mV 
+[    0.671640] rk817-battery rk817-battery: fb_temperature missing!
+[    0.677727] rk817-battery rk817-battery: energy_mode missing!
+[    0.683510] rk817-battery rk817-battery: zero_reserve_dsoc missing!
+[    0.697751] rk817-bat: initialized yet..
+[    0.714463] rk817-charger rk817-charger: power_dc2otg missing!
+[    0.720363] rk817-charger rk817-charger: otg5v_suspend_enable missing!
+[    0.727194] of_get_named_gpiod_flags: parsed 'dc_det_gpio' property of node '/i2c@ff180000/pmic@20/charger[0]' - status (0)
+[    0.736770] input: rk8xx_pwrkey as /devices/platform/ff180000.i2c/i2c-0/0-0020/input/input0
+[    0.741167] rk808-rtc rk808-rtc: rtc core: registered rk808-rtc as rtc0
+[    0.742798] rk3x-i2c ff180000.i2c: Initialized RK3xxx I2C bus at ffffff8009166000
+[    0.743880] rk3x-i2c ff190000.i2c: Initialized RK3xxx I2C bus at ffffff8009176000
+[    0.745230] rockchip-iodomain ff010000.syscon:io-domains: Looking up pmuio1-supply from device tree
+[    0.745737] rockchip-iodomain ff010000.syscon:io-domains: Looking up pmuio2-supply from device tree
+[    0.746331] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio6-supply from device tree
+[    0.746759] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio1-supply from device tree
+[    0.747235] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio2-supply from device tree
+[    0.747656] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio3-supply from device tree
+[    0.748068] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio4-supply from device tree
+[    0.748462] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio5-supply from device tree
+[    0.748880] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio-oscgpi-supply from device tree
+[    0.748909] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio-oscgpi-supply property in node /syscon@ff140000/io-domains failed
+[    0.750689] Boot mode: coldboot
+[    0.751781] rockchip-thermal ff280000.tsadc: Missing tshut mode property, using default (cru)
+[    0.751815] rockchip-thermal ff280000.tsadc: Missing tshut-polarity property, using default (low)
+[    0.751981] rk_tsadcv2_temp_to_code: Invalid conversion table: code=4095, temperature=2147483647
+[    0.761101] rockchip-thermal ff280000.tsadc: tsadc is probed successfully!
+[    0.762632] cpu cpu0: bin=2
+[    0.762716] cpu cpu0: leakage=25
+[    0.762771] cpu cpu0: Looking up cpu-supply from device tree
+[    0.776064] cpu cpu0: temp=42272, pvtm=60268 (60380 + -112)
+[    0.777177] cpu cpu0: pvtm-volt-sel=3
+[    0.777855] cpu cpu0: Looking up cpu-supply from device tree
+[    0.778259] cpu cpu0: Looking up cpu-supply from device tree
+[    0.779161] cpu cpu0: avs=1
+[    0.779298] cpu cpu0: l=0 h=2147483647 hyst=5000 l_limit=0 h_limit=0
+[    0.781889] cpu cpu0: failed to find power_model node
+[    0.787785] Synopsys Designware Multimedia Card Interface Driver
+[    0.788934] dwmmc_rockchip ff370000.dwmmc: num-slots property not found, assuming 1 slot is available
+[    0.789019] dwmmc_rockchip ff370000.dwmmc: IDMAC supports 32-bit address mode.
+[    0.789055] dwmmc_rockchip ff370000.dwmmc: Using internal DMA controller.
+[    0.789070] dwmmc_rockchip ff370000.dwmmc: Version ID is 270a
+[    0.789135] dwmmc_rockchip ff370000.dwmmc: DW MMC controller at irq 20,32 bit host data width,256 deep fifo
+[    0.789170] dwmmc_rockchip ff370000.dwmmc: Looking up vmmc-supply from device tree
+[    0.789277] dwmmc_rockchip ff370000.dwmmc: Looking up vqmmc-supply from device tree
+[    0.789529] dwmmc_rockchip ff370000.dwmmc: GPIO lookup for consumer cd
+[    0.789540] dwmmc_rockchip ff370000.dwmmc: using device tree for GPIO lookup
+[    0.789585] of_get_named_gpiod_flags: parsed 'cd-gpios' property of node '/dwmmc@ff370000[0]' - status (0)
+[    0.789621] gpio-3 (cd): gpiod_set_debounce: missing set() or set_debounce() operations
+[    0.789631] dwmmc_rockchip ff370000.dwmmc: Got CD GPIO
+[    0.789642] dwmmc_rockchip ff370000.dwmmc: GPIO lookup for consumer wp
+[    0.789651] dwmmc_rockchip ff370000.dwmmc: using device tree for GPIO lookup
+[    0.789661] of_get_named_gpiod_flags: can't parse 'wp-gpios' property of node '/dwmmc@ff370000[0]'
+[    0.789671] of_get_named_gpiod_flags: can't parse 'wp-gpio' property of node '/dwmmc@ff370000[0]'
+[    0.789680] dwmmc_rockchip ff370000.dwmmc: using lookup tables for GPIO lookup
+[    0.789691] dwmmc_rockchip ff370000.dwmmc: lookup for GPIO wp failed
+[    0.790704] rockchip-iodomain ff140000.syscon:io-domains: Setting to 3300000 done
+[    0.790951] vccio_sd: ramp_delay not set
+[    0.790964] rockchip-iodomain ff140000.syscon:io-domains: Setting to 3300000 done
+[    0.804962] mmc_host mmc0: Bus speed (slot 0) = 400000Hz (slot req 400000Hz, actual 400000HZ div = 0)
+[    0.822126] dwmmc_rockchip ff370000.dwmmc: 1 slots initialized
+[    0.824944] dwmmc_rockchip ff380000.dwmmc: num-slots property not found, assuming 1 slot is available
+[    0.825041] dwmmc_rockchip ff380000.dwmmc: IDMAC supports 32-bit address mode.
+[    0.825080] dwmmc_rockchip ff380000.dwmmc: Using internal DMA controller.
+[    0.825095] dwmmc_rockchip ff380000.dwmmc: Version ID is 270a
+[    0.825189] dwmmc_rockchip ff380000.dwmmc: DW MMC controller at irq 21,32 bit host data width,256 deep fifo
+[    0.825223] dwmmc_rockchip ff380000.dwmmc: Looking up vmmc-supply from device tree
+[    0.825235] dwmmc_rockchip ff380000.dwmmc: Looking up vmmc-supply property in node /dwmmc@ff380000 failed
+[    0.825273] dwmmc_rockchip ff380000.dwmmc: Looking up vqmmc-supply from device tree
+[    0.825283] dwmmc_rockchip ff380000.dwmmc: Looking up vqmmc-supply property in node /dwmmc@ff380000 failed
+[    0.825299] dwmmc_rockchip ff380000.dwmmc: No vmmc regulator found
+[    0.825308] dwmmc_rockchip ff380000.dwmmc: No vqmmc regulator found
+[    0.825330] dwmmc_rockchip ff380000.dwmmc: GPIO lookup for consumer cd
+[    0.825339] dwmmc_rockchip ff380000.dwmmc: using device tree for GPIO lookup
+[    0.825352] of_get_named_gpiod_flags: can't parse 'cd-gpios' property of node '/dwmmc@ff380000[0]'
+[    0.825362] of_get_named_gpiod_flags: can't parse 'cd-gpio' property of node '/dwmmc@ff380000[0]'
+[    0.825372] dwmmc_rockchip ff380000.dwmmc: using lookup tables for GPIO lookup
+[    0.825382] dwmmc_rockchip ff380000.dwmmc: lookup for GPIO cd failed
+[    0.825393] dwmmc_rockchip ff380000.dwmmc: GPIO lookup for consumer wp
+[    0.825402] dwmmc_rockchip ff380000.dwmmc: using device tree for GPIO lookup
+[    0.825411] of_get_named_gpiod_flags: can't parse 'wp-gpios' property of node '/dwmmc@ff380000[0]'
+[    0.825421] of_get_named_gpiod_flags: can't parse 'wp-gpio' property of node '/dwmmc@ff380000[0]'
+[    0.825429] dwmmc_rockchip ff380000.dwmmc: using lookup tables for GPIO lookup
+[    0.825438] dwmmc_rockchip ff380000.dwmmc: lookup for GPIO wp failed
+[    0.844989] mmc_host mmc1: Bus speed (slot 0) = 400000Hz (slot req 400000Hz, actual 400000HZ div = 0)
+[    0.853831] mmc_host mmc0: Bus speed (slot 0) = 50000000Hz (slot req 50000000Hz, actual 50000000HZ div = 0)
+[    0.853914] mmc0: new high speed SDHC card at address 0001
+[    0.854696] mmcblk0: mmc0:0001 00000 29.2 GiB 
+[    0.856146]  mmcblk0: p1 p2 p3
+[    0.860746] dwmmc_rockchip ff380000.dwmmc: 1 slots initialized
+[    0.861555] of_get_named_gpiod_flags: parsed 'gpios' property of node '/gpio_leds/heartbeat[0]' - status (0)
+[    0.861842] ledtrig-cpu: registered to indicate activity on CPUs
+[    0.861926] hidraw: raw HID events driver (C) Jiri Kosina
+[    0.862405] usbcore: registered new interface driver usbhid
+[    0.862418] usbhid: USB HID core driver
+[    0.863702] rockchip-dmc dmc: unable to get devfreq-event device : dfi
+[    0.874579] rockchip-saradc ff288000.saradc: Looking up vref-supply from device tree
+[    0.875853] rksfc_base v1.1 2016-01-08
+[    0.880495] usbcore: registered new interface driver snd-usb-audio
+[    0.882691] rk817-codec rk817-codec: GPIO lookup for consumer hp-ctl
+[    0.882713] rk817-codec rk817-codec: using device tree for GPIO lookup
+[    0.882725] of_get_named_gpiod_flags: can't parse 'hp-ctl-gpios' property of node '/i2c@ff180000/pmic@20/codec[0]'
+[    0.882736] of_get_named_gpiod_flags: can't parse 'hp-ctl-gpio' property of node '/i2c@ff180000/pmic@20/codec[0]'
+[    0.882745] rk817-codec rk817-codec: using lookup tables for GPIO lookup
+[    0.882755] rk817-codec rk817-codec: lookup for GPIO hp-ctl failed
+[    0.882766] rk817-codec rk817-codec: GPIO lookup for consumer spk-ctl
+[    0.882774] rk817-codec rk817-codec: using device tree for GPIO lookup
+[    0.882783] of_get_named_gpiod_flags: can't parse 'spk-ctl-gpios' property of node '/i2c@ff180000/pmic@20/codec[0]'
+[    0.882793] of_get_named_gpiod_flags: can't parse 'spk-ctl-gpio' property of node '/i2c@ff180000/pmic@20/codec[0]'
+[    0.882802] rk817-codec rk817-codec: using lookup tables for GPIO lookup
+[    0.882811] rk817-codec rk817-codec: lookup for GPIO spk-ctl failed
+[    0.885493] Initializing XFRM netlink socket
+[    0.885535] NET: Registered protocol family 17
+[    0.885632] [WLAN_RFKILL]: Enter rfkill_wlan_init
+[    0.885858] [BT_RFKILL]: Enter rfkill_rk_init
+[    0.886055] Key type dns_resolver registered
+[    0.886584] flash vendor_init_thread!
+[    0.886603] flash vendor storage:20170308 ret = -1
+[    0.886791] Registered cp15_barrier emulation handler
+[    0.886808] Registered setend emulation handler
+[    0.887583] Loading compiled-in X.509 certificates
+[    0.888606] rga2: Driver loaded successfully ver:4.00
+[    0.888916] rga2: Module initialized.
+[    0.889535] [drm] Rockchip DRM driver version: v1.0.1
+[    0.889827] rockchip-drm display-subsystem: devfreq is not set
+[    0.890411] rockchip-drm display-subsystem: bound ff460000.vop (ops 0xffffff8008add658)
+[    0.890436] rockchip-drm display-subsystem: failed to bind ff450000.dsi (ops 0xffffff8008ad4e78): -517
+[    0.900110] rockchip-drm display-subsystem: master bind failed: -517
+[    0.900413] panel-simple-dsi ff450000.dsi.0: Looking up power-supply from device tree
+[    0.900535] panel-simple-dsi ff450000.dsi.0: Looking up backlight-supply from device tree
+[    0.900900] panel-simple-dsi ff450000.dsi.0: actual backlight_supply exists
+[    0.901077] mmc_host mmc1: Bus speed (slot 0) = 300000Hz (slot req 300000Hz, actual 300000HZ div = 0)
+[    0.907932] panel-simple-dsi ff450000.dsi.0: GPIO lookup for consumer enable
+[    0.907941] panel-simple-dsi ff450000.dsi.0: using device tree for GPIO lookup
+[    0.907961] of_get_named_gpiod_flags: can't parse 'enable-gpios' property of node '/dsi@ff450000/panel@0[0]'
+[    0.907972] of_get_named_gpiod_flags: can't parse 'enable-gpio' property of node '/dsi@ff450000/panel@0[0]'
+[    0.907981] panel-simple-dsi ff450000.dsi.0: using lookup tables for GPIO lookup
+[    0.907993] panel-simple-dsi ff450000.dsi.0: lookup for GPIO enable failed
+[    0.908084] of_get_named_gpiod_flags: parsed 'reset-gpios' property of node '/dsi@ff450000/panel@0[0]' - status (0)
+[    0.908139] panel-simple-dsi ff450000.dsi.0: reset-pin gpio = 112, active = 0
+[    0.908743] mali ff400000.gpu: Looking up mali-supply from device tree
+[    0.909432] mali ff400000.gpu: Failed to get leakage
+[    0.914468] mali ff400000.gpu: Looking up mali-supply from device tree
+[    0.914524] vdd_logic: could not add device link ff400000.gpu err -17
+[    0.914548] vdd_logic: Failed to create debugfs directory
+[    0.914818] mali ff400000.gpu: pvtm-volt-sel=3
+[    0.915147] mali ff400000.gpu: avs=0
+[    0.915201] W : [File] : drivers/gpu/arm/bifrost_for_linux/platform/rk/mali_kbase_config_rk.c; [Line] : 113; [Func] : kbase_platform_rk_init(); power-off-delay-ms not available.
+[    0.915851] mali ff400000.gpu: GPU identified as 0x3 arch 7.0.9 r0p0 status 0
+[    0.916508] mali ff400000.gpu: l=0 h=2147483647 hyst=5000 l_limit=0 h_limit=0
+[    0.916787] mali ff400000.gpu: Using configured power model mali-simple-power-model, and fallback mali-simple-power-model
+[    0.917770] mali ff400000.gpu: Probed as mali0
+[    0.918306] rockchip-dmc dmc: Looking up center-supply from device tree
+[    0.918637] rockchip-dmc dmc: current ATF version 0x105!
+[    0.918650] rockchip-dmc dmc: read tf version 0x105!
+[    0.920295] rockchip-dmc dmc: Failed to get leakage
+[    0.925294] rockchip-dmc dmc: Looking up center-supply from device tree
+[    0.925355] vdd_logic: could not add device link dmc err -17
+[    0.925376] vdd_logic: Failed to create debugfs directory
+[    0.925716] rockchip-dmc dmc: pvtm-volt-sel=3
+[    0.926090] rockchip-dmc dmc: avs=0
+[    0.926123] rockchip-dmc dmc: failed to get vop bandwidth to dmc rate
+[    0.932586] rockchip-dmc dmc: failed to get vop pn to msch rl
+[    0.938623] rockchip-dmc dmc: l=-2147483648 h=2147483647 hyst=0 l_limit=0 h_limit=0
+[    0.941727] devfreq dmc: Couldn't update frequency transition information.
+[    0.944859] mmc_host mmc1: Bus speed (slot 0) = 200000Hz (slot req 200000Hz, actual 200000HZ div = 0)
+[    0.949097] of_get_named_gpiod_flags: parsed 'simple-audio-card,hp-det-gpio' property of node '/rk817-sound[0]' - status (0)
+[    0.949112] of_get_named_gpiod_flags: can't parse 'simple-audio-card,mic-det-gpio' property of node '/rk817-sound[0]'
+[    0.952458] asoc-simple-card rk817-sound: rk817-hifi <-> ff070000.i2s mapping ok
+[    0.952489] asoc-simple-card rk817-sound: ASoC: no sink widget found for MIC_IN
+[    0.959835] asoc-simple-card rk817-sound: ASoC: Failed to add route Mic Jack -> direct -> MIC_IN
+[    0.968630] asoc-simple-card rk817-sound: ASoC: no source widget found for HPOL
+[    0.975940] asoc-simple-card rk817-sound: ASoC: Failed to add route HPOL -> direct -> Headphone Jack
+[    0.985069] asoc-simple-card rk817-sound: ASoC: no source widget found for HPOR
+[    0.988875] mmc_host mmc1: Bus speed (slot 0) = 100000Hz (slot req 100000Hz, actual 100000HZ div = 0)
+[    0.992406] asoc-simple-card rk817-sound: ASoC: Failed to add route HPOR -> direct -> Headphone Jack
+[    1.002581] input: rockchip,rk817-codec Headphones as /devices/platform/rk817-sound/sound/card0/input1
+[    1.003121] [drm] Rockchip DRM driver version: v1.0.1
+[    1.003366] rockchip-drm display-subsystem: devfreq is not set
+[    1.003825] rockchip-drm display-subsystem: bound ff460000.vop (ops 0xffffff8008add658)
+[    1.003885] rockchip-drm display-subsystem: bound ff450000.dsi (ops 0xffffff8008ad4e78)
+[    1.003895] [drm] Supports vblank timestamp caching Rev 2 (21.10.2013).
+[    1.003903] [drm] No driver support for vblank timestamp query.
+[    1.004090] get_framebuffer_by_node: failed to get logo,offset
+[    1.009958] rockchip-drm display-subsystem: can't not find any loader display
+[    1.009973] rockchip-drm display-subsystem: failed to show loader logo
+[    1.016740] Freeing drm_logo memory: 1624K
+[    1.018355] rockchip-vop ff460000.vop: [drm:vop_crtc_enable] Update mode to 320x480p60, type: 16
+[    1.024977] dw-mipi-dsi ff450000.dsi: final DSI-Link bandwidth: 450 x 1 Mbps
+[    1.101577] devfreq ff400000.gpu: Couldn't update frequency transition information.
+[    1.510926] Console: switching to colour frame buffer device 60x20
+[    1.551654] rockchip-drm display-subsystem: fb0:  frame buffer device
+[    1.562308] rockchip-pm-domain ff000000.power-management:power-controller: Looking up pd_gmac-supply from device tree
+[    1.562333] rockchip-pm-domain ff000000.power-management:power-controller: Looking up pd_gmac-supply property in node /power-management@ff000000/power-controller failed
+[    1.562414] rockchip-pm-domain ff000000.power-management:power-controller: Looking up pd_usb-supply from device tree
+[    1.562427] rockchip-pm-domain ff000000.power-management:power-controller: Looking up pd_usb-supply property in node /power-management@ff000000/power-controller failed
+[    1.563369] rk808-rtc rk808-rtc: setting system clock to 2017-08-06 09:59:42 UTC (1502013582)
+[    1.576307] PM: Hibernation image not present or could not be loaded.
+[    1.576529] vcc_1v0: disabling
+[    1.577513] otg_switch: disabling
+[    1.579260] ALSA device list:
+[    1.579283]   #0: rockchip,rk817-codec
+[    1.579659] Freeing unused kernel memory: 512K
+[    3.908744] vendor storage:20190527 ret = -1
+[    8.221376] random: nonblocking pool is initialized
+[    9.096886] EXT4-fs (mmcblk0p2): mounted filesystem without journal. Opts: (null)
+[    9.836025] systemd[1]: System time before build time, advancing clock.
+[    9.923948] NET: Registered protocol family 10
+[    9.933575] ip_tables: (C) 2000-2006 Netfilter Core Team
+[    9.942016] cgroup: cgroup2: unknown option "nsdelegate"
+[    9.957097] systemd[1]: systemd 242 running in system mode. (+PAM +AUDIT +SELINUX +IMA +APPARMOR +SMACK +SYSVINIT +UTMP +LIBCRYPTSETUP +GCRYPT +GNUTLS +ACL +XZ +LZ4 +SECCOMP +BLKID +ELFUTILS +KMOD +IDN2 -IDN +PCRE2 default-hierarchy=hybrid)
+[    9.957744] systemd[1]: Detected architecture arm64.
+[    9.960186] systemd[1]: Set hostname to <rg351p>.
+[    9.962301] systemd[1]: Failed to bump fs.file-max, ignoring: Invalid argument
+[   10.365094] systemd[1]: File /lib/systemd/system/systemd-udevd.service:26 configures an IP firewall (IPAddressDeny=any), but the local system does not support BPF/cgroup based firewalling.
+[   10.365124] systemd[1]: Proceeding WITHOUT firewalling in effect! (This warning is only shown for the first loaded unit using IP firewalling.)
+[   10.569970] systemd[1]: /etc/systemd/system/firstboot.service:1: Assignment outside of section. Ignoring.
+[   10.581333] systemd[1]: Configuration file /etc/systemd/system/audiopath.service is marked executable. Please remove executable permission bits. Proceeding anyway.
+[   10.582265] systemd[1]: /etc/systemd/system/audiopath.service:1: Assignment outside of section. Ignoring.
+[   10.582378] systemd[1]: /etc/systemd/system/audiopath.service:7: Failed to parse service restart specifier, ignoring: yes
+[   10.648042] systemd[1]: /lib/systemd/system/dbus.socket:4: ListenStream= references a path below legacy directory /var/run/, updating /var/run/dbus/system_bus_socket → /run/dbus/system_bus_socket; please update the unit file accordingly.
+[   10.661047] systemd[1]: Listening on initctl Compatibility Named Pipe.
+[   10.662338] systemd[1]: Created slice User and Session Slice.
+[   10.662530] systemd[1]: Condition check resulted in Arbitrary Executable File Formats File System Automount Point being skipped.
+[   10.662982] systemd[1]: Listening on udev Kernel Socket.
+[   10.688064] systemd[1]: Condition check resulted in Journal Audit Socket being skipped.
+[   10.688188] systemd[1]: Reached target Swap.
+[   10.688281] systemd[1]: systemd-journald.socket: Socket service systemd-journald.service not loaded, refusing.
+[   10.698321] systemd[1]: Failed to listen on Journal Socket.
+[   10.713909] systemd[1]: Starting Set the console keyboard layout...
+[   10.718429] systemd[217]: keyboard-setup.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.719268] systemd[1]: Mounting Kernel Debug File System...
+[   10.723290] systemd[218]: sys-kernel-debug.mount: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.723871] systemd[1]: Condition check resulted in Set Up Additional Binary Formats being skipped.
+[   10.724444] systemd[1]: Condition check resulted in POSIX Message Queue File System being skipped.
+[   10.725120] systemd[1]: Condition check resulted in Huge Pages File System being skipped.
+[   10.728331] systemd[1]: Starting Create list of required static device nodes for the current kernel...
+[   10.729761] systemd[219]: kmod-static-nodes.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.730397] systemd[1]: Reached target Slices.
+[   10.736058] systemd[1]: Created slice system-systemd\x2dfsck.slice.
+[   10.742118] systemd[1]: Reached target Remote File Systems.
+[   10.748618] systemd[1]: Listening on udev Control Socket.
+[   10.767425] systemd[1]: Starting Load Kernel Modules...
+[   10.770788] systemd[223]: systemd-modules-load.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.770802] systemd[1]: Starting udev Coldplug all Devices...
+[   10.771803] systemd[224]: systemd-udev-trigger.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.772191] systemd[1]: systemd-journald-dev-log.socket: Socket service systemd-journald.service not loaded, refusing.
+[   10.788445] systemd[1]: Failed to listen on Journal Socket (/dev/log).
+[   10.803963] systemd[1]: Created slice system-serial\x2dgetty.slice.
+[   10.810409] systemd[1]: Listening on fsck to fsckd communication Socket.
+[   10.817145] systemd[1]: Condition check resulted in File System Check on Root Device being skipped.
+[   10.819774] systemd[1]: Starting Remount Root and Kernel File Systems...
+[   10.820808] systemd[226]: systemd-remount-fs.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.823684] systemd[1]: Started Forward Password Requests to Wall Directory Watch.
+[   10.837727] systemd[1]: Mounted Kernel Debug File System.
+[   10.839585] systemd[1]: Started Create list of required static device nodes for the current kernel.
+[   10.853898] systemd[1]: Started Load Kernel Modules.
+[   10.857933] systemd[1]: Mounting Kernel Configuration File System...
+[   10.859018] systemd[231]: sys-kernel-config.mount: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.863584] systemd[1]: Mounting FUSE Control File System...
+[   10.864538] systemd[232]: sys-fs-fuse-connections.mount: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.868303] EXT4-fs (mmcblk0p2): re-mounted. Opts: (null)
+[   10.868433] systemd[1]: Starting Apply Kernel Variables...
+[   10.877469] systemd[1]: Started Remount Root and Kernel File Systems.
+[   10.879535] systemd[233]: systemd-sysctl.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.882519] systemd[1]: Mounted Kernel Configuration File System.
+[   10.886377] systemd[1]: Mounted FUSE Control File System.
+[   10.895988] systemd[1]: Starting Load/Save Random Seed...
+[   10.898521] systemd[234]: systemd-random-seed.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.905486] systemd[1]: Condition check resulted in Rebuild Hardware Database being skipped.
+[   10.909261] systemd[1]: Starting Create System Users...
+[   10.910439] systemd[235]: systemd-sysusers.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.914783] systemd[237]: systemd-udev-trigger.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   10.920015] systemd-sysctl[233]: Couldn't write '1' to 'kernel/yama/ptrace_scope', ignoring: No such file or directory
+[   10.932824] systemd[1]: Started Apply Kernel Variables.
+[   10.936594] systemd[1]: Started Load/Save Random Seed.
+[   10.974947] systemd[1]: Started Create System Users.
+[   10.978177] systemd[1]: Starting Create Static Device Nodes in /dev...
+[   10.979093] systemd[240]: systemd-tmpfiles-setup-dev.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   11.019742] systemd[1]: Started Create Static Device Nodes in /dev.
+[   11.024372] systemd[1]: Starting udev Kernel Device Manager...
+[   11.025352] systemd[241]: systemd-udevd.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   11.084447] systemd[1]: Started udev Coldplug all Devices.
+[   11.100933] systemd-udevd[241]: Network interface NamePolicy= disabled on kernel command line, ignoring.
+[   11.147017] systemd[1]: Started Set the console keyboard layout.
+[   11.148589] systemd[1]: Reached target Local File Systems (Pre).
+[   11.278695] systemd[1]: Started udev Kernel Device Manager.
+[   11.283005] systemd[1]: Starting Show Plymouth Boot Screen...
+[   11.289643] systemd[247]: plymouth-start.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   11.324940] systemd[1]: Received SIGRTMIN+20 from PID 255 (plymouthd).
+[   11.336572] systemd[256]: plymouth-start.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   11.392602] systemd[1]: Started Show Plymouth Boot Screen.
+[   11.393760] systemd[1]: Condition check resulted in Dispatch Password Requests to Console Directory Watch being skipped.
+[   11.393893] systemd[1]: Reached target Paths.
+[   11.394379] systemd[1]: Reached target Local Encrypted Volumes.
+[   11.395344] systemd[1]: Started Forward Password Requests to Plymouth Directory Watch.
+[   11.542050] dwc2 ff300000.usb: Looking up vusb_d-supply from device tree
+[   11.542078] dwc2 ff300000.usb: Looking up vusb_d-supply property in node /usb@ff300000 failed
+[   11.542108] ff300000.usb supply vusb_d not found, using dummy regulator
+[   11.542172] dwc2 ff300000.usb: Looking up vusb_a-supply from device tree
+[   11.542185] dwc2 ff300000.usb: Looking up vusb_a-supply property in node /usb@ff300000 failed
+[   11.542200] ff300000.usb supply vusb_a not found, using dummy regulator
+[   11.665222] systemd[1]: Found device /dev/ttyFIQ0.
+[   11.677883] systemd-udevd[244]: link_config: autonegotiation is unset or enabled, the speed and duplex are not writable.
+[   11.776753] dwc2 ff300000.usb: EPs: 10, dedicated fifos, 972 entries in SPRAM
+[   11.777389] dwc2 ff300000.usb: DWC OTG Controller
+[   11.777432] dwc2 ff300000.usb: new USB bus registered, assigned bus number 1
+[   11.777475] dwc2 ff300000.usb: irq 19, io mem 0xff300000
+[   11.777949] usb usb1: New USB device found, idVendor=1d6b, idProduct=0002
+[   11.777971] usb usb1: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+[   11.777980] usb usb1: Product: DWC OTG Controller
+[   11.777990] usb usb1: Manufacturer: Linux 4.4.189 dwc2_hsotg
+[   11.777998] usb usb1: SerialNumber: ff300000.usb
+[   11.778751] hub 1-0:1.0: USB hub found
+[   11.778821] hub 1-0:1.0: 1 port detected
+[   11.897799] systemd[1]: Found device /dev/mmcblk0p3.
+[   11.947452] systemd[1]: Found device /dev/mmcblk0p1.
+[   11.999510] systemd[1]: Listening on Load/Save RF Kill Switch Status /dev/rfkill Watch.
+[   11.999865] systemd[1]: Condition check resulted in File System Check on Root Device being skipped.
+[   11.999940] systemd[1]: Condition check resulted in Dispatch Password Requests to Console Directory Watch being skipped.
+[   12.000131] systemd[1]: Condition check resulted in Rebuild Hardware Database being skipped.
+[   12.000227] systemd[1]: Condition check resulted in Arbitrary Executable File Formats File System Automount Point being skipped.
+[   12.000804] systemd[1]: Condition check resulted in Huge Pages File System being skipped.
+[   12.002627] systemd[1]: Condition check resulted in Set Up Additional Binary Formats being skipped.
+[   12.003053] systemd[1]: Condition check resulted in POSIX Message Queue File System being skipped.
+[   12.006641] systemd[1]: Starting File System Check on /dev/mmcblk0p1...
+[   12.010810] systemd[1]: Mounting /roms...
+[   12.011978] systemd[1]: Created slice system-systemd\x2dbacklight.slice.
+[   12.012306] systemd[288]: systemd-fsck@dev-mmcblk0p1.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   12.015457] systemd[1]: Starting Load/Save Screen Backlight Brightness of backlight:backlight...
+[   12.016525] systemd[289]: roms.mount: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   12.018014] systemd[290]: systemd-backlight@backlight:backlight.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   12.039710] systemd[1]: Started File System Check Daemon to report status.
+[   12.043274] systemd[293]: systemd-fsckd.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   12.064021] systemd[1]: Started Load/Save Screen Backlight Brightness of backlight:backlight.
+[   12.075288] exFAT: file-system version 2.2.0-3arter97
+[   12.079283] exFAT-fs (mmcblk0p3[179:3]): trying to mount...
+[   12.079721] exFAT-fs (mmcblk0p3[179:3]): set logical sector size  : 512
+[   12.079742] exFAT-fs (mmcblk0p3[179:3]): (bps : 512, spc : 8, data start : 30752, aligned)
+[   12.079753] exFAT-fs (mmcblk0p3[179:3]): detected volume size     : 15678464 KB (disk : 30657536 KB, part : 15678464 KB)
+[   12.144779] usb 1-1: new high-speed USB device number 2 using dwc2
+[   12.252033] systemd[1]: Started File System Check on /dev/mmcblk0p1.
+[   12.257245] systemd[1]: Mounting /boot...
+[   12.259819] systemd[297]: boot.mount: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   12.265147] FAT-fs (mmcblk0p1): utf8 is not a recommended IO charset for FAT filesystems, filesystem will be case sensitive!
+[   12.334055] usb 1-1: New USB device found, idVendor=05e3, idProduct=0608
+[   12.334077] usb 1-1: New USB device strings: Mfr=0, Product=1, SerialNumber=0
+[   12.334085] usb 1-1: Product: USB2.0 Hub
+[   12.335945] hub 1-1:1.0: USB hub found
+[   12.336283] hub 1-1:1.0: 4 ports detected
+[   12.345610] systemd[1]: Mounted /boot.
+[   12.603361] exFAT-fs (mmcblk0p3[179:3]): mounted successfully!
+[   12.608053] systemd[1]: Mounted /roms.
+[   12.608676] usb 1-1.2: new full-speed USB device number 3 using dwc2
+[   12.613313] systemd[1]: Mounting /opt/system/Tools...
+[   12.615737] systemd[298]: opt-system-Tools.mount: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   12.626976] systemd[1]: Mounted /opt/system/Tools.
+[   12.628159] systemd[1]: Reached target Local File Systems.
+[   12.628580] systemd[1]: Condition check resulted in Commit a transient machine-id on disk being skipped.
+[   12.631235] systemd[1]: Starting Set console font and keymap...
+[   12.634426] systemd[1]: Starting Create Volatile Files and Directories...
+[   12.637935] systemd[300]: systemd-tmpfiles-setup.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   12.638284] systemd[1]: Starting Tell Plymouth To Write Out Runtime Data...
+[   12.640863] systemd[301]: plymouth-read-write.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   12.645033] systemd[299]: console-setup.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   12.654375] systemd[1]: Received SIGRTMIN+20 from PID 255 (plymouthd).
+[   12.659367] systemd[1]: plymouth-read-write.service: Succeeded.
+[   12.660196] systemd[1]: Started Tell Plymouth To Write Out Runtime Data.
+[   12.663997] systemd[1]: Started Set console font and keymap.
+[   12.706954] usb 1-1.2: New USB device found, idVendor=1209, idProduct=3100
+[   12.706975] usb 1-1.2: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[   12.706984] usb 1-1.2: Product: OSH PB Controller
+[   12.706993] usb 1-1.2: Manufacturer: OpenSimHardware
+[   12.707002] usb 1-1.2: SerialNumber: 0BMPJ7E00SRETA
+[   12.707685] systemd[1]: Started Create Volatile Files and Directories.
+[   12.714037] input: OpenSimHardware OSH PB Controller as /devices/platform/ff300000.usb/usb1/1-1/1-1.2/1-1.2:1.0/0003:1209:3100.0001/input/input2
+[   12.714355] systemd[1]: Starting Network Name Resolution...
+[   12.717557] systemd[1]: Starting Update UTMP about System Boot/Shutdown...
+[   12.721147] systemd[305]: systemd-update-utmp.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   12.725510] systemd[1]: Starting Network Time Synchronization...
+[   12.765389] systemd[1]: Started Update UTMP about System Boot/Shutdown.
+[   12.770090] hid-generic 0003:1209:3100.0001: input,hidraw0: USB HID v1.11 Keyboard [OpenSimHardware OSH PB Controller] on usb-ff300000.usb-1.2/input0
+[   12.921083] cfg80211: World regulatory domain updated:
+[   12.921103] cfg80211:  DFS Master region: unset
+[   12.921111] cfg80211:   (start_freq - end_freq @ bandwidth), (max_antenna_gain, max_eirp), (dfs_cac_time)
+[   12.921123] cfg80211:   (2402000 KHz - 2472000 KHz @ 40000 KHz), (N/A, 2000 mBm), (N/A)
+[   12.921133] cfg80211:   (2457000 KHz - 2482000 KHz @ 20000 KHz, 92000 KHz AUTO), (N/A, 2000 mBm), (N/A)
+[   12.921142] cfg80211:   (2474000 KHz - 2494000 KHz @ 20000 KHz), (N/A, 2000 mBm), (N/A)
+[   12.921152] cfg80211:   (5170000 KHz - 5250000 KHz @ 80000 KHz, 160000 KHz AUTO), (N/A, 2000 mBm), (N/A)
+[   12.921240] cfg80211:   (5250000 KHz - 5330000 KHz @ 80000 KHz, 160000 KHz AUTO), (N/A, 2000 mBm), (0 s)
+[   12.921249] cfg80211:   (5490000 KHz - 5730000 KHz @ 160000 KHz), (N/A, 2000 mBm), (0 s)
+[   12.921258] cfg80211:   (5735000 KHz - 5835000 KHz @ 80000 KHz), (N/A, 2000 mBm), (N/A)
+[   12.921266] cfg80211:   (57240000 KHz - 63720000 KHz @ 2160000 KHz), (N/A, 0 mBm), (N/A)
+[   13.673721] systemd[1]: Started Network Time Synchronization.
+[   13.674965] systemd[1]: Reached target System Time Set.
+[   13.675350] systemd[1]: Reached target System Time Synchronized.
+[   13.675793] systemd[1]: Reached target System Initialization.
+[   13.677490] systemd[1]: Started Daily rotation of log files.
+[   13.678913] systemd[1]: Listening on D-Bus System Message Bus Socket.
+[   13.680346] systemd[1]: Started Periodic ext4 Online Metadata Check for All Filesystems.
+[   13.681227] systemd[1]: Started Daily Cleanup of Temporary Directories.
+[   13.682104] systemd[1]: Started Discard unused blocks once a week.
+[   13.682773] systemd[1]: motd-news.timer: Not using persistent file timestamp Sun 2026-07-19 20:22:16 CEST as it is in the future.
+[   13.683086] systemd[1]: Started Message of the Day.
+[   13.683757] systemd[1]: apt-daily.timer: Not using persistent file timestamp Sun 2026-07-19 20:22:16 CEST as it is in the future.
+[   13.684023] systemd[1]: Started Daily apt download activities.
+[   13.684697] systemd[1]: apt-daily-upgrade.timer: Not using persistent file timestamp Sun 2026-07-19 20:22:16 CEST as it is in the future.
+[   13.685001] systemd[1]: Started Daily apt upgrade and clean activities.
+[   13.686111] systemd[1]: Listening on UUID daemon activation socket.
+[   13.686760] systemd[1]: Reached target Sockets.
+[   13.687340] systemd[1]: Reached target Basic System.
+[   13.691354] systemd[1]: Started Battery Life Indicator service.
+[   13.693471] systemd[313]: batt_led.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.696752] systemd[1]: Started Save initial kernel messages after boot.
+[   13.703588] systemd[1]: Starting Dispatcher daemon for systemd-networkd...
+[   13.704730] systemd[315]: networkd-dispatcher.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.708524] systemd[1]: Starting Login Service...
+[   13.709708] systemd[316]: systemd-logind.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.713100] systemd[1]: Started ODROID-GO2 EmulationStation.
+[   13.715047] systemd[1]: Condition check resulted in Manage Sound Card State (restore and store) being skipped.
+[   13.720432] systemd[1]: Starting Remove Stale Online ext4 Metadata Check Snapshots...
+[   13.721731] systemd[318]: e2scrub_reap.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.726772] systemd[1]: Started audiopath.service.
+[   13.731737] systemd[319]: audiopath.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.733347] systemd[1]: Starting Save/Restore Sound Card State...
+[   13.733906] systemd[1]: Condition check resulted in getty on tty2-tty6 if dbus and logind are not available being skipped.
+[   13.737943] systemd[1]: Started Set the CPU Frequency Scaling governor.
+[   13.742881] systemd[1]: Starting Restore /etc/resolv.conf if the system crashed before the ppp link was shut down...
+[   13.743780] systemd[322]: pppd-dns.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.744197] systemd[1]: Started Daily man-db regeneration.
+[   13.745325] systemd[1]: Reached target Timers.
+[   13.747688] systemd[320]: alsa-restore.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.755506] systemd[1]: Started D-Bus System Message Bus.
+[   13.757216] systemd[323]: dbus.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.772434] systemd[1]: Starting Network Manager...
+[   13.773831] systemd[324]: NetworkManager.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.799018] systemd[1]: Started Regular background program processing daemon.
+[   13.800006] systemd[325]: cron.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.804523] systemd[1]: Starting WPA supplicant...
+[   13.805779] systemd[326]: wpa_supplicant.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.811801] systemd[327]: alsa-restore.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   13.811822] systemd[1]: pppd-dns.service: Succeeded.
+[   13.812805] systemd[1]: Started Restore /etc/resolv.conf if the system crashed before the ppp link was shut down.
+[   15.036958] systemd-logind[316]: Configuration file /etc/systemd/logind.conf is marked executable. Please remove executable permission bits. Proceeding anyway.
+[   15.036996] systemd-logind[316]: Configuration file /etc/systemd/logind.conf is marked world-writable. Please remove world writability permission bits. Proceeding anyway.
+[   15.043878] systemd-logind[316]: New seat seat0.
+[   15.056283] systemd-logind[316]: Watching system buttons on /dev/input/event0 (rk8xx_pwrkey)
+[   15.092542] systemd[1]: Started Network Name Resolution.
+[   15.094369] systemd[1]: Started Save/Restore Sound Card State.
+[   15.095800] systemd[1]: Reached target Sound Card.
+[   15.096204] systemd[1]: Reached target Host and Network Name Lookups.
+[   15.098902] systemd[317]: emulationstation.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   15.107900] systemd[1]: Started WPA supplicant.
+[   15.135902] systemd[1]: Started Login Service.
+[   15.697613] systemd[1]: batt_led.service: Main process exited, code=exited, status=1/FAILURE
+[   15.698001] systemd[1]: batt_led.service: Failed with result 'exit-code'.
+[   15.779159] systemd[1]: Started Network Manager.
+[   15.781840] systemd[1]: Reached target Network.
+[   15.791924] systemd[359]: pid351-net.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   15.792332] systemd[1]: Started pid351 development network and ssh.
+[   15.802019] systemd[1]: Starting OpenBSD Secure Shell server...
+[   15.802552] systemd[1]: Condition check resulted in fast remote file copy program daemon being skipped.
+[   15.807714] systemd[1]: Starting /etc/rc.local Compatibility...
+[   15.815474] systemd[1]: Starting Permit User Sessions...
+[   15.816988] systemd[362]: ssh.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   15.817863] systemd[367]: systemd-user-sessions.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   15.818826] systemd[364]: rc-local.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   15.872052] systemd[1]: Starting Hostname Service...
+[   15.889661] systemd[1]: rc-local.service: Control process exited, code=exited, status=2/INVALIDARGUMENT
+[   15.890099] systemd[1]: rc-local.service: Failed with result 'exit-code'.
+[   15.891327] systemd[1]: Failed to start /etc/rc.local Compatibility.
+[   15.907533] systemd[1]: Started Permit User Sessions.
+[   15.913233] systemd[1]: Starting Terminate Plymouth Boot Screen...
+[   15.913503] systemd[385]: plymouth-quit.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   15.917754] systemd[1]: Starting Hold until boot process finishes up...
+[   15.920384] systemd[386]: plymouth-quit-wait.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   15.960424] systemd[1]: Received SIGRTMIN+21 from PID 255 (plymouthd).
+[   15.987166] systemd[1]: Received SIGRTMIN+21 from PID 255 (plymouthd).
+[   15.988989] systemd[1]: plymouth-quit.service: Succeeded.
+[   15.989734] systemd[1]: Started Terminate Plymouth Boot Screen.
+[   15.994264] systemd[1]: plymouth-quit-wait.service: Succeeded.
+[   15.995095] systemd[1]: Started Hold until boot process finishes up.
+[   16.007777] systemd[1]: Started Serial Getty on ttyFIQ0.
+[   16.013138] systemd[1]: Reached target Login Prompts.
+[   16.021905] systemd[405]: setvtrgb.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   16.025774] systemd[1]: Starting Set console scheme...
+[   16.031466] systemd[1]: plymouth-start.service: Succeeded.
+[   16.072425] systemd[1]: Started Set console scheme.
+[   16.110960] systemd[414]: ssh.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   16.160107] systemd[1]: Started OpenBSD Secure Shell server.
+[   16.334077] using random self ethernet address
+[   16.334101] using random host ethernet address
+[   16.334114] using host ethernet address: 02:51:03:51:00:01
+[   16.334122] using self ethernet address: 02:51:03:51:00:02
+[   16.334847] usb0: HOST MAC 02:51:03:51:00:01
+[   16.334938] usb0: MAC 02:51:03:51:00:02
+[   16.334989] using random self ethernet address
+[   16.335002] using random host ethernet address
+[   16.335073] g_ether gadget: Ethernet Gadget, version: Memorial Day 2008
+[   16.335083] g_ether gadget: g_ether ready
+[   16.335097] dwc2 ff300000.usb: bound driver g_ether
+[   16.341596] systemd-udevd[251]: Using default interface naming scheme 'v240'.
+[   16.342377] systemd-udevd[251]: link_config: autonegotiation is unset or enabled, the speed and duplex are not writable.
+[   16.809224] systemd[1]: Started Dispatcher daemon for systemd-networkd.
+[   16.811164] systemd[1]: Reached target Multi-User System.
+[   16.945962] systemd[1]: Started Hostname Service.
+[   17.362903] systemd[1]: Starting Network Manager Script Dispatcher Service...
+[   17.366038] systemd[466]: NetworkManager-dispatcher.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   17.489225] systemd[1]: Started Network Manager Script Dispatcher Service.
+[   17.769855] systemd[1]: e2scrub_reap.service: Succeeded.
+[   17.770493] systemd[1]: Started Remove Stale Online ext4 Metadata Check Snapshots.
+[   17.772415] systemd[1]: batt_led.service: Service RestartSec=2s expired, scheduling restart.
+[   17.773698] systemd[1]: batt_led.service: Scheduled restart job, restart counter is at 1.
+[   17.774828] systemd[1]: Stopped Battery Life Indicator service.
+[   17.778654] systemd[1]: Started Battery Life Indicator service.
+[   17.779961] systemd[1]: Reached target Graphical Interface.
+[   17.781627] systemd[472]: batt_led.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   17.795502] systemd[1]: Starting Update UTMP about System Runlevel Changes...
+[   17.804117] systemd[473]: systemd-update-utmp-runlevel.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   17.846014] systemd[1]: systemd-update-utmp-runlevel.service: Succeeded.
+[   17.846950] systemd[1]: Started Update UTMP about System Runlevel Changes.
+[   17.849836] tty_port_close_start: tty->count = 1 port count = 2.
+[   17.851264] systemd[402]: serial-getty@ttyFIQ0.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   17.854401] systemd[321]: ondemand.service: Failed to connect stdout to the journal socket, ignoring: No such file or directory
+[   17.855773] systemd[1]: Startup finished in 9.767s (kernel) + 8.079s (userspace) = 17.847s.
+[   17.883704] systemd[1]: ondemand.service: Succeeded.
+[   18.100222] systemd[1]: dmesg.service: Succeeded.
+[   18.442301] IPv6: ADDRCONF(NETDEV_UP): usb0: link is not ready
+[   28.029991] systemd[1]: NetworkManager-dispatcher.service: Succeeded.
+[   42.256134] systemd[1]: systemd-fsckd.service: Succeeded.
+[   47.010198] systemd[1]: systemd-hostnamed.service: Succeeded.
+[   69.319460] rockchip-vop ff460000.vop: [drm:vop_crtc_enable] Update mode to 320x480p60, type: 16
+[   69.336315] dw-mipi-dsi ff450000.dsi: final DSI-Link bandwidth: 450 x 1 Mbps

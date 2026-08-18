@@ -1255,6 +1255,7 @@
 
 				OTG_SWITCH {
 					regulator-boot-on;
+					regulator-always-on;
 					regulator-name = "otg_switch";
 					phandle = <0xe9>;
 				};
