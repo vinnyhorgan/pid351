@@ -20,6 +20,7 @@
 #include "pid351.h"
 #include "platform.h"
 #include "gfx.h"
+#include "scale.h"
 
 #define FRAME_US 16743          /* 59.727 Hz, the GBA's real rate */
 
@@ -33,6 +34,152 @@
 #define C_WARN   RGB565(232, 76, 62)
 
 static px_t framebuffer[PANEL_W * PANEL_H];
+
+/* ------------------------------------------------------------- timing */
+
+/* Why any of this exists: we were about to move the rotate blit onto the RGA
+ * without having measured what the blit costs. These numbers decide whether
+ * that work is worth doing, so they are gathered honestly - a distribution
+ * rather than an average, and a sweep over every console's native size rather
+ * than the one size this demo happens to run at. */
+
+#define TIME_RING 256           /* about 4 seconds of history at 60 Hz */
+
+typedef struct { uint32_t min, med, max; } stat_t;
+
+static uint32_t blit_ring[TIME_RING];
+static uint32_t wait_ring[TIME_RING];
+static uint32_t draw_ring[TIME_RING];
+static int      ring_n, ring_i;
+
+/* Cached, because sorting the ring is far too expensive to do inside the
+ * frame we are trying to measure. Refreshed once a second alongside the fps
+ * counter. */
+static stat_t blit_stat, wait_stat, draw_stat;
+
+/* Over the whole run rather than the window, since the smallest blit we ever
+ * saw is the closest we get to the cost with nothing else interfering. */
+static uint32_t blit_min_life = UINT32_MAX;
+static uint32_t blit_max_life;
+
+static void sort_u32(uint32_t *a, int n)
+{
+    for (int i = 1; i < n; i++) {
+        uint32_t v = a[i];
+        int j = i - 1;
+        while (j >= 0 && a[j] > v) {
+            a[j + 1] = a[j];
+            j--;
+        }
+        a[j + 1] = v;
+    }
+}
+
+/* Min, median and max - not a mean. The scheduler can only ever add time to a
+ * sample, so the mean of a preempted run measures the rest of the system as
+ * much as it measures us. The minimum is the real cost, the median is what
+ * typically happens, and the gap between median and max is the interference. */
+static stat_t stat_of(const uint32_t *src, int n)
+{
+    static uint32_t tmp[TIME_RING];
+    stat_t s = { 0, 0, 0 };
+
+    if (n <= 0)
+        return s;
+    if (n > TIME_RING)
+        n = TIME_RING;
+
+    memcpy(tmp, src, (size_t)n * sizeof tmp[0]);
+    sort_u32(tmp, n);
+    s.min = tmp[0];
+    s.med = tmp[n / 2];
+    s.max = tmp[n - 1];
+    return s;
+}
+
+/* Every measurement below is bracketed by two clock reads, so the bracket
+ * itself has to be shown to be negligible rather than assumed to be. This
+ * also answers whether clock_gettime is being served from the vDSO or is
+ * trapping into the kernel, which is an order of magnitude either way and
+ * is not obvious in a statically linked binary. */
+static void clock_calibrate(void)
+{
+    enum { N = 20000 };
+    static volatile uint64_t sink;   /* or the loop is legal to delete */
+
+    uint64_t t0 = plat_now_us();
+    for (int i = 0; i < N; i++)
+        sink = plat_now_us();
+    uint64_t t1 = plat_now_us();
+    (void)sink;
+
+    printf("pid351: clock %lu ns per plat_now_us() over %d calls "
+           "(vDSO if well under 1000 ns, a syscall trap if not); "
+           "plat_now_us resolution is 1 us by construction\n",
+           (unsigned long)((t1 - t0) * 1000u / (uint64_t)N), N);
+}
+
+/* The blit's cost is dominated by whether the source fits in cache, and every
+ * console has a different native size - so the number this demo produces at
+ * 480x320 is the worst case and applies to nothing we will actually run.
+ * Sweep the real sizes instead. */
+static void bench_blit(void)
+{
+    static const struct { const char *name; int w, h; } sizes[] = {
+        { "GB/GBC",  160, 144 },
+        { "GBA",     240, 160 },
+        { "NES",     256, 240 },
+        { "SNES",    256, 224 },
+        { "GENESIS", 320, 224 },
+        { "NATIVE",  480, 320 },
+    };
+    enum { ITER = 200 };
+    static uint32_t samples[ITER];
+
+    /* Real data rather than a cleared buffer, so nothing downstream can be
+     * getting away with a shortcut on uniform bytes. */
+    for (int i = 0; i < PANEL_W * PANEL_H; i++)
+        framebuffer[i] = (px_t)(i ^ (i >> 5));
+
+    printf("pid351: blit bench, %d iterations per size, into the real back "
+           "buffer, no page flip\n", ITER);
+
+    for (size_t k = 0; k < sizeof sizes / sizeof sizes[0]; k++) {
+        if (plat_bench(framebuffer, sizes[k].w, sizes[k].h,
+                       samples, ITER) < 0) {
+            printf("pid351:   unavailable on this backend\n");
+            fflush(stdout);
+            return;
+        }
+
+        stat_t s = stat_of(samples, ITER);
+        rect_t r = fit_integer(sizes[k].w, sizes[k].h, PANEL_W, PANEL_H);
+        unsigned pct = s.min * 1000u / (unsigned)FRAME_US;
+
+        printf("pid351:   %-8s %3dx%-3d x%d  src %4uKB  "
+               "min %5u  med %5u  max %6u us   %u.%u%% of a %d us frame\n",
+               sizes[k].name, sizes[k].w, sizes[k].h, r.w / sizes[k].w,
+               (unsigned)((size_t)sizes[k].w * (size_t)sizes[k].h
+                          * sizeof(px_t) / 1024),
+               s.min, s.med, s.max, pct / 10u, pct % 10u, FRAME_US);
+    }
+
+    if (plat_bench_linear(framebuffer, samples, ITER) == 0) {
+        stat_t s = stat_of(samples, ITER);
+        unsigned pct = s.min * 1000u / (unsigned)FRAME_US;
+        printf("pid351:   %-8s %3dx%-3d x1  src %4uKB  "
+               "min %5u  med %5u  max %6u us   %u.%u%% of a %d us frame"
+               "   <- control: same writes, sequential reads\n",
+               "LINEAR", PANEL_W, PANEL_H,
+               (unsigned)(sizeof framebuffer / 1024),
+               s.min, s.med, s.max, pct / 10u, pct % 10u, FRAME_US);
+    }
+
+    /* Flushed here rather than at the first report: if the 300 second kill
+     * lands before then, this is the half of the output that cannot be
+     * gathered any other way. */
+    fflush(stdout);
+}
 
 /* ------------------------------------------------------------- system info */
 
@@ -147,6 +294,40 @@ static void sysinfo_read(struct sysinfo_s *s)
 
 /* ------------------------------------------------------------- info column */
 
+/* One greppable line per interval, with the raw sysfs integers rather than
+ * pretty units - unit conversion in a log is just somewhere for a bug to hide,
+ * and every sample has to carry the conditions it was taken under or it is not
+ * a measurement.
+ *
+ * Flushed explicitly: stdout here is a file on the SD card, so it is block
+ * buffered, and first-light.sh kills us with SIGTERM after 300 seconds. An
+ * unflushed buffer would mean the run that told us the most produced nothing. */
+static void conditions(const char *when, const struct sysinfo_s *s)
+{
+    printf("pid351: %s cpu_khz=%ld gov=%s gpu_hz=%ld temp_mc=%ld "
+           "volt_uv=%ld curr_ua=%ld backlight=%ld\n",
+           when, s->cpu_khz, s->governor, s->gpu_hz, s->temp_mc,
+           s->voltage_uv, s->current_ua, s->backlight);
+    fflush(stdout);
+}
+
+static void report(uint64_t elapsed_us, const struct sysinfo_s *s,
+                   double fps, unsigned frames)
+{
+    printf("pid351: t=%llus frames=%u fps=%.2f n=%d "
+           "blit=%u/%u/%u life=%u/%u draw=%u/%u/%u wait=%u/%u/%u "
+           "cpu_khz=%ld gov=%s gpu_hz=%ld temp_mc=%ld "
+           "volt_uv=%ld curr_ua=%ld backlight=%ld\n",
+           (unsigned long long)(elapsed_us / 1000000u), frames, fps, ring_n,
+           blit_stat.min, blit_stat.med, blit_stat.max,
+           blit_min_life == UINT32_MAX ? 0u : blit_min_life, blit_max_life,
+           draw_stat.min, draw_stat.med, draw_stat.max,
+           wait_stat.min, wait_stat.med, wait_stat.max,
+           s->cpu_khz, s->governor, s->gpu_hz, s->temp_mc,
+           s->voltage_uv, s->current_ua, s->backlight);
+    fflush(stdout);
+}
+
 static void info_line(canvas_t *c, int x, int y, const char *label,
                       const char *value, px_t value_col)
 {
@@ -155,7 +336,7 @@ static void info_line(canvas_t *c, int x, int y, const char *label,
 }
 
 static void draw_info(canvas_t *c, int x, int y, const struct sysinfo_s *s,
-                      double fps, unsigned frames, uint32_t held)
+                      double fps, unsigned frames)
 {
     char v[64];
     int lh = 11;
@@ -251,8 +432,9 @@ static void draw_info(canvas_t *c, int x, int y, const struct sysinfo_s *s,
     snprintf(v, sizeof v, "%u", frames);
     info_line(c, x, y, "FRAMES", v, C_TEXT);                       y += lh;
 
-    snprintf(v, sizeof v, "%04X", held);
-    info_line(c, x, y, "BUTTONS", v, held ? C_LIT : C_DIM);        y += lh;
+    snprintf(v, sizeof v, "%u/%u/%u", blit_stat.min, blit_stat.med,
+             blit_stat.max);
+    info_line(c, x, y, "BLIT US", v, C_TEXT);                      y += lh;
 
     if (s->uptime_s >= 0)
         snprintf(v, sizeof v, "%ld:%02ld:%02ld", s->uptime_s / 3600,
@@ -398,10 +580,25 @@ int main(void)
     memset(&si, 0, sizeof si);
     sysinfo_read(&si);
 
+    /* Before the loop, so the sweep runs on an idle machine and its numbers
+     * are not competing with the demo's own drawing.
+     *
+     * Bracketed by the conditions it ran under, printed twice: a governor
+     * that ramps partway through the sweep would otherwise make the later
+     * sizes look faster than the earlier ones for reasons that have nothing
+     * to do with the blit. A 1008 MHz sample and a 1296 MHz one differ by
+     * 29% before anything interesting has happened. */
+    conditions("before bench", &si);
+    clock_calibrate();
+    bench_blit();
+    sysinfo_read(&si);
+    conditions("after bench ", &si);
+
     uint64_t start = plat_now_us();
     uint64_t next  = start;
     uint64_t last_refresh = start;
     uint64_t fps_mark = start;
+    uint64_t report_mark = start;
     unsigned frames = 0, fps_frames = 0;
     double fps = 0.0;
     const char *reason = "?";
@@ -427,7 +624,20 @@ int main(void)
             fps = (double)fps_frames * 1000000.0 / (double)(now - fps_mark);
             fps_frames = 0;
             fps_mark = now;
+
+            /* Sorting three rings is far too expensive to do per frame inside
+             * the thing being measured, so it happens here, once. */
+            blit_stat = stat_of(blit_ring, ring_n);
+            wait_stat = stat_of(wait_ring, ring_n);
+            draw_stat = stat_of(draw_ring, ring_n);
         }
+
+        if (now - report_mark >= 10000000) {
+            report(now - start, &si, fps, frames);
+            report_mark = now;
+        }
+
+        uint64_t draw_t0 = plat_now_us();
 
         gfx_rect(&c, 0, 0, PANEL_W, PANEL_H, C_BG);
         gfx_rect(&c, 0, 0, PANEL_W, 17, C_PANEL);
@@ -444,15 +654,34 @@ int main(void)
         /* Full width along the bottom: a wider ramp shows banding and dead
          * columns that a narrow one hides. */
         draw_panel_check(&c, 8, 258, 464);
-        draw_info(&c, 252, 24, &si, fps, frames, held);
+        draw_info(&c, 252, 24, &si, fps, frames);
+
+        uint32_t draw_us = (uint32_t)(plat_now_us() - draw_t0);
 
         plat_present(framebuffer, PANEL_W, PANEL_H);
+
+        uint32_t b_us = 0, w_us = 0;
+        plat_frame_us(&b_us, &w_us);
+        blit_ring[ring_i] = b_us;
+        wait_ring[ring_i] = w_us;
+        draw_ring[ring_i] = draw_us;
+        ring_i = (ring_i + 1) % TIME_RING;
+        if (ring_n < TIME_RING)
+            ring_n++;
+        if (b_us < blit_min_life) blit_min_life = b_us;
+        if (b_us > blit_max_life) blit_max_life = b_us;
+
         frames++;
         fps_frames++;
 
         next += FRAME_US;
         plat_sleep_until(next);
     }
+
+    blit_stat = stat_of(blit_ring, ring_n);
+    wait_stat = stat_of(wait_ring, ring_n);
+    draw_stat = stat_of(draw_ring, ring_n);
+    report(plat_now_us() - start, &si, fps, frames);
 
     printf("pid351: exit (%s) after %u frames, %.2f fps\n",
            reason, frames, fps);

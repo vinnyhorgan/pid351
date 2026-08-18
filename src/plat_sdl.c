@@ -90,6 +90,8 @@ uint32_t plat_input(void)
     return held;
 }
 
+static uint32_t present_us;
+
 void plat_present(const px_t *fb, int w, int h)
 {
     if (!tex || w != tex_w || h != tex_h) {
@@ -113,7 +115,37 @@ void plat_present(const px_t *fb, int w, int h)
     SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
     SDL_RenderClear(ren);
     SDL_RenderTexture(ren, tex, NULL, &dst);
+
+    uint64_t t0 = plat_now_us();
     SDL_RenderPresent(ren);
+    present_us = (uint32_t)(plat_now_us() - t0);
+}
+
+void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us)
+{
+    /* There is no rotate blit on this backend at all - the panel here is the
+     * right way up and the GPU does the scale - so reporting anything but
+     * zero would invite comparing a laptop number against the device's. */
+    if (blit_us) *blit_us = 0;
+    if (wait_us) *wait_us = present_us;
+}
+
+int plat_bench(const px_t *src, int src_w, int src_h,
+               uint32_t *samples, int n)
+{
+    (void)src; (void)src_w; (void)src_h; (void)samples; (void)n;
+
+    /* Refused on purpose. This measurement exists to decide whether to move
+     * work off a 1.3 GHz in-order Cortex-A35 with small caches; timing the
+     * same loop on an out-of-order laptop core would produce a confident
+     * number that says nothing about that question. */
+    return -1;
+}
+
+int plat_bench_linear(const px_t *src, uint32_t *samples, int n)
+{
+    (void)src; (void)samples; (void)n;
+    return -1;   /* same reason */
 }
 
 uint64_t plat_now_us(void)

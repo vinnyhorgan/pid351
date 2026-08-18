@@ -101,6 +101,9 @@ static struct {
     int      flip_pending;
     int      had_master;
 
+    uint32_t blit_us;        /* see plat_frame_us */
+    uint32_t wait_us;
+
     int      pad_fd;
     uint32_t buttons;
     int      quit;
@@ -680,10 +683,19 @@ void plat_present(const px_t *fb, int w, int h)
     if (g.fd < 0)
         return;
 
+    /* Bracketing with two clock reads costs a fraction of a microsecond
+     * against a blit measured in hundreds, and main.c prints the calibration
+     * so that claim is checked rather than asserted. */
+    uint64_t t0 = plat_now_us();
     wait_flip();
+    uint64_t t1 = plat_now_us();
 
     int back = g.front ^ 1;
     blit_rotated(&g.buf[back], fb, w, h);
+    uint64_t t2 = plat_now_us();
+
+    g.wait_us = (uint32_t)(t1 - t0);
+    g.blit_us = (uint32_t)(t2 - t1);
 
     struct drm_mode_crtc_page_flip flip;
     memset(&flip, 0, sizeof flip);
@@ -736,4 +748,61 @@ int plat_axes(plat_axis_t *out, int max)
     for (int i = 0; i < n; i++)
         out[i] = g.axis[i];
     return n;
+}
+
+void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us)
+{
+    if (blit_us) *blit_us = g.blit_us;
+    if (wait_us) *wait_us = g.wait_us;
+}
+
+int plat_bench(const px_t *src, int src_w, int src_h,
+               uint32_t *samples, int n)
+{
+    if (g.fd < 0 || !src || !samples || n <= 0)
+        return -1;
+
+    /* fit_integer clamps the scale to at least 1, so a source larger than the
+     * panel would leave the blit reading past the end of it. Refuse rather
+     * than measure a buffer overrun. */
+    if (src_w <= 0 || src_h <= 0 || src_w > PANEL_W || src_h > PANEL_H)
+        return -1;
+
+    /* The back buffer. Benchmarking into the one being scanned out would put
+     * tearing on the panel and add the display controller's read traffic to
+     * what we are trying to measure. */
+    struct dumb_buf *b = &g.buf[g.front ^ 1];
+
+    for (int i = 0; i < n; i++) {
+        uint64_t t0 = plat_now_us();
+        blit_rotated(b, src, src_w, src_h);
+        samples[i] = (uint32_t)(plat_now_us() - t0);
+    }
+    return 0;
+}
+
+int plat_bench_linear(const px_t *src, uint32_t *samples, int n)
+{
+    if (g.fd < 0 || !src || !samples || n <= 0)
+        return -1;
+
+    struct dumb_buf *b = &g.buf[g.front ^ 1];
+    int stride = (int)(b->pitch / sizeof(px_t));
+
+    for (int i = 0; i < n; i++) {
+        uint64_t t0 = plat_now_us();
+        /* Deliberately the same scalar loop as blit_rotated rather than a
+         * memcpy, so the comparison isolates the access pattern. The compiler
+         * is free to vectorise this one and not the strided one, and that is
+         * fair: a tiled rewrite would unlock the same thing, so it belongs in
+         * what the pattern is costing us. */
+        for (int py = 0; py < PHYS_H; py++) {
+            px_t *dst = b->px + (size_t)py * (size_t)stride;
+            const px_t *row = src + (size_t)py * (size_t)PHYS_W;
+            for (int px = 0; px < PHYS_W; px++)
+                dst[px] = row[px];
+        }
+        samples[i] = (uint32_t)(plat_now_us() - t0);
+    }
+    return 0;
 }
