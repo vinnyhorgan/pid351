@@ -974,3 +974,82 @@ Not a bug, though it looks like one: the `gov=schedutil` in every conditions
 line is correct. The sweep selects `performance` inside the block and restores
 the original governor afterwards, and all three of those lines are printed
 outside it.
+
+## The operating point sweep, measured
+
+`docs/logs/4-pid351-boot.log`. Half brightness (833 of a max_brightness of
+1667, which is 49.97% duty and therefore directly comparable to ROCKNIX's
+127 of 255), test card workload, each point pinned by writing both
+`scaling_min_freq` and `scaling_max_freq` and confirmed by reading the
+frequency back in every phase.
+
+| OPP | current_avg | vs 1296 | work median | fps |
+|---|---|---|---|---|
+| 1296 MHz | 377.9 mA | - | 2740 us | 59.99 |
+| 1200 MHz | 367.0 mA | -5.2 | 2893 us | 59.99 |
+| 1008 MHz | **318.0 mA** | **-54.2** | 3250 us | 59.99 |
+| 816 MHz | **296.9 mA** | **-75.3** | 3811 us | 59.99 |
+| 600 MHz | **283.6 mA** | **-88.6** | 4845 us | 60.00 |
+| 1296 again | 366.5 mA | - | 2748 us | 59.99 |
+
+The two 1296 phases bracket the sweep 11.4 mA apart, which is the drift floor
+for this run and the yardstick for everything in it. So:
+
+- 1296 -> 1200 is **not resolved**. 5.2 mA is inside the noise.
+- 1296 -> 1008 saves **54 mA**, comfortably outside it.
+- 1008 -> 816 saves another **21 mA**.
+- 816 -> 600 saves **13 mA**, which is marginal but survives.
+
+**60 fps holds at every one of them**, including 600 MHz at 4845 us of a
+16661 us frame.
+
+### The 21.5 mA figure this file carried for 1296 -> 1008 was wrong
+
+It is 54 mA, two and a half times larger. The earlier number came from a run
+that selected an operating point through the governor on ROCKNIX rather than
+pinning both frequency bounds, so there is no evidence the core actually held
+1008 for the whole window - and this sweep verifies the frequency by reading
+it back in every phase and bounds its own drift by measuring 1296 at both
+ends. The new number supersedes the old one.
+
+Every battery projection in this file that was built on 21.5 mA understated
+the OPP lever by roughly half. They are replaced below.
+
+### The idle floor
+
+    before bench  cpu_khz=600000 gov=schedutil ... curr_ua=-219472
+
+**219 mA** with the panel lit at half brightness, schedutil at the bottom of
+the table, and nothing but our process on the machine. That is the floor
+everything else is measured against, and it is 59% of what the test card
+costs at 1296 MHz.
+
+### What it means for playing games
+
+Using the measured floors (total minus work times the rate at that point) and
+the measured sub-linear blit scaling, `t ∝ f^-0.74`, against an mGBA-class
+core taken at 8 ms per frame at 1296 MHz:
+
+| config | frame used | draw | hours at half brightness |
+|---|---|---|---|
+| GBA @ 1296 | 9.4 / 16.7 ms | ~419 mA | 7.3 - 7.8 |
+| GBA @ 1008 | 11.9 ms | ~354 mA | 8.6 - 9.2 |
+| **GBA @ 816** | 14.6 ms | **~326 mA** | **9.4 - 10.0** |
+| GBA @ 600 | 19.6 ms, does not fit | - | - |
+| NES/SNES @ 600 | 8.9 ms | ~290 mA | 10.5 - 11.2 |
+| menu, idle @ 600 | ~1 ms | ~277 mA | 11.0 - 11.7 |
+
+Usable capacity taken as 3050-3250 mAh against the gauge's learned
+`charge_full` of 3380.
+
+Two conclusions worth acting on. **816 MHz is the GBA target**: 600 cannot
+hold the frame (the core alone wants 17.3 ms of 16.7) and 1008 costs 28 mA
+for headroom we do not need. And **the spread between the worst and best
+configuration is about three and a half hours**, which is a far larger prize
+than anything left anywhere else in this project - the entire blit rewrite
+was worth 9 mA.
+
+The charge-implied column was noise again, as expected: 427, 299, 278, 342,
+320, 320 mA against current_avg's clean monotonic 378, 367, 318, 297, 284.
+Four counter steps in a 29 second window cannot resolve this. `current_avg`
+is the instrument; the coulomb counter is not.

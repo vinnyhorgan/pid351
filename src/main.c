@@ -463,9 +463,9 @@ static int pin_freq(long khz)
 static void conditions(const char *when, const struct sysinfo_s *s)
 {
     printf("pid351: %s cpu_khz=%ld gov=%s gpu_hz=%ld temp_mc=%ld "
-           "volt_uv=%ld curr_ua=%ld backlight=%ld\n",
+           "volt_uv=%ld curr_ua=%ld backlight=%ld/%ld\n",
            when, s->cpu_khz, s->governor, s->gpu_hz, s->temp_mc,
-           s->voltage_uv, s->current_ua, s->backlight);
+           s->voltage_uv, s->current_ua, s->backlight, s->backlight_max);
     fflush(stdout);
 }
 
@@ -475,14 +475,14 @@ static void report(uint64_t elapsed_us, const struct sysinfo_s *s,
     printf("pid351: t=%llus frames=%u fps=%.2f n=%d "
            "blit=%u/%u/%u life=%u/%u draw=%u/%u/%u wait=%u/%u/%u "
            "cpu_khz=%ld gov=%s gpu_hz=%ld temp_mc=%ld "
-           "volt_uv=%ld curr_ua=%ld backlight=%ld\n",
+           "volt_uv=%ld curr_ua=%ld backlight=%ld/%ld\n",
            (unsigned long long)(elapsed_us / 1000000u), frames, fps, ring_n,
            blit_stat.min, blit_stat.med, blit_stat.max,
            blit_min_life == UINT32_MAX ? 0u : blit_min_life, blit_max_life,
            draw_stat.min, draw_stat.med, draw_stat.max,
            wait_stat.min, wait_stat.med, wait_stat.max,
            s->cpu_khz, s->governor, s->gpu_hz, s->temp_mc,
-           s->voltage_uv, s->current_ua, s->backlight);
+           s->voltage_uv, s->current_ua, s->backlight, s->backlight_max);
     fflush(stdout);
 }
 
