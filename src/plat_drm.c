@@ -690,6 +690,42 @@ static void blit_linear(struct dumb_buf *b, const px_t *src)
     }
 }
 
+/* As STAGED, but the tile spans the whole panel width, so every write to the
+ * scanout buffer is a complete destination row. Write combining rewards long
+ * contiguous runs and the tile sweep was still improving at the largest
+ * square tile tried, so this is where that trend points. The staging block is
+ * PHYS_W by rows - 20KB at 32 rows, inside L1 - and 32 destination rows is
+ * also exactly the 32 pixels a 64 byte cache line holds on the read side. */
+static void blit_staged_row(struct dumb_buf *b, const px_t *src, int w, int h,
+                            int rows)
+{
+    static px_t stage[PHYS_W * 32];
+
+    int stride = (int)(b->pitch / sizeof(px_t));
+
+    if (rows > 32) rows = 32;
+    if (rows < 1)  rows = 1;
+
+    build_maps(w, h);
+
+    for (int py0 = 0; py0 < PHYS_H; py0 += rows) {
+        int pyN = py0 + rows < PHYS_H ? py0 + rows : PHYS_H;
+
+        for (int px = 0; px < PHYS_W; px++) {
+            const px_t *row = src + (size_t)map_row[px] * (size_t)w;
+
+            for (int py = py0; py < pyN; py++)
+                stage[(size_t)(py - py0) * (size_t)PHYS_W + (size_t)px] =
+                    row[map_col[py]];
+        }
+
+        for (int py = py0; py < pyN; py++)
+            memcpy(b->px + (size_t)py * (size_t)stride,
+                   stage + (size_t)(py - py0) * (size_t)PHYS_W,
+                   (size_t)PHYS_W * sizeof(px_t));
+    }
+}
+
 static void run_variant(struct dumb_buf *b, const px_t *src, int w, int h,
                         int variant, int tile)
 {
@@ -697,6 +733,7 @@ static void run_variant(struct dumb_buf *b, const px_t *src, int w, int h,
     case PLAT_BLIT_LINEAR: blit_linear(b, src);            break;
     case PLAT_BLIT_TILED:  blit_tiled(b, src, w, h, tile);  break;
     case PLAT_BLIT_STAGED: blit_staged(b, src, w, h, tile); break;
+    case PLAT_BLIT_STAGED_ROW: blit_staged_row(b, src, w, h, tile); break;
     default:               blit_strided(b, src, w, h);      break;
     }
 }
@@ -1051,4 +1088,112 @@ int plat_vblank_probe(int flips, uint32_t *measured_mhz)
 
     *measured_mhz = dt ? (uint32_t)((uint64_t)flips * 1000000000u / dt) : 0;
     return 0;
+}
+
+/* ------------------------------------------------- display property dump */
+
+static void print_fourcc(uint32_t f)
+{
+    printf("%c%c%c%c", (char)(f & 0xff), (char)((f >> 8) & 0xff),
+           (char)((f >> 16) & 0xff), (char)((f >> 24) & 0xff));
+}
+
+/* Names and permitted values for every property on one object. The names are
+ * the point: "rotation" appearing on a plane, with 90 among its enum values,
+ * would mean the hardware can do the transform we have been doing by hand. */
+static void dump_object_props(uint32_t id, uint32_t type, const char *label)
+{
+    struct drm_mode_obj_get_properties op;
+    uint32_t props[64];
+    uint64_t vals[64];
+
+    memset(&op, 0, sizeof op);
+    op.obj_id   = id;
+    op.obj_type = type;
+    if (xioctl(DRM_IOCTL_MODE_OBJ_GETPROPERTIES, &op) < 0)
+        return;
+    if (op.count_props > 64)
+        op.count_props = 64;
+    op.props_ptr        = (uint64_t)(uintptr_t)props;
+    op.prop_values_ptr  = (uint64_t)(uintptr_t)vals;
+    if (xioctl(DRM_IOCTL_MODE_OBJ_GETPROPERTIES, &op) < 0)
+        return;
+
+    for (uint32_t i = 0; i < op.count_props; i++) {
+        struct drm_mode_get_property gp;
+        struct drm_mode_property_enum en[32];
+        uint64_t pv[32];
+
+        memset(&gp, 0, sizeof gp);
+        gp.prop_id = props[i];
+        if (xioctl(DRM_IOCTL_MODE_GETPROPERTY, &gp) < 0)
+            continue;
+        if (gp.count_values > 32)     gp.count_values = 32;
+        if (gp.count_enum_blobs > 32) gp.count_enum_blobs = 32;
+        gp.values_ptr    = (uint64_t)(uintptr_t)pv;
+        gp.enum_blob_ptr = (uint64_t)(uintptr_t)en;
+        if (xioctl(DRM_IOCTL_MODE_GETPROPERTY, &gp) < 0)
+            continue;
+
+        printf("pid351:     %s prop %-22s = %llu", label, gp.name,
+               (unsigned long long)vals[i]);
+        for (uint32_t e = 0; e < gp.count_enum_blobs; e++)
+            printf("  [%llu=%s]", (unsigned long long)en[e].value, en[e].name);
+        printf("\n");
+    }
+}
+
+void plat_dump_props(void)
+{
+    if (g.fd < 0)
+        return;
+
+    /* Without this only overlay planes are visible, and the primary plane -
+     * the one that would have to carry a rotation - is hidden. */
+    struct drm_set_client_cap cap = { DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1 };
+    if (ioctl(g.fd, DRM_IOCTL_SET_CLIENT_CAP, &cap) < 0)
+        printf("pid351:   universal planes unavailable\n");
+
+    printf("pid351:   connector %u:\n", g.conn_id);
+    dump_object_props(g.conn_id, DRM_MODE_OBJECT_CONNECTOR, "conn");
+    printf("pid351:   crtc %u:\n", g.crtc_id);
+    dump_object_props(g.crtc_id, DRM_MODE_OBJECT_CRTC, "crtc");
+
+    struct drm_mode_get_plane_res pres;
+    uint32_t planes[32];
+    memset(&pres, 0, sizeof pres);
+    if (xioctl(DRM_IOCTL_MODE_GETPLANERESOURCES, &pres) < 0) {
+        printf("pid351:   no plane resources\n");
+        return;
+    }
+    if (pres.count_planes > 32)
+        pres.count_planes = 32;
+    pres.plane_id_ptr = (uint64_t)(uintptr_t)planes;
+    if (xioctl(DRM_IOCTL_MODE_GETPLANERESOURCES, &pres) < 0)
+        return;
+
+    for (uint32_t i = 0; i < pres.count_planes; i++) {
+        struct drm_mode_get_plane gp;
+        uint32_t fmts[64];
+
+        memset(&gp, 0, sizeof gp);
+        gp.plane_id = planes[i];
+        if (xioctl(DRM_IOCTL_MODE_GETPLANE, &gp) < 0)
+            continue;
+        if (gp.count_format_types > 64)
+            gp.count_format_types = 64;
+        gp.format_type_ptr = (uint64_t)(uintptr_t)fmts;
+        if (xioctl(DRM_IOCTL_MODE_GETPLANE, &gp) < 0)
+            continue;
+
+        printf("pid351:   plane %u (crtc %u, possible_crtcs 0x%x) formats:",
+               gp.plane_id, gp.crtc_id, gp.possible_crtcs);
+        for (uint32_t f = 0; f < gp.count_format_types; f++) {
+            printf(" ");
+            print_fourcc(fmts[f]);
+        }
+        printf("\n");
+        dump_object_props(gp.plane_id, DRM_MODE_OBJECT_PLANE, "plane");
+    }
+    fflush(stdout);
 }

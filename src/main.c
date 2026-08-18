@@ -13,9 +13,15 @@
  * which physical stick drives which axis is not written down anywhere. That
  * is the one thing on screen that is a question rather than a report.
  */
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #include "pid351.h"
 #include "platform.h"
@@ -140,10 +146,10 @@ static void bench_blit(void)
     };
     static const struct { const char *name; int id; } variants[] = {
         { "STRIDED", PLAT_BLIT_STRIDED },
-        { "TILED",   PLAT_BLIT_TILED   },
         { "STAGED",  PLAT_BLIT_STAGED  },
+        { "ROW",     PLAT_BLIT_STAGED_ROW },
     };
-    enum { ITER = 200, TILE = 32 };
+    enum { ITER = 200, TILE = 64 };
     static uint32_t samples[ITER];
 
     /* Real data rather than a cleared buffer, so nothing downstream can be
@@ -213,19 +219,29 @@ static void bench_blit(void)
     /* Tile size is a compile-time constant in the end, so it gets chosen the
      * same way everything else here does. Swept at full screen because that
      * is where every console lands once the black bars go. */
-    static const int tiles[] = { 8, 16, 32, 64 };
-    for (size_t v = 1; v < sizeof variants / sizeof variants[0]; v++) {
-        printf("pid351:   tile sweep 480x320  %-7s", variants[v].name);
-        for (size_t t = 0; t < sizeof tiles / sizeof tiles[0]; t++) {
-            if (plat_bench(framebuffer, PANEL_W, PANEL_H, variants[v].id,
-                           tiles[t], samples, ITER) < 0)
-                break;
-            stat_t s = stat_of(samples, ITER);
-            printf("   %2d:%5u/%5u", tiles[t], s.min, s.med);
-        }
-        printf("\n");
-        fflush(stdout);
+    static const int tiles[] = { 16, 32, 64 };
+    static const int rows[]  = { 4, 8, 16, 24, 32 };
+
+    printf("pid351:   sweep 480x320 STAGED square tile");
+    for (size_t t = 0; t < sizeof tiles / sizeof tiles[0]; t++) {
+        if (plat_bench(framebuffer, PANEL_W, PANEL_H, PLAT_BLIT_STAGED,
+                       tiles[t], samples, ITER) < 0)
+            break;
+        stat_t s = stat_of(samples, ITER);
+        printf("   %2d:%5u/%5u", tiles[t], s.min, s.med);
     }
+    printf("\n");
+
+    printf("pid351:   sweep 480x320 ROW full-width rows ");
+    for (size_t t = 0; t < sizeof rows / sizeof rows[0]; t++) {
+        if (plat_bench(framebuffer, PANEL_W, PANEL_H, PLAT_BLIT_STAGED_ROW,
+                       rows[t], samples, ITER) < 0)
+            break;
+        stat_t s = stat_of(samples, ITER);
+        printf("   %2d:%5u/%5u", rows[t], s.min, s.med);
+    }
+    printf("\n");
+    fflush(stdout);
 
     /* Flushed at every step. first-light.sh kills the process with SIGTERM
      * after 300 seconds and stdout here is a file on the SD card, so a block
@@ -384,6 +400,87 @@ static int write_governor(const char *g)
     if (fclose(f) != 0)
         ok = 0;
     return ok ? 0 : -1;
+}
+
+/* ------------------------------------------------ measuring ROCKNIX itself */
+
+/* Every power figure this project has produced includes about twenty daemons
+ * we intend to delete, and the cost of them has only ever been estimated.
+ * SIGSTOP is the honest way to ask: it takes them out of the scheduler
+ * entirely without unmounting anything, and SIGCONT puts it all back.
+ *
+ * Matched on exact comm, never on a prefix, and pid 1 is never a candidate -
+ * stopping systemd would take the machine with it. */
+static int signal_daemons(int sig)
+{
+    static const char *const names[] = {
+        "sway", "swaybg", "mako", "pipewire", "wireplumber", "pipewire-pulse",
+        "NetworkManager", "iwd", "sshd", "rpcbind", "seatd", "dbus-daemon",
+        "psimon", "powerstate", "battery_led_sta", "rocknix-touchsc",
+        "input_sense", "emulationstatio", "systemd-journal", "systemd-udevd",
+        "systemd-logind", NULL };
+
+    DIR *d = opendir("/proc");
+    if (!d)
+        return -1;
+
+    pid_t self = getpid();
+    int n = 0;
+    struct dirent *e;
+
+    while ((e = readdir(d))) {
+        long pid = strtol(e->d_name, NULL, 10);
+        if (pid <= 1 || pid == (long)self)
+            continue;
+
+        char path[64], comm[64];
+        snprintf(path, sizeof path, "/proc/%ld/comm", pid);
+        if (!read_text(path, comm, sizeof comm))
+            continue;
+
+        for (int i = 0; names[i]; i++) {
+            if (strcmp(comm, names[i]) != 0)
+                continue;
+            if (kill((pid_t)pid, sig) == 0)
+                n++;
+            break;
+        }
+    }
+    closedir(d);
+    return n;
+}
+
+/* A crash, or anything else that kills us between the stop and the resume,
+ * would leave the console wedged with its session daemons frozen until
+ * someone power cycles it. This is the last run before the image, so it gets
+ * a net: a child that outlives us and puts everything back regardless.
+ *
+ * It only sleeps and signals - it never touches the display, and a SIGCONT to
+ * a process that is already running is a no-op, so the normal path resuming
+ * first costs nothing. */
+static void arm_resume_net(unsigned seconds)
+{
+    pid_t p = fork();
+    if (p != 0)
+        return;                     /* parent, or fork failed: carry on */
+
+    sleep(seconds);                 /* a signal cutting this short is fine */
+    signal_daemons(SIGCONT);
+    _exit(0);
+}
+
+/* delete_module has no libc wrapper, and syscall() is a GNU extension that
+ * _POSIX_C_SOURCE hides. Declared here rather than widening the feature test
+ * macros for the whole build, which exist precisely to keep POSIX and only
+ * POSIX visible. Bring-up only; nothing in pid351 proper needs it. */
+extern long syscall(long number, ...);
+
+/* panfrost is a module here, so the GPU's cost can be measured rather than
+ * guessed at. It will refuse while a compositor holds it, which is why this
+ * is attempted twice - once before the daemons are stopped and once after. */
+static int remove_module(const char *name)
+{
+    return (int)syscall(__NR_delete_module, name, O_NONBLOCK);
 }
 
 /* ------------------------------------------------------------- info column */
@@ -952,6 +1049,13 @@ int main(void)
         fflush(stdout);
     }
 
+    /* Last chance to ask the hardware whether it can rotate for us. If a
+     * plane carries a rotation property that takes 90 degrees, everything the
+     * blit work above achieved was unnecessary and we should know that before
+     * building an image around it. */
+    printf("pid351: display properties\n");
+    plat_dump_props();
+
     bench_blit();
     sysinfo_read(&si);
     conditions("after bench ", &si);
@@ -962,67 +1066,45 @@ int main(void)
      * the same scale for the first time. */
     long bl0 = si.backlight;
     {
-        struct phase_result bl[3];
+        /* The last two estimates in this project, replaced by measurements.
+         * Both were quoted as ranges and both feed straight into what our own
+         * image is worth, so guessing at them would have made the whole
+         * battery case for the project a guess. */
+        struct phase_result pr[4];
 
-        /* The backlight first, because if it turns out to dominate then every
-         * CPU number that follows is a rounding error and we should know that
-         * before reading them. It has been called the largest consumer on
-         * this device three times in this project without anyone measuring
-         * it once. */
-        power_phase(&c, "bl-255", "performance", 0, 255, 35, &bl[0]);
-        power_phase(&c, "bl-127", "performance", 0, 127, 35, &bl[1]);
-        power_phase(&c, "bl-32",  "performance", 0,  32, 35, &bl[2]);
-        if (bl[0].ua_implied >= 0 && bl[2].ua_implied >= 0)
-            printf("pid351: BACKLIGHT 255=%ld  127=%ld  32=%ld uA  "
-                   "-> %ld uA between full and near dark\n",
-                   bl[0].ua_implied, bl[1].ua_implied, bl[2].ua_implied,
-                   bl[0].ua_implied - bl[2].ua_implied);
+        power_phase(&c, "base",       NULL, 0, (int)bl0, 35, &pr[0]);
+
+        int gpu = remove_module("panfrost");
+        printf("pid351: panfrost removal before stopping daemons: %s\n",
+               gpu == 0 ? "removed" : strerror(errno));
         fflush(stdout);
+        power_phase(&c, "no-gpu",     NULL, 0, -1, 35, &pr[1]);
 
-        /* Everything below is at the backlight the machine arrived with, so
-         * the CPU phases are comparable with each other and with the run we
-         * already have. */
-        struct phase_result pr[5];
-        power_phase(&c, "base-1296",  "performance", 0, (int)bl0, 35, &pr[0]);
-        power_phase(&c, "load2-1296", "performance", 2, -1, 35, &pr[1]);
-        power_phase(&c, "load4-1296", "performance", 4, -1, 35, &pr[2]);
-        power_phase(&c, "base-1008",  "powersave",   0, -1, 35, &pr[3]);
-        /* The control. Phases run cold to hot, and leakage rises with
-         * temperature, so without repeating the first point at the end a
-         * thermal drift would be indistinguishable from the slope we are
-         * trying to measure. If this disagrees with base-1296, the slope is
-         * contaminated and the numbers above it are not to be trusted. */
-        power_phase(&c, "base-1296-b", "performance", 0, -1, 35, &pr[4]);
-
-        /* The whole point of the exercise, stated in the units the decision
-         * gets made in. Extra CPU per frame is the count times the blit we
-         * just measured, converted to a duty cycle against the frame. */
-        /* Against the work actually measured, not against extra x blit_med.
-         * Those differ whenever a phase failed to hold 60 fps, and using the
-         * assumed figure would hide exactly that failure. */
-        for (int i = 1; i < 3; i++) {
-            if (pr[i].ua_implied < 0 || pr[0].ua_implied < 0)
-                continue;
-            double dms = ((double)pr[i].work_med
-                        - (double)pr[0].work_med) / 1000.0;
-            double dua = (double)(pr[i].ua_implied - pr[0].ua_implied);
-            printf("pid351: SLOPE %s vs base: +%.2f ms/frame measured -> "
-                   "%+.0f uA (%.1f uA per ms per frame)%s\n",
-                   pr[i].name, dms, dua, dms > 0.0 ? dua / dms : 0.0,
-                   pr[i].fps < 59.0 ? "   INVALID: dropped below 59 fps" : "");
+        arm_resume_net(150);
+        int n = signal_daemons(SIGSTOP);
+        printf("pid351: SIGSTOP sent to %d ROCKNIX processes "
+               "(resume net armed for 150 s)\n", n);
+        if (gpu != 0) {
+            gpu = remove_module("panfrost");
+            printf("pid351: panfrost removal after stopping daemons: %s\n",
+                   gpu == 0 ? "removed" : strerror(errno));
         }
-        printf("pid351: THERMAL CONTROL base-1296 %ld uA vs base-1296-b %ld uA "
-               "at %ld and %ld mC - a large gap here invalidates the slopes\n",
-               pr[0].ua_implied, pr[4].ua_implied,
-               pr[0].temp_mc, pr[4].temp_mc);
-        if (pr[3].ua_implied >= 0 && pr[0].ua_implied >= 0)
-            printf("pid351: OPP 1296 %ld uA vs 1008 %ld uA -> %+ld uA "
-                   "(%.1f%%) for the lower operating point at idle load\n",
-                   pr[0].ua_implied, pr[3].ua_implied,
-                   pr[3].ua_implied - pr[0].ua_implied,
-                   pr[0].ua_implied ? (double)(pr[3].ua_implied
-                       - pr[0].ua_implied) * 100.0 / (double)pr[0].ua_implied
-                       : 0.0);
+        fflush(stdout);
+        power_phase(&c, "no-daemons", NULL, 0, -1, 35, &pr[2]);
+
+        signal_daemons(SIGCONT);
+        printf("pid351: SIGCONT sent\n");
+        fflush(stdout);
+        power_phase(&c, "restored",   NULL, 0, -1, 35, &pr[3]);
+
+        printf("pid351: WHAT ROCKNIX COSTS  base=%ld  no-gpu=%ld  "
+               "no-daemons=%ld  restored=%ld uA (current_avg %ld %ld %ld %ld)\n",
+               pr[0].ua_implied, pr[1].ua_implied, pr[2].ua_implied,
+               pr[3].ua_implied, pr[0].ua_avg, pr[1].ua_avg, pr[2].ua_avg,
+               pr[3].ua_avg);
+        printf("pid351:   adjacent pairs are the trustworthy ones: gpu = base "
+               "minus no-gpu, daemons = no-gpu minus no-daemons, and restored "
+               "against base bounds the drift over the whole programme\n");
         fflush(stdout);
     }
 

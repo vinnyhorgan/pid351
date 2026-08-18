@@ -171,6 +171,11 @@ int plat_vblank_probe(int flips, uint32_t *measured_mhz)
     return -1;   /* the compositor decides when this presents, not the panel */
 }
 
+void plat_dump_props(void)
+{
+    /* Nothing here belongs to us; the compositor owns the display. */
+}
+
 uint64_t plat_now_us(void)
 {
     struct timespec ts;

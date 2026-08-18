@@ -84,9 +84,10 @@ void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us);
  * backend cannot do this meaningfully. */
 enum {
     PLAT_BLIT_LINEAR = 0, /* control: same writes, sequential reads, no rotate */
-    PLAT_BLIT_STRIDED,    /* what ships today: linear writes, strided reads */
+    PLAT_BLIT_STRIDED,    /* the first one: linear writes, strided reads */
     PLAT_BLIT_TILED,      /* inverted: sequential reads, strided writes */
     PLAT_BLIT_STAGED,     /* sequential both ways, transposing via a cache tile */
+    PLAT_BLIT_STAGED_ROW, /* as STAGED but the tile is the full panel width */
 };
 
 int plat_bench(const px_t *src, int src_w, int src_h, int variant, int tile,
@@ -134,5 +135,17 @@ void plat_mode_timing(uint32_t *exact_mhz, uint32_t *clock_khz,
                       uint32_t *htotal, uint32_t *vtotal);
 
 int plat_vblank_probe(int flips, uint32_t *measured_mhz);
+
+/* Everything the display pipeline will tell us about itself: every plane,
+ * every property with its name and permitted values, every pixel format.
+ *
+ * One question in there is worth the whole probe. If a plane carries a
+ * rotation property that accepts 90 degrees, the display controller can do
+ * the transform itself and the entire rotate blit - the thing four commits
+ * and two device runs have been spent on - deletes. Reasoning says a 90
+ * degree rotation cannot be streamed and so needs a line buffer the VOP
+ * probably has not got, which is exactly why Rockchip ships RGA. But that is
+ * reasoning, and this is the last chance to look. */
+void plat_dump_props(void);
 
 #endif /* PLATFORM_H */

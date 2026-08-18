@@ -29,12 +29,13 @@ echo "STORAGE ($DEV) at $MNT"
 mkdir -p "$MNT/pid351" "$MNT/.config/autostart"
 install -m 755 "$BIN"                  "$MNT/pid351/pid351"
 install -m 755 "$HERE/first-light.sh"  "$MNT/pid351/first-light.sh"
+install -m 755 "$HERE/probe2.sh"        "$MNT/pid351/probe2.sh"
 # Sorts before pid351-probe, so the panel test runs before the probe starts
 # poking at USB.
 install -m 755 "$HERE/first-light.sh"  "$MNT/.config/autostart/pid351-first-light"
 
 # A stale log would be indistinguishable from a run that produced no output.
-rm -f "$MNT/pid351/first-light.log"
+rm -f "$MNT/pid351/first-light.log" "$MNT/pid351/probe2.txt"
 
 echo
 ls -l "$MNT/pid351/" "$MNT/.config/autostart/"

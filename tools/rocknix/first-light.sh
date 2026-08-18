@@ -15,8 +15,14 @@
 
 BIN=/storage/pid351/pid351
 LOG=/storage/pid351/first-light.log
+PROBE=/storage/pid351/probe2.sh
 
 [ -x "$BIN" ] || exit 0
+
+# The text probe first, on a machine nothing has touched yet: the driver
+# census and the interrupt counts are only meaningful before we start
+# stopping daemons and removing modules.
+[ -x "$PROBE" ] && "$PROBE"
 
 {
     echo "=== pid351 first light ==="
