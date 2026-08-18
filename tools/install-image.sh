@@ -57,5 +57,24 @@ echo
 echo "boot config now:"
 cat "$CARD/extlinux/extlinux.conf"
 echo
-echo "eject the card, put it in the console, power on."
+# Unmount, always, as the last act. The card gets pulled the moment this
+# script finishes, and leaving that to whoever is holding it is how a FAT
+# gets half-written. udisksctl first because udisks owns this mount; plain
+# umount as a fallback for a mount made some other way.
+echo
+echo "==> unmounting"
+DEV=$(findmnt -no SOURCE "$CARD" 2>/dev/null)
+if [ -n "$DEV" ] && command -v udisksctl >/dev/null 2>&1; then
+    udisksctl unmount -b "$DEV"
+elif [ -n "$DEV" ]; then
+    umount "$CARD"
+fi
+
+if findmnt -no SOURCE "$CARD" >/dev/null 2>&1; then
+    echo "STILL MOUNTED - do not pull the card yet."
+    exit 1
+fi
+
+echo
+echo "safe to pull. put it in the console and power on."
 echo "to go back to ROCKNIX: tools/restore-rocknix.sh"
