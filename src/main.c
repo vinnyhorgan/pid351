@@ -321,17 +321,30 @@ struct sysinfo_s {
 static void sysinfo_read(struct sysinfo_s *s)
 {
     static const char *const volt[] = {
+        "/sys/class/power_supply/rk817-battery/voltage_avg",
         "/sys/class/power_supply/battery/voltage_avg",
         "/sys/class/power_supply/battery/voltage_now",
         "/sys/class/power_supply/BAT0/voltage_now", NULL };
     static const char *const curr[] = {
+        "/sys/class/power_supply/rk817-battery/current_avg",
         "/sys/class/power_supply/battery/current_avg",
         "/sys/class/power_supply/battery/current_now",
         "/sys/class/power_supply/BAT0/current_now", NULL };
     static const char *const cap[] = {
+        "/sys/class/power_supply/rk817-battery/capacity",
         "/sys/class/power_supply/battery/capacity",
         "/sys/class/power_supply/BAT0/capacity", NULL };
-    /* The rk817 exposes current_avg and voltage_avg but no _now, so every
+    /* Two names for the same battery. Mainline's rk817_charger registers it
+     * as "rk817-battery"; the vendor driver ROCKNIX ships calls it "battery".
+     * The properties are identical - I checked the mainline driver's property
+     * list rather than assuming again - so only the directory differs. Both
+     * are tried, which is what keeps the same binary comparable across the
+     * two systems.
+     *
+     * This cost two boots and an investigation into a kernel bug that did not
+     * exist. The census that found it is worth more than the fix.
+     *
+     * The rk817 exposes current_avg and voltage_avg but no _now, so every
      * current reading is already filtered and lags a load change by longer
      * than a short measurement lasts - which is exactly how the first run
      * reported the same 663 mA before and after a seven second benchmark.
@@ -339,6 +352,7 @@ static void sysinfo_read(struct sysinfo_s *s)
      * difference across a known interval is an average current with no
      * filter to wait out. */
     static const char *const chg[] = {
+        "/sys/class/power_supply/rk817-battery/charge_now",
         "/sys/class/power_supply/battery/charge_now",
         "/sys/class/power_supply/BAT0/charge_now", NULL };
 
@@ -775,6 +789,7 @@ struct phase_result {
 static long read_charge_uah(void)
 {
     static const char *const p[] = {
+        "/sys/class/power_supply/rk817-battery/charge_now",
         "/sys/class/power_supply/battery/charge_now",
         "/sys/class/power_supply/BAT0/charge_now", NULL };
     return read_long_any(p, -1);
