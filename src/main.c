@@ -786,11 +786,11 @@ static void power_phase(canvas_t *c, const char *name, const char *gov,
         /* The load. Deliberately the same blit the real path runs, so the
          * slope is expressed in the units we care about rather than in some
          * synthetic loop's. */
+        uint64_t w0 = plat_now_us();
+
         if (extra > 0)
             plat_bench(framebuffer, PANEL_W, PANEL_H, PLAT_BLIT_STRIDED,
                        32, junk, extra);
-
-        uint64_t w0 = plat_now_us();
 
         gfx_rect(c, 0, 0, PANEL_W, PANEL_H, C_BG);
         gfx_text(c, 8, 8, "PID351 POWER MEASUREMENT", 2, C_ACCENT);

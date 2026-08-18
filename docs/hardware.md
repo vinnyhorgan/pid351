@@ -482,3 +482,91 @@ phase 3 is all still on the table.
 
 The frame pacing is confirmed: 59.72 measured against 59.727 asked for, over
 twelve thousand frames.
+
+## Performance, measured
+
+One run, 2026-08-18, everything below from `docs/first-light-4.log`.
+
+### The scanout buffer is write-combined
+
+300KB sequential, best of five, microseconds:
+
+| | write | read | read-modify-write |
+|---|---|---|---|
+| DRM dumb buffer | 171 | 4542 | 4800 |
+| ordinary memory | 157 | 238 | 282 |
+
+Writes stream at the speed of RAM. **Reads are 19x slower.** This is the fact
+the whole blit argument was resting on and it had been assumed in both
+directions - it decides the winner below, and it means nothing may ever read
+back from the scanout buffer in a frame loop.
+
+### Rotate blit, microseconds, min/median at 200 iterations
+
+Every console fills the panel, so the destination is always 153600 pixels.
+
+| source | STRIDED | TILED | STAGED |
+|---|---|---|---|
+| GBA 240x160 | 1489/1517 | 2219/2334 | **1250/1267** |
+| NES 256x240 | 2622/2671 | 2356/2549 | **1322/1409** |
+| SNES 256x224 | 2506/2565 | 2325/2463 | **1313/1363** |
+| Genesis 320x224 | 1843/1913 | 2466/2632 | **1350/1455** |
+| native 480x320 | 2374/2660 | 3815/3865 | **2124/2340** |
+| LINEAR control | | | 683/725 |
+
+STAGED wins everywhere and TILED loses almost everywhere, exactly as
+write-combined memory predicts: TILED's scattered partial-line writes are the
+pathological case for it.
+
+Tile size at 480x320: STAGED goes 2967 / 2348 / 2118 / **1557** at 8 / 16 / 32
+/ 64, still improving at the largest tile tested. Longer contiguous runs fill
+the write-combining buffers more completely, so the next thing to try is a
+rectangular tile - full panel width by 32 rows - which would give whole-row
+writes and cache-line-exact reads at once. **[todo]**
+
+### What a millisecond of CPU costs
+
+`current_avg` turned out to be the better instrument, not the coulomb counter.
+Three phases run under identical conditions spread 12.7 mA on `current_avg`
+against 21.4 mA on charge differencing: the counter only ticks every six or
+seven seconds, so a 29 second window holds four or five quantisation steps and
+that dominates. **The noise floor is +/- 7 mA, and nothing below about 20 mA
+is a result.**
+
+Against a 387.7 mA baseline, adding synthetic blits:
+
+- +5.47 ms/frame -> +37.2 mA (6.79 mA per ms per frame)
+- +10.88 ms/frame -> +82.7 mA (7.61 mA per ms per frame)
+
+**About 7 mA per millisecond of Cortex-A35 time per frame**, at 1296 MHz. One
+core saturated would be roughly 120 mA. This is the exchange rate that turns
+any timing into a battery argument, and until now every such argument in this
+project was made without it.
+
+### The levers, ranked
+
+| | saving | of 387.7 mA |
+|---|---|---|
+| backlight 255 -> 32 | 42.0 mA | 10.8% |
+| 1296 -> 1008 MHz at idle load | 21.5 mA | 5.5% |
+| STRIDED -> STAGED blit (NES) | 9.4 mA | 2.4% |
+| deleting the blit entirely (NES) | 18.9 mA | 4.9% |
+
+Two things this overturns. **The backlight is not the dominant consumer** - it
+had been called that three times in this project and it is about a tenth,
+across its whole range. And **the entire rotate blit is worth under 5%**, so
+RGA's absolute ceiling is under 5% for a device tree node, a driver-compatible
+gamble and archaeology for parameters we no longer have. STAGED already takes
+half of that for free. **RGA is closed.**
+
+1008 MHz held 59.70 fps with the blit at 3362 us against 2863 at 1296, so the
+lower operating point costs nothing this workload can feel and is the largest
+lever we actually control.
+
+### Panel timing
+
+`clock=17000 kHz htotal=584 vtotal=485` gives **60.019 Hz** by arithmetic and
+**60.109 Hz** measured over 300 flips. We pace to a hardcoded 59.727, so the
+panel is 0.64% faster than we present and a frame is shown twice about every
+2.6 seconds. For GBA at 59.7275 Hz the fix is the pixel clock: 59.727 x 584 x
+485 = **16917 kHz**. Adjusting vtotal instead only reaches 59.78 Hz.

@@ -1,0 +1,51 @@
+=== pid351 first light ===
+Linux RK3326 6.12.79 #1 SMP Sat Aug  1 04:35:16 UTC 2026 aarch64 GNU/Linux
+uptime: 26.05 45.68
+
+pid351: connector 40, crtc 36, mode 320x480@60
+pid351: pad on /dev/input/event5 (OpenSimHardware OSH PB Controller)
+pid351: display up, rotating counter-clockwise
+pid351: before bench cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=50000 volt_uv=3743030 curr_ua=-665296 backlight=127
+pid351: clock 82 ns per plat_now_us() over 20000 calls (vDSO if well under 1000 ns, a syscall trap if not); plat_now_us resolution is 1 us by construction
+pid351: memory 300KB sequential, best of 5, us: scanout w=171 r=4542 rmw=4800   ram w=157 r=238 rmw=282   (scanout reads far above ram reads means write combined)
+pid351: mode clock=17000 kHz htotal=584 vtotal=485 -> exact 60.019 Hz
+pid351: vblank measured over 300 flips: 60.109 Hz (frame budget 16636 us against our hardcoded 16743)
+pid351: verify: 12 comparisons run, only mismatches printed
+pid351: blit variants, 200 iterations each, tile 32, into the real back buffer, no page flip
+pid351:   GBA      240x160 src   75KB  2.000x2.000   STRIDED  1489/ 1517   TILED  2219/ 2334   STAGED  1250/ 1267
+pid351:   NES      256x240 src  120KB  1.875x1.333   STRIDED  2622/ 2671   TILED  2356/ 2549   STAGED  1322/ 1409
+pid351:   SNES     256x224 src  112KB  1.875x1.429   STRIDED  2506/ 2565   TILED  2325/ 2463   STAGED  1313/ 1363
+pid351:   GENESIS  320x224 src  140KB  1.500x1.429   STRIDED  1843/ 1913   TILED  2466/ 2632   STAGED  1350/ 1455
+pid351:   NATIVE   480x320 src  300KB  1.000x1.000   STRIDED  2374/ 2660   TILED  3815/ 3865   STAGED  2124/ 2340
+pid351:   PROBE    160x144 src   45KB  3.000x2.222   STRIDED  1459/ 1467   TILED  2229/ 2301   STAGED  1233/ 1256
+pid351:   CONTROL  480x320 x1  src  300KB  153600 sourced px   LINEAR    683/  725   <- floor: same writes, sequential reads
+pid351:   tile sweep 480x320  TILED      8: 3791/ 4311   16: 3733/ 3877   32: 3639/ 3869   64: 2825/ 3181
+pid351:   tile sweep 480x320  STAGED     8: 2967/ 3031   16: 2348/ 2582   32: 2118/ 2343   64: 1557/ 1897
+pid351: after bench  cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=46818 volt_uv=3760390 curr_ua=-502584 backlight=127
+pid351: PHASE bl-255       gov=performance khz=1296000 extra=0 bl=255 window=29.0s fps=59.70 q 2470264->2467340 uAh (35 samples, 4 steps)  implied=363038 uA  current_avg=-413660 uA  volt=3768720 uV  temp_mc=44090  blit=2692/2863  work_med=3620 us
+pid351: PHASE bl-127       gov=performance khz=1296000 extra=0 bl=127 window=29.0s fps=59.70 q 2466480->2463728 uAh (35 samples, 4 steps)  implied=341684 uA  current_avg=-390956 uA  volt=3769840 uV  temp_mc=45000  blit=2672/2866  work_med=3621 us
+pid351: PHASE bl-32        gov=performance khz=1296000 extra=0 bl=32 window=29.0s fps=59.70 q 2462868->2459600 uAh (35 samples, 5 steps)  implied=405748 uA  current_avg=-371692 uA  volt=3770330 uV  temp_mc=45909  blit=2692/2860  work_med=3626 us
+pid351: BACKLIGHT 255=363038  127=341684  32=405748 uA  -> -42710 uA between full and near dark
+pid351: PHASE base-1296    gov=performance khz=1296000 extra=0 bl=127 window=29.0s fps=59.70 q 2458740->2456160 uAh (35 samples, 4 steps)  implied=320342 uA  current_avg=-381324 uA  volt=3767460 uV  temp_mc=45909  blit=2687/2863  work_med=3619 us
+pid351: PHASE load2-1296   gov=performance khz=1296000 extra=2 bl=127 window=29.0s fps=59.71 q 2455128->2452376 uAh (36 samples, 4 steps)  implied=341551 uA  current_avg=-424840 uA  volt=3760110 uV  temp_mc=48181  blit=2509/2737  work_med=3506 us
+pid351: PHASE load4-1296   gov=performance khz=1296000 extra=4 bl=127 window=29.0s fps=59.72 q 2451344->2447216 uAh (36 samples, 5 steps)  implied=512404 uA  current_avg=-470420 uA  volt=3751780 uV  temp_mc=51250  blit=2543/2719  work_med=3487 us
+pid351: PHASE base-1008    gov=powersave khz=1008000 extra=0 bl=127 window=29.0s fps=59.70 q 2446356->2443948 uAh (36 samples, 4 steps)  implied=298978 uA  current_avg=-366188 uA  volt=3764800 uV  temp_mc=44090  blit=3259/3362  work_med=4313 us
+pid351: PHASE base-1296-b  gov=performance khz=1296000 extra=0 bl=127 window=29.0s fps=59.70 q 2443088->2440336 uAh (35 samples, 4 steps)  implied=341708 uA  current_avg=-394052 uA  volt=3759830 uV  temp_mc=47272  blit=2688/2866  work_med=3626 us
+pid351: SLOPE load2-1296 vs base: +-0.11 ms/frame measured -> +21209 uA (0.0 uA per ms per frame)
+pid351: SLOPE load4-1296 vs base: +-0.13 ms/frame measured -> +192062 uA (0.0 uA per ms per frame)
+pid351: THERMAL CONTROL base-1296 320342 uA vs base-1296-b 341708 uA at 45909 and 47272 mC - a large gap here invalidates the slopes
+pid351: OPP 1296 320342 uA vs 1008 298978 uA -> -21364 uA (-6.7%) for the lower operating point at idle load
+pid351: after phases cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=47272 volt_uv=3759830 curr_ua=-394052 backlight=127
+pid351: t=10s frames=598 fps=59.73 n=256 blit=2552/2806/3123 life=2552/3604 draw=625/644/809 wait=14/17/3247 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=45909 volt_uv=3758010 curr_ua=-406264 backlight=127
+pid351: t=20s frames=1196 fps=59.73 n=256 blit=2605/2804/3122 life=2552/3604 draw=618/645/837 wait=13/17/4054 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=46818 volt_uv=3759270 curr_ua=-394224 backlight=127
+pid351: t=30s frames=1794 fps=59.72 n=256 blit=2570/2815/3294 life=2552/3604 draw=622/646/768 wait=13/17/3328 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=47727 volt_uv=3758920 curr_ua=-394052 backlight=127
+pid351: t=40s frames=2392 fps=59.73 n=256 blit=2581/2813/3117 life=2552/3604 draw=615/646/782 wait=13/17/3354 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=47272 volt_uv=3757870 curr_ua=-400072 backlight=127
+pid351: t=50s frames=2990 fps=59.73 n=256 blit=2613/2813/3344 life=2552/4081 draw=612/645/972 wait=13/18/4143 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=46818 volt_uv=3756820 curr_ua=-405232 backlight=127
+pid351: t=60s frames=3588 fps=59.73 n=256 blit=1555/1827/3119 life=2552/4081 draw=187/202/734 wait=10/15/2988 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=47272 volt_uv=3758710 curr_ua=-386484 backlight=127
+pid351: t=70s frames=4186 fps=59.73 n=256 blit=1560/2251/3025 life=2552/4081 draw=188/294/456 wait=9/14/2630 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=47272 volt_uv=3757870 curr_ua=-389752 backlight=127
+pid351: t=80s frames=4784 fps=59.73 n=256 blit=1573/1649/3121 life=2552/4081 draw=187/199/308 wait=11/13/3313 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=47272 volt_uv=3756120 curr_ua=-402308 backlight=127
+pid351: t=90s frames=5382 fps=59.72 n=256 blit=1569/2733/3285 life=2552/4081 draw=196/355/736 wait=11/16/3318 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=47272 volt_uv=3755770 curr_ua=-402824 backlight=127
+pid351: t=100s frames=5980 fps=59.73 n=256 blit=2611/2790/3124 life=2552/4081 draw=621/644/737 wait=13/16/4240 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=48636 volt_uv=3756120 curr_ua=-399040 backlight=127
+pid351: t=106s frames=6368 fps=59.72 n=256 blit=2622/2799/3254 life=2552/4081 draw=617/645/748 wait=12/17/3508 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=48181 volt_uv=3757730 curr_ua=-381152 backlight=127
+pid351: exit (combo) after 6368 frames, 59.72 fps
+exit status: 0

@@ -86,8 +86,8 @@
  * because they are settled by measurement once and then never vary - there
  * are no config files and there will not be any. Set from what the sweep in
  * main.c reports on this panel. */
-#define BLIT_IMPL PLAT_BLIT_STRIDED
-#define BLIT_TILE 32
+#define BLIT_IMPL PLAT_BLIT_STAGED
+#define BLIT_TILE 64
 
 #define NBUF 2
 
