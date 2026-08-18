@@ -570,3 +570,55 @@ lever we actually control.
 panel is 0.64% faster than we present and a frame is shown twice about every
 2.6 seconds. For GBA at 59.7275 Hz the fix is the pixel clock: 59.727 x 584 x
 485 = **16917 kHz**. Adjusting vtotal instead only reaches 59.78 Hz.
+
+## Extracted from the card, no run required
+
+`docs/dt/rocknix-rg351m.dts` and `docs/dt/rocknix-kernel.config.gz`, taken off
+the vfat partition on the laptop. This is most of what phase 4 needed and none
+of it cost a boot.
+
+- **Panel is `elida,kd35t133`**, `CONFIG_DRM_PANEL_ELIDA_KD35T133=y`. Its mode
+  is hardcoded in the driver, not in DT, so retuning the pixel clock on our own
+  image means patching one struct - and we do not need to, see below.
+- **`rotation = <270>` is already in the panel node.** That is
+  `panel_orientation`, a hint for userspace, not a transform anything performs.
+  It independently confirms the direction we settled by looking at the screen.
+- VOP is `rockchip,px30-vop-big` at `0xff460000`.
+- **CPU OPPs with voltages:** 1008 MHz at **1.175 V**, 1296 and 1416 both at
+  **1.35 V**. Those are the anchor points any sub-GHz OPP we author has to be
+  extrapolated from, and they were the missing piece.
+- **Backlight** is `pwm-backlight`, 25 us period (40 kHz), `brightness-levels`
+  a plain linear 0-255 ramp, default 128. So our 255/32 measurement spans 87%
+  of the range and the full backlight is about **48 mA**, a little over a
+  tenth of the total.
+- **cpuidle is real:** `enable-method = "psci"`, a `cpu-sleep` idle state on
+  every core, `CONFIG_ARM_PSCI_CPUIDLE=y`. Idle cores are not merely spinning
+  in WFI, so offlining the other three would be chasing something already
+  handled - and any gain would sit under the 20 mA noise floor.
+- `CONFIG_VIDEO_ROCKCHIP_RGA=y` confirms the driver was always there and only
+  the node was missing. Moot now that RGA is closed on the numbers.
+- Partitions are 2 GB vfat plus 27.2 GB ext4, so phase 4.3 has room to put our
+  boot files beside ROCKNIX's.
+- `extlinux.conf` asks for `/overlays/mipi-panel.dtbo`, which **does not exist
+  on the card**. That is ROCKNIX's own line, not ours, and U-Boot evidently
+  skips a missing overlay without complaint. The panel comes entirely from the
+  base DTB.
+
+### Inputs, all six nodes
+
+`event0` pwm-vibrator, `event1` rk805 pwrkey, `event2` rk817 headphone detect,
+`event3`/`event4` the pad's keyboard and mouse interfaces, `event5` the pad
+itself. **The volume buttons are not on event5**, so they are almost certainly
+on the keyboard interface and are currently unmapped. That only matters once
+there is audio, so it belongs with that work.
+
+### The refresh mismatch does not need a clock retune
+
+The panel runs at 60.109 Hz measured and we were pacing to 59.727. Rather than
+retune the pixel clock to 16917 kHz - which needs the VOP PLL to be able to
+produce it, and nobody knows whether it can - **pace to the panel**. Running
+GBA 0.64% fast is a pitch shift of about a tenth of a semitone's ninetieth,
+which is inaudible, against a duplicated frame every 2.6 seconds, which is not
+invisible. Same argument already applied to NES and SNES, whose rates never
+matched anything. So the display clock is the master and audio is resampled to
+it, and the PLL question never has to be asked.
