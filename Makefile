@@ -12,7 +12,7 @@ CROSS   ?= aarch64-linux-gnu-
 RG      ?= ark@rg351p
 
 WARN     = -std=c11 -Wall -Wextra -Wpedantic -Wshadow -Wconversion
-CFLAGS   = $(WARN) -O2 -g -Isrc
+CFLAGS   = $(WARN) -O2 -g -Isrc -D_POSIX_C_SOURCE=200809L
 COMMON   = src/main.c
 
 HOST_CFLAGS = $(CFLAGS) $(shell pkg-config --cflags sdl3)

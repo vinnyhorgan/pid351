@@ -79,7 +79,7 @@ static void report_connectors(void)
         if (strncmp(e->d_name, "card", 4) != 0 || strchr(e->d_name, '-') == NULL)
             continue;
 
-        char path[256];
+        char path[320];
         printf("  connector %s\n", e->d_name);
         snprintf(path, sizeof(path), "/sys/class/drm/%s/status", e->d_name);
         report_file(path);
