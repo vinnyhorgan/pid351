@@ -1,0 +1,26 @@
+/dts-v1/;
+/plugin/;
+
+/*
+ * Enable the second USB 2.0 host controller.
+ *
+ * RK3326 has an EHCI/OHCI pair independent of the dwc2 OTG block. Its PHY
+ * port (u2phy_host) is already status = "okay" in the board tree, but both
+ * controllers are status = "disabled", so nothing ever binds to them and the
+ * PHY sits idle. Both ArkOS and ROCKNIX ship it that way.
+ *
+ * The dwc2 side turns out to reach an internal 4-port hub with the gamepad
+ * on it, and that hub reports no connect event when a device is plugged into
+ * the external socket. Either the socket is a downstream port of that hub and
+ * the device is refusing to attach, or the socket is wired to this controller
+ * instead and has therefore been switched off for the life of the machine.
+ * Enabling it distinguishes the two.
+ */
+
+&usb_host0_ehci {
+    status = "okay";
+};
+
+&usb_host0_ohci {
+    status = "okay";
+};

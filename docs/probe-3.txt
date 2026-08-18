@@ -1,0 +1,1800 @@
+pid351 probe, sequence 3
+
+==================== IDENTITY ====================
+$ uname -a
+  Linux RK3326 6.12.79 #1 SMP Sat Aug  1 04:35:16 UTC 2026 aarch64 GNU/Linux
+
+model: Anbernic RG351M
+compatible: anbernic,rg351mrockchip,rk3326
+cmdline: boot=UUID=FF00-3407 disk=UUID=8682e07e-f7bc-4944-99c2-42d0956d310c quiet console=ttyS2,1500000 console=tty0 systemd.debug_shell=ttyS2 uboot.hwid_adc=a,v11
+uptime: 26.75 47.03
+$ cat /etc/os-release
+  OS_NAME="ROCKNIX"
+  OS_VERSION="20260801"
+  OS_BUILD="official"
+  GIT_ORGANIZATION="ROCKNIX"
+  GIT_REPO="distribution"
+  HOME_URL="https://rocknix.org"
+  BUILD_ID="3b9cb1f6bf48ee9ca0cf01edd9af52ca2a6b73fb"
+  BUILD_BRANCH="next"
+  BUILD_DATE="Sat Aug  1 06:46:39 UTC 2026"
+  HW_DEVICE="RK3326"
+  HW_ARCH="aarch64"
+  HW_CPU="Rockchip RK3326"
+  DISTRO_DEVICE="RK3326"
+
+
+==================== ROCKNIX_STATE ====================
+$ cat /var/log/boot.log
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run RK3326 quirks.
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/platforms/RK3326/002-turbo-mode_config
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/platforms/RK3326/010-governors
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/platforms/RK3326/050-audio_path
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/platforms/RK3326/050-modifiers
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/platforms/RK3326/060-game_settings
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/platforms/RK3326/075-mangohud-supported
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/platforms/RK3326/090-ui_service
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/platforms/RK3326/091-ui_shader
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/platforms/RK3326/bin
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/platforms/RK3326/sleep.d
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run Anbernic RG351M quirks.
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/devices/Anbernic RG351M/001-device_config
+  Tue Jun 25 05:37:58 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/devices/Anbernic RG351M/009-commander-cfg
+  Tue Jun 25 05:37:59 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/devices/Anbernic RG351M/050-game_configs
+  Tue Jun 25 05:37:59 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/devices/Anbernic RG351M/050-volume
+  Simple mixer control 'Master',0
+    Capabilities: pvolume cvolume
+    Playback channels: Front Left - Front Right
+    Capture channels: Front Left - Front Right
+    Limits: Playback 0 - 255 Capture 0 - 255
+    Front Left: Playback 255 [100%] [0.00dB] Capture 255 [100%] [0.00dB]
+    Front Right: Playback 255 [100%] [0.00dB] Capture 255 [100%] [0.00dB]
+  Tue Jun 25 05:37:59 EDT 2024: Autostart: Run /usr/lib/autostart/quirks/devices/Anbernic RG351M/075-dpad-volbright
+  Tue Jun 25 05:38:00 EDT 2024: Autostart: Run /usr/lib/autostart/common/001-controller
+  Tue Jun 25 05:38:00 EDT 2024: Autostart: Run /usr/lib/autostart/common/001-emulationstation
+  Tue Jun 25 05:38:00 EDT 2024: Autostart: Run /usr/lib/autostart/common/001-setup
+  Tue Jun 25 05:38:00 EDT 2024: Autostart: Run /usr/lib/autostart/common/001-sync-modules
+  Tue Jun 25 05:38:00 EDT 2024: Autostart: Run /usr/lib/autostart/common/002-device-switch
+  Tue Jun 25 05:38:01 EDT 2024: Autostart: Run /usr/lib/autostart/common/003-gpudriver
+  Tue Jun 25 05:38:01 EDT 2024: Autostart: Run /usr/lib/autostart/common/003-logging
+  Tue Jun 25 05:38:01 EDT 2024: Autostart: Run /usr/lib/autostart/common/003-upgrade
+  Tue Jun 25 05:38:01 EDT 2024: Autostart: Run /usr/lib/autostart/common/006-display
+  127
+  Tue Jun 25 05:38:02 EDT 2024: Autostart: Run /usr/lib/autostart/common/007-rootpw
+  Tue Jun 25 05:38:04 EDT 2024: Autostart: Run /usr/lib/autostart/common/008-perfmode
+  Tue Jun 25 05:38:04 EDT 2024: Autostart: Run /usr/lib/autostart/common/009-bluetooth
+  Tue Jun 25 05:38:04 EDT 2024: Autostart: Run /usr/lib/autostart/common/009-sleepmode
+  Tue Jun 25 05:38:05 EDT 2024: Autostart: Run /usr/lib/autostart/common/010-moonlight
+  Tue Jun 25 05:38:05 EDT 2024: Autostart: Run /usr/lib/autostart/common/010-pico8
+  Tue Jun 25 05:38:05 EDT 2024: Autostart: Run /usr/lib/autostart/common/010-uimode
+  Tue Jun 25 05:38:05 EDT 2024: Autostart: Run /usr/lib/autostart/common/020-configs
+  Tue Jun 25 05:38:05 EDT 2024: Autostart: Run /usr/lib/autostart/common/020-rumble
+  Tue Jun 25 05:38:05 EDT 2024: Autostart: Run /usr/lib/autostart/common/020-set_audio_latency
+  Tue Jun 25 05:38:05 EDT 2024: Autostart: Run /usr/lib/autostart/common/050-audio
+  536870916
+  numid=5,iface=MIXER,name='Playback Mux'
+    ; type=ENUMERATED,access=rw------,values=1,items=2
+    ; Item #0 'HP'
+    ; Item #1 'SPK'
+    : values=0
+  Tue Jun 25 05:38:06 EDT 2024: Autostart: Run /usr/lib/autostart/common/055-hdmi-check
+  0
+  1
+  Tue Jun 25 05:38:06 EDT 2024: Autostart: Run /usr/lib/autostart/common/080-dual_screen_mode
+  Tue Jun 25 05:38:06 EDT 2024: Autostart: Run /usr/lib/autostart/common/080-network
+  Tue Jun 25 05:38:06 EDT 2024: Autostart: Run /usr/lib/autostart/common/081-usbgadget
+  Done.
+  Tue Jun 25 05:38:07 EDT 2024: Autostart: Run /usr/lib/autostart/common/095-turbo-mode
+  Tue Jun 25 05:38:07 EDT 2024: Autostart: Run /usr/lib/autostart/common/098-deviceutils
+  Tue Jun 25 05:38:07 EDT 2024: Autostart: Run /usr/lib/autostart/common/099-networkservices
+  Tue Jun 25 05:38:08 EDT 2024: Autostart: Run /usr/lib/autostart/common/111-sway-init
+  Tue Jun 25 05:38:10 EDT 2024: Autostart: Run /usr/lib/autostart/common/999-export
+  Tue Jun 25 05:38:10 EDT 2024: Autostart: Run /storage/.config/autostart/pid351-probe
+  Tue Jun 25 05:38:10 EDT 2024: Autostart: Startup complete...
+
+-- HW_DEVICE / QUIRK_DEVICE --
+HW_DEVICE="RK3326"
+-- storage layout --
+$ ls /storage
+  assets
+  backup
+  cores
+  database
+  device_info_ROCKNIX_RG351M.txt
+  games-external
+  games-internal
+  joypads
+  lost+found
+  overlays
+  pid351
+  pm_dialog.txt
+  remappings
+  roms
+  shaders
+
+$ ls /storage/roms
+  3do
+  amiga
+  amigacd32
+  amstradcpc
+  arcade
+  arduboy
+  atari2600
+  atari5200
+  atari7800
+  atari800
+  atarijaguar
+  atarilynx
+  atarist
+  atomiswave
+  bbcmicro
+  bezels
+  bios
+  bk
+  c128
+  c16
+  c64
+  cdi
+  channelf
+  chip-8
+  coleco
+  cps1
+  cps2
+  cps3
+  daphne
+  doom
+  dreamcast
+  easyrpg
+  famicom
+  fbneo
+  fds
+  gameandwatch
+  gamegear
+  gamegearh
+  gb
+  gba
+  gbah
+  gbav
+  gbc
+  gbch
+  gbh
+  genesis
+  genh
+  gp32
+  intellivision
+  ios
+  j2me
+  mac
+  mame
+  mastersystem
+  megacd
+  megadrive
+  megadrive-japan
+  megadriveh
+  megaduck
+  moonlight
+  moto
+  mplayer
+  msx
+  msx2
+  music
+  n64
+  n64dd
+  naomi
+  nds
+  ndsiware
+  neocd
+  neogeo
+  nes
+  nesh
+  ngp
+  ngpc
+  odyssey
+  openbor
+  palm
+  pc
+  pc88
+  pc98
+  pcengine
+  pcenginecd
+  pcfx
+  pet
+  pico-8
+  pokemini
+  ports
+  psp
+  pspminis
+  psx
+  satellaview
+  saturn
+  savestates
+  screenshots
+  scummvm
+  scv
+  sega32x
+  segacd
+  sfc
+  sg-1000
+  sgfx
+  snes
+  snesh
+  snesmsu1
+  st-v
+  sufami
+  supervision
+  tg16
+  tg16cd
+  themes
+  tic-80
+  uzebox
+  vectrex
+  vic20
+  videopac
+  vircon32
+  virtualboy
+  wasm4
+  windows
+  wonderswan
+  wonderswancolor
+  x1
+  x68000
+  zmachine
+  zx81
+  zxspectrum
+
+$ ls /storage/.config
+  MangoHud
+  NetworkManager
+  PortMaster
+  SDL-GameControllerDB
+  amiberry
+  autostart
+  box64.box64rc
+  box86.box86rc
+  cloud_sync-rules.txt
+  cloud_sync-rules.txt.defaults
+  cloud_sync.conf
+  cloud_sync.conf.defaults
+  commander.cfg
+  drastic
+  duckstation
+  emulationstation
+  fancontrol.conf.sample
+  flycast
+  game
+  gmu
+  gptokeyb
+  gzdoom
+  hatari
+  hosts.conf
+  hwdb.d
+  idtech
+  locale
+  logind.conf.d
+  mednafen
+  modprobe.d
+  modules
+  modules-load.d
+  modules.bad
+  moonlight
+  mpv
+  openbor
+  ppsspp
+  profile.d
+  pulse
+  resolved.conf.d
+  retroarch
+  scummvm
+  sdl2text
+  sleep.conf.d
+  smb.conf
+  sway
+  syncthing
+  sysctl.d
+  system
+  system-dirs.conf
+  system.conf.d
+  system.d
+  tailscaled.defaults
+  timesyncd.conf.d
+  tmpfiles.d
+  touchHLE
+  udev.rules.d
+  vice
+  wireguard
+  wireplumber
+  yabasanshiro
+
+$ df -h
+  Filesystem                Size      Used Available Use% Mounted on
+  devtmpfs                456.6M      4.0K    456.6M   0% /dev
+  tmpfs                   196.3M     13.9M    182.4M   7% /run
+  /dev/mmcblk0p1            2.0G      1.2G    802.1M  61% /flash
+  /dev/loop0                1.2G      1.2G         0 100% /
+  /dev/mmcblk0p2           27.1G    286.7M     26.8G   1% /storage
+  tmpfs                   490.8M         0    490.8M   0% /dev/shm
+  tmpfs                     4.0M         0      4.0M   0% /sys/fs/cgroup
+  tmpfs                   490.8M      8.0K    490.8M   0% /tmp
+  tmpfs                   490.8M     28.0K    490.8M   0% /var
+  none                     27.1G    286.7M     26.8G   1% /tmp/assets
+  none                     27.1G    286.7M     26.8G   1% /tmp/cores
+  none                     27.1G    286.7M     26.8G   1% /tmp/database
+  none                     27.1G    286.7M     26.8G   1% /tmp/overlays
+  none                     27.1G    286.7M     26.8G   1% /tmp/joypads
+  none                     27.1G    286.7M     26.8G   1% /tmp/shaders
+  /dev/mmcblk0p2           27.1G    286.7M     26.8G   1% /storage/roms
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib/libEGL.so.1.1.0
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib/libGLESv1_CM.so.1.2.0
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib/libGLESv2.so.2.1.0
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib/libgbm.so.1.0.0
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib/libwayland-egl.so.1.23.1
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib32/libEGL.so.1.1.0
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib32/libGLESv1_CM.so.1.2.0
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib32/libGLESv2.so.2.1.0
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib32/libgbm.so.1.0.0
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib32/libwayland-egl.so.1.23.1
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib/libSDL2-2.0.so.0.3200.10
+  /dev/loop0                1.2G      1.2G         0 100% /usr/lib32/libSDL2-2.0.so.0.3200.10
+  devtmpfs                456.6M      4.0K    456.6M   0% /usr/lib/libGL.so.1.7.0
+  devtmpfs                456.6M      4.0K    456.6M   0% /usr/lib32/libGL.so.1.7.0
+
+
+==================== ENABLE_SSH ====================
+ssh.enabled now: 1
+root.password:   rocknix
+$ systemctl is-active sshd
+  active
+
+$ ss -lntp
+  /storage/pid351/probe.sh: line 28: ss: command not found
+
+
+==================== USB_DEVICE_TREE_STATUS ====================
+usb@ff300000
+    status         = okay
+    dr_mode        = otg
+    role-switch    = host
+    usb-role-switch present
+    vbus-supply present
+usb@ff340000
+    status         = okay
+    dr_mode        = 
+    role-switch    = 
+usb@ff350000
+    status         = okay
+    dr_mode        = 
+    role-switch    = 
+syscon@ff2c0000/usb2phy@100
+    status         = okay
+    dr_mode        = 
+    role-switch    = 
+syscon@ff2c0000/usb2phy@100/otg-port
+    status         = disabled
+    dr_mode        = 
+    role-switch    = 
+syscon@ff2c0000/usb2phy@100/host-port
+    status         = okay
+    dr_mode        = 
+    role-switch    = 
+
+-- every DT node mentioning vbus/otg --
+
+==================== USB_CONTROLLERS_BOUND ====================
+$ ls -l /sys/bus/platform/drivers/dwc2/
+  total 0
+  --w-------    1 root     root          4096 Jun 25 05:38 bind
+  lrwxrwxrwx    1 root     root             0 Jun 25 05:38 ff300000.usb -> ../../../../devices/platform/ff300000.usb
+  --w-------    1 root     root          4096 Jun 25 05:37 uevent
+  --w-------    1 root     root          4096 Jun 25 05:38 unbind
+
+$ ls -l /sys/bus/platform/drivers/ehci-platform/
+  total 0
+  --w-------    1 root     root          4096 Jun 25 05:38 bind
+  lrwxrwxrwx    1 root     root             0 Jun 25 05:38 ff340000.usb -> ../../../../devices/platform/ff340000.usb
+  --w-------    1 root     root          4096 Jun 25 05:37 uevent
+  --w-------    1 root     root          4096 Jun 25 05:38 unbind
+
+$ ls -l /sys/bus/platform/drivers/ohci-platform/
+  total 0
+  --w-------    1 root     root          4096 Jun 25 05:38 bind
+  lrwxrwxrwx    1 root     root             0 Jun 25 05:38 ff350000.usb -> ../../../../devices/platform/ff350000.usb
+  --w-------    1 root     root          4096 Jun 25 05:37 uevent
+  --w-------    1 root     root          4096 Jun 25 05:38 unbind
+
+-- devices that failed to bind --
+ff300000.usb: driver=dwc2
+ff340000.usb: driver=ehci-platform
+ff350000.usb: driver=ohci-platform
+ff370000.mmc: driver=dwmmc_rockchip
+ff3a0000.spi: driver=rockchip-sfc
+
+==================== USB_ENUMERATION ====================
+$ ls /sys/bus/usb/devices/
+  1-0:1.0
+  2-0:1.0
+  3-0:1.0
+  3-1
+  3-1.2
+  3-1.2:1.0
+  3-1:1.0
+  usb1
+  usb2
+  usb3
+
+3-1  05e3:0608  USB2.0 Hub
+3-1.2  1209:3100  OSH PB Controller
+usb1  1d6b:0002  EHCI Host Controller
+usb2  1d6b:0001  Generic Platform OHCI controller
+usb3  1d6b:0002  DWC OTG Controller
+$ cat /sys/kernel/debug/usb/devices
+  
+  T:  Bus=01 Lev=00 Prnt=00 Port=00 Cnt=00 Dev#=  1 Spd=480  MxCh= 1
+  B:  Alloc=  0/800 us ( 0%), #Int=  0, #Iso=  0
+  D:  Ver= 2.00 Cls=09(hub  ) Sub=00 Prot=00 MxPS=64 #Cfgs=  1
+  P:  Vendor=1d6b ProdID=0002 Rev= 6.12
+  S:  Manufacturer=Linux 6.12.79 ehci_hcd
+  S:  Product=EHCI Host Controller
+  S:  SerialNumber=ff340000.usb
+  C:* #Ifs= 1 Cfg#= 1 Atr=e0 MxPwr=  0mA
+  I:* If#= 0 Alt= 0 #EPs= 1 Cls=09(hub  ) Sub=00 Prot=00 Driver=hub
+  E:  Ad=81(I) Atr=03(Int.) MxPS=   4 Ivl=256ms
+  
+  T:  Bus=02 Lev=00 Prnt=00 Port=00 Cnt=00 Dev#=  1 Spd=12   MxCh= 1
+  B:  Alloc=  0/900 us ( 0%), #Int=  0, #Iso=  0
+  D:  Ver= 1.10 Cls=09(hub  ) Sub=00 Prot=00 MxPS=64 #Cfgs=  1
+  P:  Vendor=1d6b ProdID=0001 Rev= 6.12
+  S:  Manufacturer=Linux 6.12.79 ohci_hcd
+  S:  Product=Generic Platform OHCI controller
+  S:  SerialNumber=ff350000.usb
+  C:* #Ifs= 1 Cfg#= 1 Atr=e0 MxPwr=  0mA
+  I:* If#= 0 Alt= 0 #EPs= 1 Cls=09(hub  ) Sub=00 Prot=00 Driver=hub
+  E:  Ad=81(I) Atr=03(Int.) MxPS=   2 Ivl=255ms
+  
+  T:  Bus=03 Lev=00 Prnt=00 Port=00 Cnt=00 Dev#=  1 Spd=480  MxCh= 1
+  B:  Alloc=  3/800 us ( 0%), #Int=  2, #Iso=  0
+  D:  Ver= 2.00 Cls=09(hub  ) Sub=00 Prot=01 MxPS=64 #Cfgs=  1
+  P:  Vendor=1d6b ProdID=0002 Rev= 6.12
+  S:  Manufacturer=Linux 6.12.79 dwc2_hsotg
+  S:  Product=DWC OTG Controller
+  S:  SerialNumber=ff300000.usb
+  C:* #Ifs= 1 Cfg#= 1 Atr=e0 MxPwr=  0mA
+  I:* If#= 0 Alt= 0 #EPs= 1 Cls=09(hub  ) Sub=00 Prot=00 Driver=hub
+  E:  Ad=81(I) Atr=03(Int.) MxPS=   4 Ivl=256ms
+  
+  T:  Bus=03 Lev=01 Prnt=01 Port=00 Cnt=01 Dev#=  2 Spd=480  MxCh= 4
+  D:  Ver= 2.00 Cls=09(hub  ) Sub=00 Prot=01 MxPS=64 #Cfgs=  1
+  P:  Vendor=05e3 ProdID=0608 Rev=85.38
+  S:  Product=USB2.0 Hub
+  C:* #Ifs= 1 Cfg#= 1 Atr=e0 MxPwr=100mA
+  I:* If#= 0 Alt= 0 #EPs= 1 Cls=09(hub  ) Sub=00 Prot=00 Driver=hub
+  E:  Ad=81(I) Atr=03(Int.) MxPS=   1 Ivl=256ms
+  
+  T:  Bus=03 Lev=02 Prnt=02 Port=01 Cnt=01 Dev#=  3 Spd=12   MxCh= 0
+  D:  Ver= 2.00 Cls=00(>ifc ) Sub=00 Prot=00 MxPS=64 #Cfgs=  1
+  P:  Vendor=1209 ProdID=3100 Rev= 0.10
+  S:  Manufacturer=OpenSimHardware
+  S:  Product=OSH PB Controller
+  S:  SerialNumber=0BMPJ7E00SRETA
+  C:* #Ifs= 1 Cfg#= 1 Atr=c0 MxPwr=100mA
+  I:* If#= 0 Alt= 0 #EPs= 2 Cls=03(HID  ) Sub=00 Prot=00 Driver=usbhid
+  E:  Ad=81(I) Atr=03(Int.) MxPS=  64 Ivl=1ms
+  E:  Ad=01(O) Atr=03(Int.) MxPS=  64 Ivl=1ms
+
+$ cat /proc/bus/usb/devices
+  cat: can't open '/proc/bus/usb/devices': No such file or directory
+
+
+==================== ROLE_SWITCH ====================
+$ ls -l /sys/class/usb_role/
+  total 0
+  lrwxrwxrwx    1 root     root             0 Jun 25 05:37 ff300000.usb-role-switch -> ../../devices/platform/ff300000.usb/usb_role/ff300000.usb-role-switch
+
+ff300000.usb-role-switch role = host
+$ ls -l /sys/class/udc/
+  total 0
+  lrwxrwxrwx    1 root     root             0 Jun 25 05:37 ff300000.usb -> ../../devices/platform/ff300000.usb/udc/ff300000.usb
+
+$ ls -l /sys/class/typec/
+  ls: /sys/class/typec/: No such file or directory
+
+
+==================== REGULATORS ====================
+regulator-dummy                     uV  users=4
+vcc3v8_sys                 3800000 uV  users=13
+vccio_sd       enabled     3300000 uV  users=2
+vcc_sd         enabled     3300000 uV  users=1
+vcc_bl         enabled     3300000 uV  users=1
+vcc_lcd        enabled     2800000 uV  users=2
+LDO_REG9       enabled     3300000 uV  users=0
+usb_midu       enabled     5000000 uV  users=1
+otg_switch     enabled             uV  users=1
+vdd_logic      enabled     1150000 uV  users=1
+vdd_arm        enabled     1350000 uV  users=2
+vcc_ddr        enabled      500000 uV  users=1
+vcc_3v3        enabled     3300000 uV  users=1
+LDO_REG1       enabled     1000000 uV  users=0
+vcc_1v8        enabled     1800000 uV  users=2
+vdd_1v0        enabled     1000000 uV  users=1
+vcc3v3_pmu     enabled     3300000 uV  users=1
+$ cat /sys/kernel/debug/regulator/regulator_summary
+   regulator                      use open bypass  opmode voltage current     min     max
+  ---------------------------------------------------------------------------------------
+   regulator-dummy                  4    4      0 unknown     0mV     0mA     0mV     0mV 
+      ff300000.usb-vusb_a           1                                 0mA     0mV     0mV
+      ff300000.usb-vusb_d           1                                 0mA     0mV     0mV
+      vibrator-vcc                  0                                 0mA     0mV     0mV
+      otg_switch                    1    1      0 unknown     0mV     0mA     0mV     0mV 
+         ff300000.usb-vbus          1                                 0mA     0mV     0mV
+   vcc3v8_sys                      13   14      0 unknown  3800mV     0mA  3800mV  3800mV 
+      vdd_logic                     1    2      0  normal  1150mV     0mA   950mV  1150mV 
+         ff400000.gpu-mali          0                                 0mA     0mV     0mV
+         ff400000.gpu-mali          0                                 0mA  1150mV  1150mV
+      vdd_arm                       2    1      0  normal  1350mV     0mA   950mV  1350mV 
+         cpu0-cpu                   1                                 0mA  1350mV  1350mV
+      vcc_ddr                       1    0      0  normal   500mV     0mA     0mV     0mV 
+      vcc_3v3                       1    5      0  normal  3300mV     0mA  3300mV  3300mV 
+         ff140000.syscon:io-domains-vccio5   0                                 0mA     0mV     0mV
+         ff140000.syscon:io-domains-vccio4   0                                 0mA     0mV     0mV
+         ff140000.syscon:io-domains-vccio3   0                                 0mA     0mV     0mV
+         ff140000.syscon:io-domains-vccio1   0                                 0mA     0mV     0mV
+         ff140000.syscon:io-domains-vccio6   0                                 0mA     0mV     0mV
+      LDO_REG1                      0    0      0 unknown  1000mV     0mA     0mV     0mV 
+      vcc_1v8                       2    1      0 unknown  1800mV     0mA  1800mV  1800mV 
+         ff288000.saradc-vref       1                                 0mA     0mV     0mV
+      vdd_1v0                       1    0      0 unknown  1000mV     0mA  1000mV  1000mV 
+      vcc3v3_pmu                    1    2      0 unknown  3300mV     0mA  3300mV  3300mV 
+         ff010000.syscon:io-domains-pmuio2   0                                 0mA     0mV     0mV
+         ff010000.syscon:io-domains-pmuio1   0                                 0mA     0mV     0mV
+      vccio_sd                      2    2      0 unknown  3300mV     0mA  1800mV  3300mV 
+         ff140000.syscon:io-domains-vccio2   0                                 0mA     0mV     0mV
+         ff370000.mmc-vqmmc         1                                 0mA  3300mV  3300mV
+      vcc_sd                        1    1      0 unknown  3300mV     0mA  3300mV  3300mV 
+         ff370000.mmc-vmmc          1                                 0mA  3300mV  3400mV
+      vcc_bl                        1    1      0 unknown  3300mV     0mA  3300mV  3300mV 
+         backlight-power            1                                 0mA     0mV     0mV
+      vcc_lcd                       2    2      0 unknown  2800mV     0mA  2800mV  2800mV 
+         ff450000.dsi.0-iovcc       1                                 0mA     0mV     0mV
+         ff450000.dsi.0-vdd         1                                 0mA     0mV     0mV
+      LDO_REG9                      0    0      0 unknown  3300mV     0mA     0mV     0mV 
+      usb_midu                      1    0      0 unknown  5000mV     0mA  5000mV  5400mV 
+
+
+==================== OVERLAY_SUPPORT ====================
+$ ls -l /sys/kernel/config/
+  total 0
+  drwxr-xr-x    4 root     root             0 Jun 25 05:38 usb_gadget
+
+$ ls -l /sys/kernel/config/device-tree/overlays/
+  ls: /sys/kernel/config/device-tree/overlays/: No such file or directory
+
+configfs: supported
+
+==================== NETWORK_MODULES ====================
+cdc_ncm: available, not loaded
+cdc_ether: available, not loaded
+usbnet: available, not loaded
+r8152: available, not loaded
+ax88179_178a: available, not loaded
+asix: available, not loaded
+cdc_subset: ABSENT
+-- forcing the ones we need --
+modprobe usbnet ok
+modprobe cdc_ncm ok
+modprobe cdc_ether ok
+
+==================== ACTIVE_INTERVENTION ====================
+-- forcing every role switch to host --
+ff300000.usb-role-switch <- host, now host
+
+-- rebinding dwc2 --
+rebound ff300000.usb
+
+==================== HOTPLUG_WATCH_60S ====================
+[t=1s] CHANGE:
+    1-0:1.0
+    2-0:1.0
+    3-0:1.0
+    3-1
+    3-1.2
+    3-1.2:1.0
+    3-1:1.0
+    usb1
+    usb2
+    usb3
+watch finished
+$ ip -br link
+  BusyBox v1.36.1 (2026-08-01 04:27:38 UTC) multi-call binary.
+  
+  Usage: ip [OPTIONS] address|route|link|tunnel|rule [ARGS]
+  
+  OPTIONS := -f[amily] inet|inet6|link | -o[neline]
+  
+  ip addr add|del IFADDR dev IFACE | show|flush [dev IFACE] [to PREFIX]
+  ip route list|flush|add|del|change|append|replace|test ROUTE
+  ip link set IFACE [up|down] [arp on|off] [multicast on|off]
+  	[promisc on|off] [mtu NUM] [name NAME] [qlen NUM] [address MAC]
+  	[master IFACE | nomaster] [netns PID]
+  ip tunnel add|change|del|show [NAME]
+  	[mode ipip|gre|sit] [remote ADDR] [local ADDR] [ttl TTL]
+  ip rule [list] | add|del SELECTOR ACTION
+
+
+==================== DMESG ====================
+$ dmesg
+  [    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd042]
+  [    0.000000] Linux version 6.12.79 (@450d14f1ac3f) (aarch64-rocknix-linux-gnu-gcc-15.2.0 (GCC) 15.2.0, GNU ld (GNU Binutils) 2.44) #1 SMP Sat Aug  1 04:35:16 UTC 2026
+  [    0.000000] Machine model: Anbernic RG351M
+  [    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+  [    0.000000] Zone ranges:
+  [    0.000000]   DMA      [mem 0x0000000000200000-0x000000003fffffff]
+  [    0.000000]   DMA32    empty
+  [    0.000000]   Normal   empty
+  [    0.000000] Movable zone start for each node
+  [    0.000000] Early memory node ranges
+  [    0.000000]   node   0: [mem 0x0000000000200000-0x000000003fffffff]
+  [    0.000000] Initmem setup node 0 [mem 0x0000000000200000-0x000000003fffffff]
+  [    0.000000] On node 0, zone DMA: 512 pages in unavailable ranges
+  [    0.000000] cma: Reserved 64 MiB at 0x000000003ac00000 on node -1
+  [    0.000000] psci: probing for conduit method from DT.
+  [    0.000000] psci: PSCIv1.1 detected in firmware.
+  [    0.000000] psci: Using standard PSCI v0.2 function IDs
+  [    0.000000] psci: MIGRATE_INFO_TYPE not supported.
+  [    0.000000] psci: SMC Calling Convention v1.2
+  [    0.000000] percpu: Embedded 22 pages/cpu s51288 r8192 d30632 u90112
+  [    0.000000] pcpu-alloc: s51288 r8192 d30632 u90112 alloc=22*4096
+  [    0.000000] pcpu-alloc: [0] 0 [0] 1 [0] 2 [0] 3 
+  [    0.000000] Detected VIPT I-cache on CPU0
+  [    0.000000] alternatives: applying boot alternatives
+  [    0.000000] Kernel command line: boot=UUID=FF00-3407 disk=UUID=8682e07e-f7bc-4944-99c2-42d0956d310c quiet console=ttyS2,1500000 console=tty0 systemd.debug_shell=ttyS2 uboot.hwid_adc=a,v11
+  [    0.000000] Unknown kernel command line parameters "boot=UUID=FF00-3407 disk=UUID=8682e07e-f7bc-4944-99c2-42d0956d310c", will be passed to user space.
+  [    0.000000] Dentry cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+  [    0.000000] Inode-cache hash table entries: 65536 (order: 7, 524288 bytes, linear)
+  [    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 261632
+  [    0.000000] mem auto-init: stack:off, heap alloc:off, heap free:off
+  [    0.000000] software IO TLB: SWIOTLB bounce buffer size adjusted to 0MB
+  [    0.000000] software IO TLB: area num 4.
+  [    0.000000] software IO TLB: mapped [mem 0x000000003aa80000-0x000000003ab80000] (1MB)
+  [    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+  [    0.000000] rcu: Hierarchical RCU implementation.
+  [    0.000000] 	Tracing variant of Tasks RCU enabled.
+  [    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 30 jiffies.
+  [    0.000000] RCU Tasks Trace: Setting shift to 2 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=4.
+  [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+  [    0.000000] Root IRQ handler: gic_handle_irq
+  [    0.000000] GIC: Using split EOI/Deactivate mode
+  [    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.
+  [    0.000000] arch_timer: cp15 timer(s) running at 24.00MHz (phys).
+  [    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+  [    0.000001] sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+  [    0.001482] Console: colour dummy device 80x25
+  [    0.001518] printk: legacy console [tty0] enabled
+  [    0.001677] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=80000)
+  [    0.001708] pid_max: default: 32768 minimum: 301
+  [    0.001882] LSM: initializing lsm=capability
+  [    0.002125] Mount-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+  [    0.002156] Mountpoint-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+  [    0.004111] cacheinfo: Unable to detect cache hierarchy for CPU 0
+  [    0.006379] rcu: Hierarchical SRCU implementation.
+  [    0.006409] rcu: 	Max phase no-delay instances is 1000.
+  [    0.006864] Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+  [    0.008216] smp: Bringing up secondary CPUs ...
+  [    0.009195] Detected VIPT I-cache on CPU1
+  [    0.009372] CPU1: Booted secondary processor 0x0000000001 [0x410fd042]
+  [    0.010685] Detected VIPT I-cache on CPU2
+  [    0.010853] CPU2: Booted secondary processor 0x0000000002 [0x410fd042]
+  [    0.012029] Detected VIPT I-cache on CPU3
+  [    0.012191] CPU3: Booted secondary processor 0x0000000003 [0x410fd042]
+  [    0.012418] smp: Brought up 1 node, 4 CPUs
+  [    0.012453] SMP: Total of 4 processors activated.
+  [    0.012465] CPU: All CPU(s) started at EL2
+  [    0.012477] CPU features: detected: 32-bit EL0 Support
+  [    0.012488] CPU features: detected: CRC32 instructions
+  [    0.012575] alternatives: applying system-wide alternatives
+  [    0.014289] Memory: 931284K/1046528K available (13312K kernel code, 1318K rwdata, 4144K rodata, 4608K init, 365K bss, 45892K reserved, 65536K cma-reserved)
+  [    0.015676] devtmpfs: initialized
+  [    0.033888] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 6370867519511994 ns
+  [    0.033950] futex hash table entries: 1024 (order: 4, 65536 bytes, linear)
+  [    0.037021] 26768 pages in range for non-PLT usage
+  [    0.037054] 518288 pages in range for PLT usage
+  [    0.037381] pinctrl core: initialized pinctrl subsystem
+  [    0.038062] regulator-dummy: no parameters, enabled
+  [    0.044411] NET: Registered PF_NETLINK/PF_ROUTE protocol family
+  [    0.046941] DMA: preallocated 128 KiB GFP_KERNEL pool for atomic allocations
+  [    0.048466] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations
+  [    0.050390] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations
+  [    0.054854] thermal_sys: Registered thermal governor 'fair_share'
+  [    0.054884] thermal_sys: Registered thermal governor 'step_wise'
+  [    0.054898] thermal_sys: Registered thermal governor 'power_allocator'
+  [    0.055078] cpuidle: using governor ladder
+  [    0.055145] cpuidle: using governor menu
+  [    0.055385] hw-breakpoint: found 6 breakpoint and 4 watchpoint registers.
+  [    0.055610] ASID allocator initialised with 65536 entries
+  [    0.076856] /dsi@ff450000: Fixed dependency cycle(s) with /dsi@ff450000/panel@0
+  [    0.077165] /dsi@ff450000/panel@0: Fixed dependency cycle(s) with /dsi@ff450000
+  [    0.077681] /dsi@ff450000: Fixed dependency cycle(s) with /vop@ff460000
+  [    0.077827] /vop@ff460000: Fixed dependency cycle(s) with /dsi@ff450000
+  [    0.094285] gpio gpiochip0: Static allocation of GPIO base is deprecated, use dynamic allocation.
+  [    0.095187] rockchip-gpio ff040000.gpio: probed /pinctrl/gpio@ff040000
+  [    0.095958] gpio gpiochip1: Static allocation of GPIO base is deprecated, use dynamic allocation.
+  [    0.096563] rockchip-gpio ff250000.gpio: probed /pinctrl/gpio@ff250000
+  [    0.097154] gpio gpiochip2: Static allocation of GPIO base is deprecated, use dynamic allocation.
+  [    0.097796] rockchip-gpio ff260000.gpio: probed /pinctrl/gpio@ff260000
+  [    0.098533] gpio gpiochip3: Static allocation of GPIO base is deprecated, use dynamic allocation.
+  [    0.099231] rockchip-gpio ff270000.gpio: probed /pinctrl/gpio@ff270000
+  [    0.105293] HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages
+  [    0.105328] HugeTLB: 0 KiB vmemmap can be freed for a 1.00 GiB page
+  [    0.105345] HugeTLB: registered 32.0 MiB page size, pre-allocated 0 pages
+  [    0.105357] HugeTLB: 0 KiB vmemmap can be freed for a 32.0 MiB page
+  [    0.105372] HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages
+  [    0.105383] HugeTLB: 0 KiB vmemmap can be freed for a 2.00 MiB page
+  [    0.105398] HugeTLB: registered 64.0 KiB page size, pre-allocated 0 pages
+  [    0.105409] HugeTLB: 0 KiB vmemmap can be freed for a 64.0 KiB page
+  [    0.107403] cryptd: max_cpu_qlen set to 1000
+  [    0.162409] raid6: neonx8   gen()   676 MB/s
+  [    0.219273] raid6: neonx4   gen()   659 MB/s
+  [    0.276123] raid6: neonx2   gen()   626 MB/s
+  [    0.333000] raid6: neonx1   gen()   559 MB/s
+  [    0.389840] raid6: int64x8  gen()   344 MB/s
+  [    0.446709] raid6: int64x4  gen()   429 MB/s
+  [    0.503616] raid6: int64x2  gen()   415 MB/s
+  [    0.560488] raid6: int64x1  gen()   293 MB/s
+  [    0.560506] raid6: using algorithm neonx8 gen() 676 MB/s
+  [    0.617292] raid6: .... xor() 526 MB/s, rmw enabled
+  [    0.617308] raid6: using neon recovery algorithm
+  [    0.618478] iommu: Default domain type: Translated
+  [    0.618506] iommu: DMA domain TLB invalidation policy: strict mode
+  [    0.618989] vcc3v8_sys: 3800 mV, enabled
+  [    0.619352] reg-fixed-voltage regulator-vccsys: vcc3v8_sys supplying 3800000uV
+  [    0.620253] SCSI subsystem initialized
+  [    0.620810] usbcore: registered new interface driver usbfs
+  [    0.620887] usbcore: registered new interface driver hub
+  [    0.620964] usbcore: registered new device driver usb
+  [    0.621777] mc: Linux media interface: v0.10
+  [    0.621836] videodev: Linux video capture interface: v2.00
+  [    0.621973] pps_core: LinuxPPS API ver. 1 registered
+  [    0.621987] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+  [    0.622025] PTP clock support registered
+  [    0.622096] EDAC MC: Ver: 3.0.0
+  [    0.623474] Advanced Linux Sound Architecture Driver Initialized.
+  [    0.626426] clocksource: Switched to clocksource arch_sys_counter
+  [    0.626945] VFS: Disk quotas dquot_6.6.0
+  [    0.627008] VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+  [    0.645075] NET: Registered PF_INET protocol family
+  [    0.645416] IP idents hash table entries: 16384 (order: 5, 131072 bytes, linear)
+  [    0.648271] tcp_listen_portaddr_hash hash table entries: 512 (order: 1, 8192 bytes, linear)
+  [    0.648337] Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)
+  [    0.648368] TCP established hash table entries: 8192 (order: 4, 65536 bytes, linear)
+  [    0.648613] TCP bind hash table entries: 8192 (order: 6, 262144 bytes, linear)
+  [    0.649019] TCP: Hash tables configured (established 8192 bind 8192)
+  [    0.649236] UDP hash table entries: 512 (order: 2, 16384 bytes, linear)
+  [    0.649311] UDP-Lite hash table entries: 512 (order: 2, 16384 bytes, linear)
+  [    0.649693] NET: Registered PF_UNIX/PF_LOCAL protocol family
+  [    0.650665] RPC: Registered named UNIX socket transport module.
+  [    0.650694] RPC: Registered udp transport module.
+  [    0.650705] RPC: Registered tcp transport module.
+  [    0.650715] RPC: Registered tcp-with-tls transport module.
+  [    0.650725] RPC: Registered tcp NFSv4.1 backchannel transport module.
+  [    0.659803] Initialise system trusted keyrings
+  [    0.660393] workingset: timestamp_bits=46 max_order=18 bucket_order=0
+  [    0.661546] squashfs: version 4.0 (2009/01/31) Phillip Lougher
+  [    0.663174] fuse: init (API version 7.41)
+  [    0.817875] NET: Registered PF_ALG protocol family
+  [    0.817930] xor: measuring software checksum speed
+  [    0.821352]    8regs           :   962 MB/sec
+  [    0.824760]    32regs          :   969 MB/sec
+  [    0.828080]    arm64_neon      :   992 MB/sec
+  [    0.828097] xor: using function: arm64_neon (992 MB/sec)
+  [    0.828122] Key type asymmetric registered
+  [    0.828134] Asymmetric key parser 'x509' registered
+  [    0.828146] Asymmetric key parser 'pkcs8' registered
+  [    0.828333] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 244)
+  [    0.828354] io scheduler mq-deadline registered
+  [    0.828366] io scheduler kyber registered
+  [    0.828456] io scheduler bfq registered
+  [    0.830787] phy phy-ff2e0000.phy.0: Looking up phy-supply from device tree
+  [    0.830832] phy phy-ff2e0000.phy.0: Looking up phy-supply property in node /phy@ff2e0000 failed
+  [    0.833779] phy phy-ff2c0000.syscon:usb2phy@100.1: Looking up phy-supply from device tree
+  [    0.833826] phy phy-ff2c0000.syscon:usb2phy@100.1: Looking up phy-supply property in node /syscon@ff2c0000/usb2phy@100/host-port failed
+  [    0.842370] ledtrig-cpu: registered to indicate activity on CPUs
+  [    0.848906] dma-pl330 ff240000.dma-controller: Loaded driver for PL330 DMAC-241330
+  [    0.848950] dma-pl330 ff240000.dma-controller: 	DBUFF-128x8bytes Num_Chans-8 Num_Peri-32 Num_Events-16
+  [    0.851835] Serial: 8250/16550 driver, 5 ports, IRQ sharing enabled
+  [    0.858205] ff158000.serial: ttyS1 at MMIO 0xff158000 (irq = 22, base_baud = 6250000) is a 16550A
+  [    0.860877] ff160000.serial: ttyS2 at MMIO 0xff160000 (irq = 23, base_baud = 1500000) is a 16550A
+  [    0.861069] printk: legacy console [ttyS2] enabled
+  [    0.868229] rockchip-vop ff460000.vop: Adding to iommu group 0
+  [    0.871314] phy phy-ff450000.dsi.2: Looking up phy-supply from device tree
+  [    0.871372] phy phy-ff450000.dsi.2: Looking up phy-supply property in node /dsi@ff450000 failed
+  [    0.871988] /dsi@ff450000: Fixed dependency cycle(s) with /dsi@ff450000/panel@0
+  [    0.872141] /dsi@ff450000/panel@0: Fixed dependency cycle(s) with /dsi@ff450000
+  [    0.896615] loop: module loaded
+  [    0.913705] VFIO - User Level meta-driver version: 0.3
+  [    0.915886] usbcore: registered new interface driver cdc_acm
+  [    0.915921] cdc_acm: USB Abstract Control Model driver for USB modems and ISDN adapters
+  [    0.916469] usbcore: registered new interface driver uas
+  [    0.916596] usbcore: registered new interface driver usb-storage
+  [    0.917232] mousedev: PS/2 mouse device common for all mice
+  [    0.918352] ehci-platform ff340000.usb: EHCI Host Controller
+  [    0.918380] ohci-platform ff350000.usb: Generic Platform OHCI controller
+  [    0.918430] ohci-platform ff350000.usb: new USB bus registered, assigned bus number 2
+  [    0.918431] ehci-platform ff340000.usb: new USB bus registered, assigned bus number 1
+  [    0.918485] pwm-vibrator vibrator: Looking up vcc-supply from device tree
+  [    0.918517] pwm-vibrator vibrator: Looking up vcc-supply property in node /vibrator failed
+  [    0.918572] pwm-vibrator vibrator: supply vcc not found, using dummy regulator
+  [    0.918675] ehci-platform ff340000.usb: irq 28, io mem 0xff340000
+  [    0.918704] ohci-platform ff350000.usb: irq 29, io mem 0xff350000
+  [    0.919197] input: pwm-vibrator as /devices/platform/vibrator/input/input0
+  [    0.920734] i2c_dev: i2c /dev entries driver
+  [    0.929787] ehci-platform ff340000.usb: USB 2.0 started, EHCI 1.00
+  [    0.930373] usb usb1: New USB device found, idVendor=1d6b, idProduct=0002, bcdDevice= 6.12
+  [    0.930420] usb usb1: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+  [    0.930448] usb usb1: Product: EHCI Host Controller
+  [    0.930466] usb usb1: Manufacturer: Linux 6.12.79 ehci_hcd
+  [    0.930484] usb usb1: SerialNumber: ff340000.usb
+  [    0.932197] hub 1-0:1.0: USB hub found
+  [    0.932322] hub 1-0:1.0: 1 port detected
+  [    0.940008] rk808-regulator rk808-regulator.1.auto: Looking up vcc1-supply from device tree
+  [    0.940071] vdd_logic: supplied by vcc3v8_sys
+  [    0.940093] vcc3v8_sys: could not add device link regulator.2: -ENOENT
+  [    0.941483] vdd_logic: 950 <--> 1150 mV at 1100 mV, enabled
+  [    0.942093] rk808-regulator rk808-regulator.1.auto: Looking up vcc2-supply from device tree
+  [    0.942130] vdd_arm: supplied by vcc3v8_sys
+  [    0.942150] vcc3v8_sys: could not add device link regulator.3: -ENOENT
+  [    0.943585] vdd_arm: 950 <--> 1350 mV at 1100 mV, enabled
+  [    0.944104] rk808-regulator rk808-regulator.1.auto: Looking up vcc3-supply from device tree
+  [    0.944138] vcc_ddr: supplied by vcc3v8_sys
+  [    0.944158] vcc3v8_sys: could not add device link regulator.4: -ENOENT
+  [    0.944926] vcc_ddr: at 500 mV, enabled
+  [    0.945442] rk808-regulator rk808-regulator.1.auto: Looking up vcc4-supply from device tree
+  [    0.945474] vcc_3v3: supplied by vcc3v8_sys
+  [    0.945494] vcc3v8_sys: could not add device link regulator.5: -ENOENT
+  [    0.946742] vcc_3v3: 3300 mV, enabled
+  [    0.947558] LDO_REG1: at 1000 mV, enabled
+  [    0.947928] rk808-regulator rk808-regulator.1.auto: Looking up vcc5-supply from device tree
+  [    0.947964] LDO_REG1: supplied by vcc3v8_sys
+  [    0.948142] rk808-regulator rk808-regulator.1.auto: Looking up vcc5-supply from device tree
+  [    0.948171] vcc_1v8: supplied by vcc3v8_sys
+  [    0.948194] vcc3v8_sys: could not add device link regulator.7: -ENOENT
+  [    0.949640] vcc_1v8: 1800 mV, enabled
+  [    0.950303] rk808-regulator rk808-regulator.1.auto: Looking up vcc5-supply from device tree
+  [    0.950343] vdd_1v0: supplied by vcc3v8_sys
+  [    0.950363] vcc3v8_sys: could not add device link regulator.8: -ENOENT
+  [    0.951846] vdd_1v0: 1000 mV, enabled
+  [    0.952371] rk808-regulator rk808-regulator.1.auto: Looking up vcc6-supply from device tree
+  [    0.952408] vcc3v3_pmu: supplied by vcc3v8_sys
+  [    0.952429] vcc3v8_sys: could not add device link regulator.9: -ENOENT
+  [    0.954017] vcc3v3_pmu: 3300 mV, enabled
+  [    0.954612] rk808-regulator rk808-regulator.1.auto: Looking up vcc6-supply from device tree
+  [    0.954652] vccio_sd: supplied by vcc3v8_sys
+  [    0.954672] vcc3v8_sys: could not add device link regulator.10: -ENOENT
+  [    0.956370] vccio_sd: 1800 <--> 3300 mV at 3000 mV, enabled
+  [    0.956992] rk808-regulator rk808-regulator.1.auto: Looking up vcc6-supply from device tree
+  [    0.957035] vcc_sd: supplied by vcc3v8_sys
+  [    0.957055] vcc3v8_sys: could not add device link regulator.11: -ENOENT
+  [    0.958640] vcc_sd: 3300 mV, enabled
+  [    0.959310] vcc_bl: Bringing 2800000uV into 3300000-3300000uV
+  [    0.960614] vcc_bl: 3300 mV, disabled
+  [    0.961061] rk808-regulator rk808-regulator.1.auto: Looking up vcc7-supply from device tree
+  [    0.961101] vcc_bl: supplied by vcc3v8_sys
+  [    0.961435] vcc_lcd: Bringing 1800000uV into 2800000-2800000uV
+  [    0.962698] vcc_lcd: 2800 mV, disabled
+  [    0.963167] rk808-regulator rk808-regulator.1.auto: Looking up vcc7-supply from device tree
+  [    0.963202] vcc_lcd: supplied by vcc3v8_sys
+  [    0.963666] LDO_REG9: at 3300 mV, enabled
+  [    0.964110] rk808-regulator rk808-regulator.1.auto: Looking up vcc7-supply from device tree
+  [    0.964146] LDO_REG9: supplied by vcc3v8_sys
+  [    0.964330] rk808-regulator rk808-regulator.1.auto: Looking up vcc8-supply from device tree
+  [    0.964360] usb_midu: supplied by vcc3v8_sys
+  [    0.964379] vcc3v8_sys: could not add device link regulator.15: -ENOENT
+  [    0.964591] usb_midu: Bringing 4700000uV into 5000000-5000000uV
+  [    0.966388] usb_midu: 5000 <--> 5400 mV at 5000 mV, enabled
+  [    0.967060] otg_switch: no parameters, disabled
+  [    0.967282] rk808-regulator rk808-regulator.1.auto: Looking up vcc9-supply from device tree
+  [    0.967350] rk808-regulator rk808-regulator.1.auto: Looking up vcc9-supply property in node /i2c@ff180000/pmic@20 failed
+  [    0.967404] otg_switch: supplied by regulator-dummy
+  [    0.970161] input: rk805 pwrkey as /devices/platform/ff180000.i2c/i2c-0/0-0020/rk805-pwrkey.2.auto/input/input1
+  [    0.974208] usb usb2: New USB device found, idVendor=1d6b, idProduct=0001, bcdDevice= 6.12
+  [    0.974256] usb usb2: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+  [    0.974278] usb usb2: Product: Generic Platform OHCI controller
+  [    0.974296] usb usb2: Manufacturer: Linux 6.12.79 ohci_hcd
+  [    0.974313] usb usb2: SerialNumber: ff350000.usb
+  [    0.975420] hub 2-0:1.0: USB hub found
+  [    0.975505] rk808-rtc rk808-rtc.3.auto: registered as rtc0
+  [    0.975527] hub 2-0:1.0: 1 port detected
+  [    0.976468] rk808-rtc rk808-rtc.3.auto: setting system clock to 2017-08-06T11:33:46 UTC (1502019226)
+  [    0.992105] rockchip-thermal ff280000.tsadc: Missing tshut mode property, using default (cru)
+  [    0.992151] rockchip-thermal ff280000.tsadc: Missing tshut-polarity property, using default (low)
+  [    0.994943] cpu cpu0: Looking up cpu-supply from device tree
+  [    0.998226] cpufreq: cpufreq_online: CPU0: Running at unlisted initial frequency: 600000 KHz, changing to: 1008000 KHz
+  [    0.998340] cpu cpu0: EM: OPP:1296000 is inefficient
+  [    0.998491] cpu cpu0: EM: created perf domain
+  [    1.001973] sdhci: Secure Digital Host Controller Interface driver
+  [    1.001998] sdhci: Copyright(c) Pierre Ossman
+  [    1.002038] Synopsys Designware Multimedia Card Interface Driver
+  [    1.002443] sdhci-pltfm: SDHCI platform and OF driver helper
+  [    1.002863] SMCCC: SOC_ID: ARCH_SOC_ID not implemented, skipping ....
+  [    1.002936] hid: raw HID events driver (C) Jiri Kosina
+  [    1.003550] dwmmc_rockchip ff370000.mmc: IDMAC supports 32-bit address mode.
+  [    1.003632] dwmmc_rockchip ff370000.mmc: Using internal DMA controller.
+  [    1.003646] dwmmc_rockchip ff370000.mmc: Version ID is 270a
+  [    1.003717] dwmmc_rockchip ff370000.mmc: DW MMC controller at irq 58,32 bit host data width,256 deep fifo
+  [    1.003780] usbcore: registered new interface driver usbhid
+  [    1.003790] usbhid: USB HID core driver
+  [    1.003847] dwmmc_rockchip ff370000.mmc: Looking up vmmc-supply from device tree
+  [    1.004069] dwmmc_rockchip ff370000.mmc: Looking up vqmmc-supply from device tree
+  [    1.004562] dwmmc_rockchip ff370000.mmc: Got CD GPIO
+  [    1.005280] rockchip-saradc ff288000.saradc: Looking up vref-supply from device tree
+  [    1.009381] hw perfevents: enabled with armv8_cortex_a35 PMU driver, 7 (0,8000003f) counters available
+  [    1.015650] NET: Registered PF_INET6 protocol family
+  [    1.017589] Segment Routing with IPv6
+  [    1.017664] In-situ OAM (IOAM) with IPv6
+  [    1.017923] NET: Registered PF_PACKET protocol family
+  [    1.018526] Key type dns_resolver registered
+  [    1.019510] mmc_host mmc0: Bus speed (slot 0) = 400000Hz (slot req 400000Hz, actual 400000HZ div = 0)
+  [    1.026653] registered taskstats version 1
+  [    1.026940] Loading compiled-in X.509 certificates
+  [    1.034943] Btrfs loaded, zoned=no, fsverity=no
+  [    1.053525] rockchip-cpuinfo cpuinfo: SoC		: 33260000
+  [    1.053558] rockchip-cpuinfo cpuinfo: Serial		: 58f47903235c92d8
+  [    1.053856] pwm-backlight backlight: Looking up power-supply from device tree
+  [    1.054689] rockchip-iodomain ff010000.syscon:io-domains: Looking up pmuio1-supply from device tree
+  [    1.055213] rockchip-iodomain ff010000.syscon:io-domains: Looking up pmuio2-supply from device tree
+  [    1.055791] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio6-supply from device tree
+  [    1.056281] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio1-supply from device tree
+  [    1.056638] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio2-supply from device tree
+  [    1.057098] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio3-supply from device tree
+  [    1.057591] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio4-supply from device tree
+  [    1.057915] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio5-supply from device tree
+  [    1.058227] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio-oscgpi-supply from device tree
+  [    1.058242] rockchip-iodomain ff140000.syscon:io-domains: Looking up vccio-oscgpi-supply property in node /syscon@ff140000/io-domains failed
+  [    1.058542] panel-elida-kd35t133 ff450000.dsi.0: Looking up vdd-supply from device tree
+  [    1.058732] panel-elida-kd35t133 ff450000.dsi.0: Looking up iovcc-supply from device tree
+  [    1.059843] rockchip-drm display-subsystem: bound ff460000.vop (ops 0xffff800080dde6d8)
+  [    1.060356] rockchip-drm display-subsystem: bound ff450000.dsi (ops 0xffff800080de3b80)
+  [    1.061528] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+  [    1.078734] mmc_host mmc0: Bus speed (slot 0) = 50000000Hz (slot req 50000000Hz, actual 50000000HZ div = 0)
+  [    1.078835] mmc0: new high speed SDHC card at address 0001
+  [    1.080195] mmcblk0: mmc0:0001 00000 29.2 GiB
+  [    1.082752]  mmcblk0: p1 p2
+  [    1.489320] Console: switching to colour frame buffer device 60x20
+  [    1.507121] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+  [    1.513334] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+  [    1.513394] dwc2 ff300000.usb: Looking up vusb_d-supply from device tree
+  [    1.513408] dwc2 ff300000.usb: Looking up vusb_d-supply property in node /usb@ff300000 failed
+  [    1.513462] dwc2 ff300000.usb: supply vusb_d not found, using dummy regulator
+  [    1.513670] dwc2 ff300000.usb: Looking up vusb_a-supply from device tree
+  [    1.513683] dwc2 ff300000.usb: Looking up vusb_a-supply property in node /usb@ff300000 failed
+  [    1.513705] dwc2 ff300000.usb: supply vusb_a not found, using dummy regulator
+  [    1.513746] dwc2 ff300000.usb: Looking up vbus-supply from device tree
+  [    1.636923] dwc2 ff300000.usb: EPs: 10, dedicated fifos, 972 entries in SPRAM
+  [    1.637182] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+  [    1.637199] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+  [    1.637210] dwc2 ff300000.usb: DWC OTG Controller
+  [    1.637236] dwc2 ff300000.usb: new USB bus registered, assigned bus number 3
+  [    1.637276] dwc2 ff300000.usb: irq 65, io mem 0xff300000
+  [    1.638821] usb usb3: New USB device found, idVendor=1d6b, idProduct=0002, bcdDevice= 6.12
+  [    1.638856] usb usb3: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+  [    1.638866] usb usb3: Product: DWC OTG Controller
+  [    1.638875] usb usb3: Manufacturer: Linux 6.12.79 dwc2_hsotg
+  [    1.638884] usb usb3: SerialNumber: ff300000.usb
+  [    1.639868] hub 3-0:1.0: USB hub found
+  [    1.639940] hub 3-0:1.0: 1 port detected
+  [    1.655570] input: rk817_int Headphones as /devices/platform/rk817-sound/sound/card0/input2
+  [    1.657410] cfg80211: Loading compiled-in X.509 certificates for regulatory database
+  [    1.659847] Loaded X.509 cert 'sforshee: 00b28ddf47aef9cea7'
+  [    1.660819] Loaded X.509 cert 'wens: 61c038651aabdcf94bd0ac7ff06c7248db18c600'
+  [    1.660949] clk: Disabling unused clocks
+  [    1.661297] PM: genpd: Disabling unused power domains
+  [    1.661328] ALSA device list:
+  [    1.661334]   #0: rk817_int
+  [    1.664318] Freeing unused kernel memory: 4608K
+  [    1.664633] platform regulatory.0: Direct firmware load for regulatory.db failed with error -2
+  [    1.664661] cfg80211: failed to load regulatory.db
+  [    1.664872] Run /init as init process
+  [    1.664881]   with arguments:
+  [    1.664887]     /init
+  [    1.664894]   with environment:
+  [    1.664899]     HOME=/
+  [    1.664905]     TERM=linux
+  [    1.664911]     boot=UUID=FF00-3407
+  [    1.664917]     disk=UUID=8682e07e-f7bc-4944-99c2-42d0956d310c
+  [    1.930137] usb 3-1: new high-speed USB device number 2 using dwc2
+  [    1.969564] Checking disk(s):  UUID=FF00-3407 UUID=8682e07e-f7bc-4944-99c2-42d0956d310c
+  [    2.118573] usb 3-1: New USB device found, idVendor=05e3, idProduct=0608, bcdDevice=85.38
+  [    2.118612] usb 3-1: New USB device strings: Mfr=0, Product=1, SerialNumber=0
+  [    2.118622] usb 3-1: Product: USB2.0 Hub
+  [    2.119665] hub 3-1:1.0: USB hub found
+  [    2.120081] hub 3-1:1.0: 4 ports detected
+  [    2.393427] usb 3-1.2: new full-speed USB device number 3 using dwc2
+  [    2.476319] usb 3-1.2: New USB device found, idVendor=1209, idProduct=3100, bcdDevice= 0.10
+  [    2.476359] usb 3-1.2: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+  [    2.476370] usb 3-1.2: Product: OSH PB Controller
+  [    2.476379] usb 3-1.2: Manufacturer: OpenSimHardware
+  [    2.476387] usb 3-1.2: SerialNumber: 0BMPJ7E00SRETA
+  [    2.482375] input: OpenSimHardware OSH PB Controller Keyboard as /devices/platform/ff300000.usb/usb3/3-1/3-1.2/3-1.2:1.0/0003:1209:3100.0001/input/input3
+  [    2.534045] input: OpenSimHardware OSH PB Controller Mouse as /devices/platform/ff300000.usb/usb3/3-1/3-1.2/3-1.2:1.0/0003:1209:3100.0001/input/input4
+  [    2.534912] input: OpenSimHardware OSH PB Controller as /devices/platform/ff300000.usb/usb3/3-1/3-1.2/3-1.2:1.0/0003:1209:3100.0001/input/input5
+  [    2.536008] hid-generic 0003:1209:3100.0001: input,hidraw0: USB HID v1.11 Keyboard [OpenSimHardware OSH PB Controller] on usb-ff300000.usb-1.2/input0
+  [    2.712590] fsck: STORAGE: clean, 2238/446464 files, 102813/7136000 blocks
+  [    2.712756] fsck: fsck.fat 4.2 (2021-01-31)
+  [    2.712960] fsck: There are differences between boot sector and its backup.
+  [    2.713167] fsck: This is mostly harmless.
+  [    2.713351] fsck: Not automatically fixing this.
+  [    2.713546] fsck: /dev/mmcblk0p1: 37 files, 317924/523262 clusters
+  [    2.952655] loop0: detected capacity change from 0 to 2493760
+  [    3.164797] EXT4-fs (mmcblk0p2): mounted filesystem 8682e07e-f7bc-4944-99c2-42d0956d310c r/w with ordered data mode. Quota mode: none.
+  [    3.697786] kernel-overlays-setup: setup base modules
+  [    3.699856] random: crng init done
+  [    3.748675] kernel-overlays-setup: added modules from /usr/lib/kernel-overlays/base/lib/modules/6.12.79
+  [    3.777364] kernel-overlays-setup: added firmware from /usr/lib/kernel-overlays/base/lib/firmware
+  [    3.778203] kernel-overlays-setup: adding overlays from /storage/.cache/kernel-overlays
+  [    3.801761] kernel-overlays-setup: done
+  [    4.528266] systemd[1]: System time before build time, advancing clock.
+  [    4.654659] systemd[1]: systemd 255.8 running in system mode (-PAM -AUDIT -SELINUX -APPARMOR -IMA -SMACK -SECCOMP +GCRYPT -GNUTLS +OPENSSL -ACL +BLKID -CURL -ELFUTILS -FIDO2 +IDN2 -IDN -IPTC +KMOD -LIBCRYPTSETUP -LIBFDISK +PCRE2 -PWQUALITY -P11KIT -QRENCODE -TPM2 -BZIP2 -LZ4 -XZ -ZLIB +ZSTD -BPF_FRAMEWORK -XKBCOMMON +UTMP +SYSVINIT default-hierarchy=hybrid)
+  [    4.654705] systemd[1]: Detected architecture arm64.
+  [    4.966590] systemd[1]: multi-user.target: Wants dependency dropin /usr/lib/systemd/system/multi-user.target.wants/sixaxis@.service target ../sixaxis@.service has different name
+  [    5.352237] systemd[1]: Queued start job for default target rocknix.target.
+  [    5.476171] systemd[1]: Created slice system-modprobe.slice.
+  [    5.479282] systemd[1]: Created slice system-sixaxis.slice.
+  [    5.481295] systemd[1]: Created slice user.slice.
+  [    5.481887] systemd[1]: Started systemd-ask-password-console.path.
+  [    5.482274] systemd[1]: Started systemd-ask-password-wall.path.
+  [    5.483408] systemd[1]: Set up automount proc-sys-fs-binfmt_misc.automount.
+  [    5.483805] systemd[1]: Reached target paths.target.
+  [    5.484002] systemd[1]: Reached target slices.target.
+  [    5.484126] systemd[1]: Reached target swap.target.
+  [    5.510441] systemd[1]: Listening on rpcbind.socket.
+  [    5.510748] systemd[1]: Reached target rpcbind.target.
+  [    5.511402] systemd[1]: Listening on systemd-initctl.socket.
+  [    5.513024] systemd[1]: Listening on systemd-journald-dev-log.socket.
+  [    5.514467] systemd[1]: Listening on systemd-journald.socket.
+  [    5.517176] systemd[1]: Listening on systemd-udevd-control.socket.
+  [    5.518115] systemd[1]: Listening on systemd-udevd-kernel.socket.
+  [    5.525539] systemd[1]: Mounting dev-mqueue.mount...
+  [    5.532720] systemd[1]: Mounting proc-sys-fs-binfmt_misc.mount...
+  [    5.540934] systemd[1]: Mounting sys-kernel-debug.mount...
+  [    5.541799] systemd[1]: sys-kernel-tracing.mount was skipped because of an unmet condition check (ConditionPathExists=/sys/kernel/tracing).
+  [    5.550956] systemd[1]: Mounting tmp.mount...
+  [    5.570735] systemd[1]: Mounting var.mount...
+  [    5.584548] systemd[1]: Started debug-shell.service.
+  [    5.602633] systemd[1]: Starting kmod-static-nodes.service...
+  [    5.614692] systemd[1]: Starting machine-id.service...
+  [    5.623422] dw-apb-uart ff160000.serial: forbid DMA for kernel console
+  [    5.628853] systemd[1]: Starting modprobe@configfs.service...
+  [    5.655070] systemd[1]: Starting modprobe@drm.service...
+  [    5.685036] systemd[1]: Starting modprobe@fuse.service...
+  [    5.718086] systemd[1]: Starting show-version.service...
+  [    5.735210] systemd[1]: Starting storage-log.service...
+  [    5.764525] systemd[1]: Starting systemd-hwdb-update.service...
+  [    5.788335] systemd[1]: Starting systemd-modules-load.service...
+  [    5.807637] systemd[1]: Starting systemd-timesyncd-setup.service...
+  [    5.841949] systemd[1]: Starting systemd-udev-trigger.service...
+  [    5.872549] systemd[1]: Mounted dev-mqueue.mount.
+  [    5.874018] systemd[1]: Mounted proc-sys-fs-binfmt_misc.mount.
+  [    5.875540] systemd[1]: Mounted sys-kernel-debug.mount.
+  [    5.876890] systemd[1]: Mounted tmp.mount.
+  [    5.878006] systemd[1]: Mounted var.mount.
+  [    5.880384] systemd[1]: Finished kmod-static-nodes.service.
+  [    5.882729] systemd[1]: Finished machine-id.service.
+  [    5.884763] systemd[1]: modprobe@configfs.service: Deactivated successfully.
+  [    5.886071] systemd[1]: Finished modprobe@configfs.service.
+  [    5.888908] systemd[1]: modprobe@drm.service: Deactivated successfully.
+  [    5.891270] systemd[1]: Finished modprobe@drm.service.
+  [    5.894045] systemd[1]: modprobe@fuse.service: Deactivated successfully.
+  [    5.895804] systemd[1]: Finished modprobe@fuse.service.
+  [    5.899148] systemd[1]: Finished show-version.service.
+  [    5.902882] systemd[1]: Finished storage-log.service.
+  [    5.921567] systemd[1]: Mounting sys-fs-fuse-connections.mount...
+  [    5.941161] systemd[1]: Mounting sys-kernel-config.mount...
+  [    5.970160] systemd[1]: Starting systemd-journald.service...
+  [    5.991625] systemd[1]: Starting systemd-tmpfiles-setup-dev-early.service...
+  [    5.999441] systemd[1]: Finished systemd-modules-load.service.
+  [    6.018685] systemd[1]: Starting systemd-sysctl.service...
+  [    6.043459] systemd[1]: Finished systemd-timesyncd-setup.service.
+  [    6.044668] systemd[1]: Mounted sys-fs-fuse-connections.mount.
+  [    6.045677] systemd[1]: Mounted sys-kernel-config.mount.
+  [    6.196811] systemd-journald[216]: Collecting audit messages is disabled.
+  [    6.263483] systemd[1]: Finished systemd-sysctl.service.
+  [    6.294673] systemd[1]: Starting systemd-resolved.service...
+  [    6.301604] systemd[1]: Finished systemd-tmpfiles-setup-dev-early.service.
+  [    6.324794] systemd[1]: Starting systemd-tmpfiles-setup-dev.service...
+  [    6.397095] systemd[1]: Started systemd-journald.service.
+  [    6.761522] systemd-journald[216]: Received client request to flush runtime journal.
+  [    6.904931] khugepaged: raising min_free_kbytes from 16384 to 22528 to help transparent hugepage allocations
+  [   12.570089] hantro-vpu ff442000.video-codec: Adding to iommu group 1
+  [   12.583591] hantro-vpu ff442000.video-codec: registered rockchip,px30-vpu-enc as /dev/video0
+  [   12.584140] hantro-vpu ff442000.video-codec: registered rockchip,px30-vpu-dec as /dev/video1
+  [   17.677025] mali_kbase: loading out-of-tree module taints kernel.
+  [   17.685555] mali ff400000.gpu: Kernel DDK version r52p0-00eac0
+  [   17.685895] mali ff400000.gpu: GPU metrics tracepoint support enabled
+  [   17.685921] mali ff400000.gpu: Looking up mali-supply from device tree
+  [   17.686594] mali ff400000.gpu: Looking up mali-supply from device tree
+  [   17.686667] vdd_logic: could not add device link ff400000.gpu: -EEXIST
+  [   17.687348] mali ff400000.gpu: Register LUT 00070000 initialized for GPU arch 0x00070009
+  [   17.687440] mali ff400000.gpu: GPU identified as 0x3 arch 7.0.9 r0p0 status 0
+  [   17.687799] mali ff400000.gpu: No priority control manager is configured
+  [   17.687826] mali ff400000.gpu: Large page allocation set to false after hardware feature check
+  [   17.690210] mali ff400000.gpu: No memory group manager is configured
+  [   17.691399] mali ff400000.gpu: Using configured power model mali-simple-power-model, and fallback mali-simple-power-model
+  [   17.692056] workqueue: name exceeds WQ_NAME_LEN. Truncating to: kbase_job_fault_resume_work_que
+  [   17.695768] mali ff400000.gpu: * MALI kbase_mmap_min_addr compiled to CONFIG_DEFAULT_MMAP_MIN_ADDR, no runtime update possible! *
+  [   17.695805] mali ff400000.gpu: Probed as mali0
+  [   17.801394] devfreq ff400000.gpu: Couldn't update frequency transition information.
+  [   17.824538] ------------[ cut here ]------------
+  [   17.824573] WARNING: CPU: 0 PID: 11 at /home/runner/work/distribution/distribution/build.ROCKNIX-RK3326.aarch64/build/mali-bifrost-r52p0-00eac0/product/kernel/drivers/gpu/arm/midgard/platform/devicetree/mali_kbase_runtime_pm.c:63 disable_gpu_power_control+0x6c/0xa0 [mali_kbase]
+  [   17.824751] Modules linked in: mali_kbase(O) ntfs3 exfat snd_seq snd_seq_device hantro_vpu v4l2_vp9 videobuf2_dma_contig v4l2_jpeg v4l2_h264 algif_aead nfnetlink
+  [   17.824823] CPU: 0 UID: 0 PID: 11 Comm: kworker/0:1 Tainted: G           O       6.12.79 #1
+  [   17.824840] Tainted: [O]=OOT_MODULE
+  [   17.824847] Hardware name: Anbernic RG351M (DT)
+  [   17.824857] Workqueue: pm pm_runtime_work
+  [   17.824886] pstate: 20000005 (nzCv daif -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+  [   17.824899] pc : disable_gpu_power_control+0x6c/0xa0 [mali_kbase]
+  [   17.825016] lr : disable_gpu_power_control+0x68/0xa0 [mali_kbase]
+  [   17.825093] sp : ffff8000817f3bd0
+  [   17.825100] x29: ffff8000817f3bd0 x28: 0000000000000000 x27: ffff0000004c6180
+  [   17.825123] x26: 0000000000000000 x25: 00000000000f4240 x24: 0000000000000000
+  [   17.825142] x23: 0000000000000000 x22: 0000000000000000 x21: ffff000006b9d720
+  [   17.825160] x20: ffff0000014db010 x19: ffff800081c21000 x18: ffff7fffbe841000
+  [   17.825179] x17: 0000000000000000 x16: 0000000000000000 x15: ffff8000815bac88
+  [   17.825197] x14: ffff800081504640 x13: 0000000000000180 x12: ffff00003fd45640
+  [   17.825215] x11: 00000000000000c0 x10: 0000000000000960 x9 : 0000000000000008
+  [   17.825234] x8 : 000000000000014f x7 : ffff8000815bac88 x6 : ffff800081743bf0
+  [   17.825253] x5 : 0000000000000000 x4 : 0000000000000000 x3 : 000000000000000a
+  [   17.825270] x2 : 0000000000000001 x1 : 0000000000001000 x0 : 0000000000000001
+  [   17.825289] Call trace:
+  [   17.825296]  disable_gpu_power_control+0x6c/0xa0 [mali_kbase]
+  [   17.825379]  pm_callback_runtime_off+0x18/0x60 [mali_kbase]
+  [   17.825454]  kbase_device_runtime_suspend+0x40/0xb0 [mali_kbase]
+  [   17.825530]  pm_generic_runtime_suspend+0x28/0x40
+  [   17.825548]  genpd_runtime_suspend+0xb4/0x2bc
+  [   17.825563]  __rpm_callback+0x3c/0x240
+  [   17.825575]  rpm_callback+0x60/0x6c
+  [   17.825586]  rpm_suspend+0xec/0x6bc
+  [   17.825596]  pm_runtime_work+0x118/0x130
+  [   17.825607]  process_one_work+0x140/0x2bc
+  [   17.825624]  worker_thread+0x194/0x370
+  [   17.825635]  kthread+0xdc/0xe0
+  [   17.825648]  ret_from_fork+0x10/0x20
+  [   17.825662] ---[ end trace 0000000000000000 ]---
+  [   23.598843] file system registered
+  [   29.565227] mali ff400000.gpu: Clearing BASE_MEM_UNCACHED_GPU flag to avoid MMA violation
+  [   30.693975] usbcore: registered new interface driver cdc_ether
+  [   30.699843] usbcore: registered new interface driver cdc_ncm
+  [   30.758940] dwc2 ff300000.usb: remove, state 1
+  [   30.759056] usb usb3: USB disconnect, device number 1
+  [   30.759269] hid-generic 0003:1209:3100.0001: can't resubmit intr, ff300000.usb-1.2/input0, status -19
+  [   30.759296] usb 3-1: USB disconnect, device number 2
+  [   30.759308] usb 3-1.2: USB disconnect, device number 3
+  [   31.109680] dwc2 ff300000.usb: USB bus 3 deregistered
+  [   31.406790] ------------[ cut here ]------------
+  [   31.406822] WARNING: CPU: 3 PID: 50 at /home/runner/work/distribution/distribution/build.ROCKNIX-RK3326.aarch64/build/mali-bifrost-r52p0-00eac0/product/kernel/drivers/gpu/arm/midgard/platform/devicetree/mali_kbase_runtime_pm.c:63 disable_gpu_power_control+0x6c/0xa0 [mali_kbase]
+  [   31.406962] Modules linked in: cdc_ncm cdc_ether usbnet mii mali_kbase(O) ntfs3 exfat snd_seq snd_seq_device hantro_vpu v4l2_vp9 videobuf2_dma_contig v4l2_jpeg v4l2_h264 algif_aead nfnetlink
+  [   31.407046] CPU: 3 UID: 0 PID: 50 Comm: kworker/3:1 Tainted: G        W  O       6.12.79 #1
+  [   31.407062] Tainted: [W]=WARN, [O]=OOT_MODULE
+  [   31.407068] Hardware name: Anbernic RG351M (DT)
+  [   31.407075] Workqueue: pm pm_runtime_work
+  [   31.407099] pstate: 20000005 (nzCv daif -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+  [   31.407111] pc : disable_gpu_power_control+0x6c/0xa0 [mali_kbase]
+  [   31.407185] lr : disable_gpu_power_control+0x68/0xa0 [mali_kbase]
+  [   31.407261] sp : ffff800081bb3bd0
+  [   31.407267] x29: ffff800081bb3bd0 x28: 0000000000000000 x27: ffff000001763000
+  [   31.407286] x26: 0000000000000000 x25: 00000000000f4240 x24: 0000000000000000
+  [   31.407304] x23: 0000000000000000 x22: 0000000000000000 x21: ffff000006b9d720
+  [   31.407322] x20: ffff0000014db010 x19: ffff800081c21000 x18: ffff7fffbe883000
+  [   31.407340] x17: ffff7fffbe883000 x16: ffff800081790000 x15: ffff8000815bac88
+  [   31.407359] x14: 00007e0000f698c0 x13: 00000000000000b0 x12: fffffdffbf7ec8c0
+  [   31.407377] x11: 00000000000000c0 x10: 0000000000000960 x9 : 0000000000000008
+  [   31.407395] x8 : 00000000000003ff x7 : ffff8000815bac88 x6 : ffff800081743bf0
+  [   31.407413] x5 : 0000000000000000 x4 : 0000000000000000 x3 : 000000000000000a
+  [   31.407430] x2 : 0000000000000001 x1 : 0000000000001000 x0 : 0000000000000001
+  [   31.407449] Call trace:
+  [   31.407455]  disable_gpu_power_control+0x6c/0xa0 [mali_kbase]
+  [   31.407530]  pm_callback_runtime_off+0x18/0x60 [mali_kbase]
+  [   31.407604]  kbase_device_runtime_suspend+0x40/0xb0 [mali_kbase]
+  [   31.407678]  pm_generic_runtime_suspend+0x28/0x40
+  [   31.407691]  genpd_runtime_suspend+0xb4/0x2bc
+  [   31.407704]  __rpm_callback+0x3c/0x240
+  [   31.407715]  rpm_callback+0x60/0x6c
+  [   31.407725]  rpm_suspend+0xec/0x6bc
+  [   31.407735]  pm_runtime_work+0x118/0x130
+  [   31.407746]  process_one_work+0x140/0x2bc
+  [   31.407762]  worker_thread+0x194/0x370
+  [   31.407772]  kthread+0xdc/0xe0
+  [   31.407784]  ret_from_fork+0x10/0x20
+  [   31.407797] ---[ end trace 0000000000000000 ]---
+  [   32.056779] LDO_REG9: disabling
+  [   32.156621] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+  [   32.156694] dwc2 ff300000.usb: Looking up vusb_d-supply from device tree
+  [   32.156709] dwc2 ff300000.usb: Looking up vusb_d-supply property in node /usb@ff300000 failed
+  [   32.156777] dwc2 ff300000.usb: supply vusb_d not found, using dummy regulator
+  [   32.157221] dwc2 ff300000.usb: Looking up vusb_a-supply from device tree
+  [   32.157265] dwc2 ff300000.usb: Looking up vusb_a-supply property in node /usb@ff300000 failed
+  [   32.157326] dwc2 ff300000.usb: supply vusb_a not found, using dummy regulator
+  [   32.157434] dwc2 ff300000.usb: Looking up vbus-supply from device tree
+  [   32.160136] dwc2 ff300000.usb: EPs: 10, dedicated fifos, 972 entries in SPRAM
+  [   32.160497] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+  [   32.160535] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+  [   32.160549] dwc2 ff300000.usb: DWC OTG Controller
+  [   32.160589] dwc2 ff300000.usb: new USB bus registered, assigned bus number 3
+  [   32.160649] dwc2 ff300000.usb: irq 65, io mem 0xff300000
+  [   32.164003] usb usb3: New USB device found, idVendor=1d6b, idProduct=0002, bcdDevice= 6.12
+  [   32.164049] usb usb3: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+  [   32.164059] usb usb3: Product: DWC OTG Controller
+  [   32.164069] usb usb3: Manufacturer: Linux 6.12.79 dwc2_hsotg
+  [   32.164077] usb usb3: SerialNumber: ff300000.usb
+  [   32.174297] hub 3-0:1.0: USB hub found
+  [   32.174464] hub 3-0:1.0: 1 port detected
+  [   32.460065] usb 3-1: new high-speed USB device number 2 using dwc2
+  [   32.648354] usb 3-1: New USB device found, idVendor=05e3, idProduct=0608, bcdDevice=85.38
+  [   32.648405] usb 3-1: New USB device strings: Mfr=0, Product=1, SerialNumber=0
+  [   32.648419] usb 3-1: Product: USB2.0 Hub
+  [   32.650114] hub 3-1:1.0: USB hub found
+  [   32.653186] hub 3-1:1.0: 4 ports detected
+  [   32.936767] usb 3-1.2: new full-speed USB device number 3 using dwc2
+  [   33.019306] usb 3-1.2: New USB device found, idVendor=1209, idProduct=3100, bcdDevice= 0.10
+  [   33.019351] usb 3-1.2: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+  [   33.019365] usb 3-1.2: Product: OSH PB Controller
+  [   33.019375] usb 3-1.2: Manufacturer: OpenSimHardware
+  [   33.019387] usb 3-1.2: SerialNumber: 0BMPJ7E00SRETA
+  [   33.032894] input: OpenSimHardware OSH PB Controller Keyboard as /devices/platform/ff300000.usb/usb3/3-1/3-1.2/3-1.2:1.0/0003:1209:3100.0002/input/input6
+  [   33.084302] input: OpenSimHardware OSH PB Controller Mouse as /devices/platform/ff300000.usb/usb3/3-1/3-1.2/3-1.2:1.0/0003:1209:3100.0002/input/input7
+  [   33.086169] input: OpenSimHardware OSH PB Controller as /devices/platform/ff300000.usb/usb3/3-1/3-1.2/3-1.2:1.0/0003:1209:3100.0002/input/input8
+  [   33.089038] hid-generic 0003:1209:3100.0002: input,hidraw0: USB HID v1.11 Keyboard [OpenSimHardware OSH PB Controller] on usb-ff300000.usb-1.2/input0
+  [   33.463266] ------------[ cut here ]------------
+  [   33.463300] clk_gpu already disabled
+  [   33.463394] WARNING: CPU: 3 PID: 102 at drivers/clk/clk.c:1200 clk_core_disable+0x94/0x9c
+  [   33.463431] Modules linked in: cdc_ncm cdc_ether usbnet mii mali_kbase(O) ntfs3 exfat snd_seq snd_seq_device hantro_vpu v4l2_vp9 videobuf2_dma_contig v4l2_jpeg v4l2_h264 algif_aead nfnetlink
+  [   33.463519] CPU: 3 UID: 0 PID: 102 Comm: kworker/3:2 Tainted: G        W  O       6.12.79 #1
+  [   33.463536] Tainted: [W]=WARN, [O]=OOT_MODULE
+  [   33.463542] Hardware name: Anbernic RG351M (DT)
+  [   33.463551] Workqueue: pm pm_runtime_work
+  [   33.463572] pstate: 800000c5 (Nzcv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+  [   33.463583] pc : clk_core_disable+0x94/0x9c
+  [   33.463592] lr : clk_core_disable+0x94/0x9c
+  [   33.463601] sp : ffff80008213bbb0
+  [   33.463607] x29: ffff80008213bbb0 x28: 0000000000000000 x27: ffff000001755d80
+  [   33.463626] x26: 0000000000000000 x25: 00000000000f4240 x24: 0000000000000000
+  [   33.463644] x23: 0000000000000002 x22: 0000000000000001 x21: ffff000006b9dde0
+  [   33.463662] x20: 00000000000000c0 x19: ffff000000451e00 x18: fffffffffffea958
+  [   33.463680] x17: ffff7fffbe883000 x16: 0000000000000000 x15: ffff80008213b8c8
+  [   33.463698] x14: ffff8000815d09a8 x13: 64656c6261736964 x12: 2079646165726c61
+  [   33.463716] x11: ffff8000815d09a8 x10: 0000000000057fa8 x9 : 000000000000026e
+  [   33.463735] x8 : ffff8000816289a8 x7 : 80000000fffff000 x6 : ffff8000816289a8
+  [   33.463753] x5 : ffff00003fd87708 x4 : 0000000000000000 x3 : 0000000000000027
+  [   33.463770] x2 : 0000000000000023 x1 : 0000000000000000 x0 : 0000000000000018
+  [   33.463789] Call trace:
+  [   33.463796]  clk_core_disable+0x94/0x9c
+  [   33.463806]  clk_disable+0x34/0x4c
+  [   33.463819]  pm_clk_suspend+0xd0/0x164
+  [   33.463829]  genpd_runtime_suspend+0xcc/0x2bc
+  [   33.463842]  __rpm_callback+0x3c/0x240
+  [   33.463853]  rpm_callback+0x60/0x6c
+  [   33.463863]  rpm_suspend+0xec/0x6bc
+  [   33.463873]  pm_runtime_work+0x118/0x130
+  [   33.463883]  process_one_work+0x140/0x2bc
+  [   33.463899]  worker_thread+0x194/0x370
+  [   33.463909]  kthread+0xdc/0xe0
+  [   33.463921]  ret_from_fork+0x10/0x20
+  [   33.463935] ---[ end trace 0000000000000000 ]---
+  [   35.309910] ------------[ cut here ]------------
+  [   35.309942] clk_gpu already disabled
+  [   35.310022] WARNING: CPU: 3 PID: 50 at drivers/clk/clk.c:1200 clk_core_disable+0x94/0x9c
+  [   35.310062] Modules linked in: cdc_ncm cdc_ether usbnet mii mali_kbase(O) ntfs3 exfat snd_seq snd_seq_device hantro_vpu v4l2_vp9 videobuf2_dma_contig v4l2_jpeg v4l2_h264 algif_aead nfnetlink
+  [   35.310149] CPU: 3 UID: 0 PID: 50 Comm: kworker/3:1 Tainted: G        W  O       6.12.79 #1
+  [   35.310165] Tainted: [W]=WARN, [O]=OOT_MODULE
+  [   35.310171] Hardware name: Anbernic RG351M (DT)
+  [   35.310178] Workqueue: pm pm_runtime_work
+  [   35.310198] pstate: 800000c5 (Nzcv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+  [   35.310210] pc : clk_core_disable+0x94/0x9c
+  [   35.310219] lr : clk_core_disable+0x94/0x9c
+  [   35.310229] sp : ffff800081bb3bb0
+  [   35.310234] x29: ffff800081bb3bb0 x28: 0000000000000000 x27: ffff000001763000
+  [   35.310254] x26: 0000000000000000 x25: 00000000000f4240 x24: 0000000000000000
+  [   35.310272] x23: 0000000000000002 x22: 0000000000000001 x21: ffff000006b9dde0
+  [   35.310290] x20: 00000000000000c0 x19: ffff000000451e00 x18: fffffffffffeb1d0
+  [   35.310308] x17: 0000000000000000 x16: 0000000000000000 x15: ffff800081bb38c8
+  [   35.310326] x14: ffff8000815d09a8 x13: 64656c6261736964 x12: 2079646165726c61
+  [   35.310344] x11: ffff8000815d09a8 x10: 0000000000057fa8 x9 : 0000000000000292
+  [   35.310362] x8 : ffff8000816289a8 x7 : 80000000fffff000 x6 : ffff8000816289a8
+  [   35.310380] x5 : ffff00003fd87708 x4 : 0000000000000000 x3 : 0000000000000027
+  [   35.310398] x2 : 0000000000000023 x1 : 0000000000000000 x0 : 0000000000000018
+  [   35.310417] Call trace:
+  [   35.310422]  clk_core_disable+0x94/0x9c
+  [   35.310432]  clk_disable+0x34/0x4c
+  [   35.310443]  pm_clk_suspend+0xd0/0x164
+  [   35.310454]  genpd_runtime_suspend+0xcc/0x2bc
+  [   35.310467]  __rpm_callback+0x3c/0x240
+  [   35.310477]  rpm_callback+0x60/0x6c
+  [   35.310487]  rpm_suspend+0xec/0x6bc
+  [   35.310497]  pm_runtime_work+0x118/0x130
+  [   35.310508]  process_one_work+0x140/0x2bc
+  [   35.310524]  worker_thread+0x194/0x370
+  [   35.310534]  kthread+0xdc/0xe0
+  [   35.310547]  ret_from_fork+0x10/0x20
+  [   35.310559] ---[ end trace 0000000000000000 ]---
+  [   35.310584] ------------[ cut here ]------------
+  [   35.310591] Enabling unprepared clk_gpu
+  [   35.310644] WARNING: CPU: 3 PID: 50 at drivers/clk/clk.c:1259 clk_core_enable+0x8c/0xc0
+  [   35.310660] Modules linked in: cdc_ncm cdc_ether usbnet mii mali_kbase(O) ntfs3 exfat snd_seq snd_seq_device hantro_vpu v4l2_vp9 videobuf2_dma_contig v4l2_jpeg v4l2_h264 algif_aead nfnetlink
+  [   35.310733] CPU: 3 UID: 0 PID: 50 Comm: kworker/3:1 Tainted: G        W  O       6.12.79 #1
+  [   35.310747] Tainted: [W]=WARN, [O]=OOT_MODULE
+  [   35.310753] Hardware name: Anbernic RG351M (DT)
+  [   35.310759] Workqueue: pm pm_runtime_work
+  [   35.310777] pstate: 800000c5 (Nzcv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+  [   35.310787] pc : clk_core_enable+0x8c/0xc0
+  [   35.310796] lr : clk_core_enable+0x8c/0xc0
+  [   35.310805] sp : ffff800081bb3ae0
+  [   35.310810] x29: ffff800081bb3ae0 x28: 0000000000000000 x27: ffff000001763000
+  [   35.310829] x26: 0000000000000000 x25: 0000000000000000 x24: 0000000000000000
+  [   35.310846] x23: ffff00000148e098 x22: ffff000000525440 x21: 0000000000000001
+  [   35.310865] x20: 0000000000000000 x19: ffff000000451e00 x18: fffffffffffeba40
+  [   35.310883] x17: 0000000000000000 x16: 0000000000000000 x15: ffff800081bb37f8
+  [   35.310900] x14: ffff8000815d09a8 x13: 7570675f6b6c6320 x12: 6465726170657270
+  [   35.310918] x11: ffff8000815d09a8 x10: 0000000000057fa8 x9 : 00000000000002b6
+  [   35.310936] x8 : ffff8000816289a8 x7 : 80000000fffff000 x6 : ffff8000816289a8
+  [   35.310954] x5 : ffff00003fd87708 x4 : 0000000000000000 x3 : 0000000000000027
+  [   35.310972] x2 : 0000000000000023 x1 : 0000000000000000 x0 : 000000000000001b
+  [   35.310989] Call trace:
+  [   35.310994]  clk_core_enable+0x8c/0xc0
+  [   35.311004]  clk_enable+0x28/0x54
+  [   35.311015]  clk_bulk_enable+0x3c/0xa0
+  [   35.311028]  rockchip_pd_power+0x78/0x600
+  [   35.311038]  rockchip_pd_power_off+0x10/0x20
+  [   35.311047]  _genpd_power_off+0x8c/0x170
+  [   35.311057]  genpd_power_off.isra.0+0x120/0x260
+  [   35.311068]  genpd_runtime_suspend+0x1ec/0x2bc
+  [   35.311079]  __rpm_callback+0x3c/0x240
+  [   35.311089]  rpm_callback+0x60/0x6c
+  [   35.311099]  rpm_suspend+0xec/0x6bc
+  [   35.311109]  pm_runtime_work+0x118/0x130
+  [   35.311119]  process_one_work+0x140/0x2bc
+  [   35.311132]  worker_thread+0x194/0x370
+  [   35.311141]  kthread+0xdc/0xe0
+  [   35.311153]  ret_from_fork+0x10/0x20
+  [   35.311164] ---[ end trace 0000000000000000 ]---
+  [   35.311171] Failed to enable clk '(null)': -108
+  [   35.311185] rockchip-pm-domain ff000000.power-management:power-controller: failed to enable clocks
+  [   35.325964] ------------[ cut here ]------------
+  [   35.325996] Enabling unprepared clk_gpu
+  [   35.326087] WARNING: CPU: 2 PID: 1936 at drivers/clk/clk.c:1259 clk_core_enable+0x8c/0xc0
+  [   35.326124] Modules linked in: cdc_ncm cdc_ether usbnet mii mali_kbase(O) ntfs3 exfat snd_seq snd_seq_device hantro_vpu v4l2_vp9 videobuf2_dma_contig v4l2_jpeg v4l2_h264 algif_aead nfnetlink
+  [   35.326217] CPU: 2 UID: 0 PID: 1936 Comm: sway Tainted: G        W  O       6.12.79 #1
+  [   35.326234] Tainted: [W]=WARN, [O]=OOT_MODULE
+  [   35.326241] Hardware name: Anbernic RG351M (DT)
+  [   35.326248] pstate: 800000c5 (Nzcv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+  [   35.326260] pc : clk_core_enable+0x8c/0xc0
+  [   35.326271] lr : clk_core_enable+0x8c/0xc0
+  [   35.326281] sp : ffff800082ef3740
+  [   35.326286] x29: ffff800082ef3740 x28: ffff800081c21000 x27: ffff80008009a7e0
+  [   35.326305] x26: ffff8000798b55c8 x25: ffff800080dfa1a0 x24: 0000000000000000
+  [   35.326324] x23: ffff000006b9de10 x22: ffff0000014db010 x21: 0000000000000003
+  [   35.326342] x20: 00000000000000c0 x19: ffff000000451e00 x18: fffffffffffec3e0
+  [   35.326361] x17: 0000000000001fd8 x16: 0000000000000000 x15: ffff800082ef3458
+  [   35.326379] x14: ffff8000815d09a8 x13: 7570675f6b6c6320 x12: 6465726170657270
+  [   35.326397] x11: ffff8000815d09a8 x10: 0000000000057fa8 x9 : 00000000000002e0
+  [   35.326416] x8 : ffff8000816289a8 x7 : 80000000fffff000 x6 : ffff8000816289a8
+  [   35.326435] x5 : ffff00003fd71708 x4 : 0000000000000000 x3 : 0000000000000027
+  [   35.326453] x2 : 0000000000000023 x1 : 0000000000000000 x0 : 000000000000001b
+  [   35.326472] Call trace:
+  [   35.326478]  clk_core_enable+0x8c/0xc0
+  [   35.326488]  clk_enable+0x28/0x54
+  [   35.326501]  pm_clk_resume+0x78/0x1a0
+  [   35.326514]  genpd_runtime_resume+0xf0/0x284
+  [   35.326529]  __rpm_callback+0x3c/0x240
+  [   35.326542]  rpm_callback+0x60/0x6c
+  [   35.326552]  rpm_resume+0x4c8/0x7d8
+  [   35.326563]  __pm_runtime_resume+0x60/0xe4
+  [   35.326574]  pm_callback_power_on+0x5c/0x12c [mali_kbase]
+  [   35.326756]  kbase_pm_clock_on+0x50/0x324 [mali_kbase]
+  [   35.326834]  kbase_pm_do_poweron+0x1c/0xc0 [mali_kbase]
+  [   35.326911]  kbase_pm_update_active+0x134/0x170 [mali_kbase]
+  [   35.326986]  kbase_hwaccess_pm_gpu_active+0xc/0x20 [mali_kbase]
+  [   35.327062]  kbasep_pm_context_active_handle_suspend_locked+0x130/0x148 [mali_kbase]
+  [   35.327138]  kbase_pm_context_active_handle_suspend+0x44/0x6c [mali_kbase]
+  [   35.327214]  kbase_js_sched+0x18c/0xf34 [mali_kbase]
+  [   35.327289]  kbase_jd_submit+0x620/0xee8 [mali_kbase]
+  [   35.327365]  kbase_ioctl+0x128c/0x2704 [mali_kbase]
+  [   35.327441]  __arm64_sys_ioctl+0xa0/0xd8
+  [   35.327457]  invoke_syscall.constprop.0+0x3c/0xe4
+  [   35.327474]  el0_svc_common.constprop.0+0x34/0xcc
+  [   35.327486]  do_el0_svc+0x18/0x20
+  [   35.327496]  el0_svc+0x20/0xcc
+  [   35.327512]  el0t_64_sync_handler+0x118/0x124
+  [   35.327524]  el0t_64_sync+0x14c/0x150
+  [   35.327536] ---[ end trace 0000000000000000 ]---
+  [   35.327559] mali ff400000.gpu: __pm_clk_enable: failed to enable clk 000000004bcd0218, error -108
+  [   35.453998] ------------[ cut here ]------------
+  [   35.454033] Enabling unprepared clk_gpu
+  [   35.454132] WARNING: CPU: 3 PID: 50 at drivers/clk/clk.c:1259 clk_core_enable+0x8c/0xc0
+  [   35.454174] Modules linked in: cdc_ncm cdc_ether usbnet mii mali_kbase(O) ntfs3 exfat snd_seq snd_seq_device hantro_vpu v4l2_vp9 videobuf2_dma_contig v4l2_jpeg v4l2_h264 algif_aead nfnetlink
+  [   35.454266] CPU: 3 UID: 0 PID: 50 Comm: kworker/3:1 Tainted: G        W  O       6.12.79 #1
+  [   35.454283] Tainted: [W]=WARN, [O]=OOT_MODULE
+  [   35.454290] Hardware name: Anbernic RG351M (DT)
+  [   35.454297] Workqueue: pm pm_runtime_work
+  [   35.454320] pstate: 800000c5 (Nzcv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+  [   35.454332] pc : clk_core_enable+0x8c/0xc0
+  [   35.454341] lr : clk_core_enable+0x8c/0xc0
+  [   35.454350] sp : ffff800081bb3ae0
+  [   35.454356] x29: ffff800081bb3ae0 x28: 0000000000000000 x27: ffff000001763000
+  [   35.454375] x26: 0000000000000000 x25: 0000000000000000 x24: 0000000000000000
+  [   35.454392] x23: ffff00000148e098 x22: ffff000000525440 x21: 0000000000000001
+  [   35.454411] x20: 0000000000000000 x19: ffff000000451e00 x18: fffffffffffecf68
+  [   35.454429] x17: 0000000000000000 x16: 0000000000000000 x15: ffff800081bb37f8
+  [   35.454446] x14: ffff8000815d09a8 x13: 7570675f6b6c6320 x12: 6465726170657270
+  [   35.454466] x11: ffff8000815d09a8 x10: 0000000000057fa8 x9 : 0000000000000311
+  [   35.454484] x8 : ffff8000816289a8 x7 : 80000000fffff000 x6 : ffff8000816289a8
+  [   35.454503] x5 : ffff00003fd87708 x4 : 0000000000000000 x3 : 0000000000000027
+  [   35.454521] x2 : 0000000000000023 x1 : 0000000000000000 x0 : 000000000000001b
+  [   35.454539] Call trace:
+  [   35.454546]  clk_core_enable+0x8c/0xc0
+  [   35.454556]  clk_enable+0x28/0x54
+  [   35.454567]  clk_bulk_enable+0x3c/0xa0
+  [   35.454581]  rockchip_pd_power+0x78/0x600
+  [   35.454595]  rockchip_pd_power_off+0x10/0x20
+  [   35.454605]  _genpd_power_off+0x8c/0x170
+  [   35.454613]  genpd_power_off.isra.0+0x120/0x260
+  [   35.454625]  genpd_runtime_suspend+0x1ec/0x2bc
+  [   35.454665]  __rpm_callback+0x3c/0x240
+  [   35.454677]  rpm_callback+0x60/0x6c
+  [   35.454687]  rpm_suspend+0xec/0x6bc
+  [   35.454697]  pm_runtime_work+0x118/0x130
+  [   35.454708]  process_one_work+0x140/0x2bc
+  [   35.454724]  worker_thread+0x194/0x370
+  [   35.454734]  kthread+0xdc/0xe0
+  [   35.454747]  ret_from_fork+0x10/0x20
+  [   35.454762] ---[ end trace 0000000000000000 ]---
+  [   35.454777] Failed to enable clk '(null)': -108
+  [   35.454795] rockchip-pm-domain ff000000.power-management:power-controller: failed to enable clocks
+  [   38.051087] ------------[ cut here ]------------
+  [   38.051125] Enabling unprepared clk_gpu
+  [   38.051225] WARNING: CPU: 0 PID: 2543 at drivers/clk/clk.c:1259 clk_core_enable+0x8c/0xc0
+  [   38.051272] Modules linked in: cdc_ncm cdc_ether usbnet mii mali_kbase(O) ntfs3 exfat snd_seq snd_seq_device hantro_vpu v4l2_vp9 videobuf2_dma_contig v4l2_jpeg v4l2_h264 algif_aead nfnetlink
+  [   38.051383] CPU: 0 UID: 0 PID: 2543 Comm: mali-cmar-backe Tainted: G        W  O       6.12.79 #1
+  [   38.051405] Tainted: [W]=WARN, [O]=OOT_MODULE
+  [   38.051413] Hardware name: Anbernic RG351M (DT)
+  [   38.051423] pstate: 800000c5 (Nzcv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+  [   38.051437] pc : clk_core_enable+0x8c/0xc0
+  [   38.051451] lr : clk_core_enable+0x8c/0xc0
+  [   38.051462] sp : ffff80008278b740
+  [   38.051469] x29: ffff80008278b740 x28: ffff800081c21000 x27: ffff80008009a7e0
+  [   38.051494] x26: ffff8000798b55c8 x25: ffff800080dfa1a0 x24: 0000000000000000
+  [   38.051517] x23: ffff000006b9de10 x22: ffff0000014db010 x21: 0000000000000003
+  [   38.051540] x20: 00000000000000c0 x19: ffff000000451e00 x18: fffffffffffed908
+  [   38.051564] x17: 0000000000001fd8 x16: 0000000000000000 x15: ffff80008278b458
+  [   38.051587] x14: ffff8000815d09a8 x13: 7570675f6b6c6320 x12: 6465726170657270
+  [   38.051611] x11: ffff8000815d09a8 x10: 0000000000057fa8 x9 : 000000000000033b
+  [   38.051634] x8 : ffff8000816289a8 x7 : 80000000fffff000 x6 : ffff8000816289a8
+  [   38.051658] x5 : ffff00003fd45708 x4 : 0000000000000000 x3 : 0000000000000027
+  [   38.051681] x2 : 0000000000000023 x1 : 0000000000000000 x0 : 000000000000001b
+  [   38.051705] Call trace:
+  [   38.051712]  clk_core_enable+0x8c/0xc0
+  [   38.051726]  clk_enable+0x28/0x54
+  [   38.051741]  pm_clk_resume+0x78/0x1a0
+  [   38.051756]  genpd_runtime_resume+0xf0/0x284
+  [   38.051773]  __rpm_callback+0x3c/0x240
+  [   38.051789]  rpm_callback+0x60/0x6c
+  [   38.051801]  rpm_resume+0x4c8/0x7d8
+  [   38.051814]  __pm_runtime_resume+0x60/0xe4
+  [   38.051827]  pm_callback_power_on+0x5c/0x12c [mali_kbase]
+  [   38.051982]  kbase_pm_clock_on+0x50/0x324 [mali_kbase]
+  [   38.052078]  kbase_pm_do_poweron+0x1c/0xc0 [mali_kbase]
+  [   38.052176]  kbase_pm_update_active+0x134/0x170 [mali_kbase]
+  [   38.052274]  kbase_hwaccess_pm_gpu_active+0xc/0x20 [mali_kbase]
+  [   38.052372]  kbasep_pm_context_active_handle_suspend_locked+0x130/0x148 [mali_kbase]
+  [   38.052470]  kbase_pm_context_active_handle_suspend+0x44/0x6c [mali_kbase]
+  [   38.052566]  kbase_js_sched+0x18c/0xf34 [mali_kbase]
+  [   38.052662]  kbase_jd_submit+0x620/0xee8 [mali_kbase]
+  [   38.052757]  kbase_ioctl+0x128c/0x2704 [mali_kbase]
+  [   38.052853]  __arm64_sys_ioctl+0xa0/0xd8
+  [   38.052871]  invoke_syscall.constprop.0+0x3c/0xe4
+  [   38.052892]  el0_svc_common.constprop.0+0x34/0xcc
+  [   38.052907]  do_el0_svc+0x18/0x20
+  [   38.052920]  el0_svc+0x20/0xcc
+  [   38.052937]  el0t_64_sync_handler+0x118/0x124
+  [   38.052952]  el0t_64_sync+0x14c/0x150
+  [   38.052966] ---[ end trace 0000000000000000 ]---
+  [   38.052990] mali ff400000.gpu: __pm_clk_enable: failed to enable clk 000000004bcd0218, error -108
+
+
+==================== DRM ====================
+$ ls -l /dev/dri/
+  total 0
+  drwxr-xr-x    2 root     root            60 Jun 25 05:37 by-path
+  crw-rw----    1 root     video     226,   0 Jun 25 05:37 card0
+
+card0-DSI-1: status=connected enabled=enabled
+    320x480
+    320x480
+    320x480
+    320x480
+    320x480
+    320x480
+
+==================== RGA_AND_V4L2 ====================
+$ ls -l /dev/rga /dev/video0 /dev/video1 /dev/media0
+  ls: /dev/rga: No such file or directory
+  crw-rw----    1 root     video     251,   0 Jun 25 05:37 /dev/media0
+  crw-rw----    1 root     video      81,   0 Jun 25 05:37 /dev/video0
+  crw-rw----    1 root     video      81,   1 Jun 25 05:37 /dev/video1
+
+video0: rockchip,px30-vpu-enc
+video1: rockchip,px30-vpu-dec
+
+==================== INPUT ====================
+$ cat /proc/bus/input/devices
+  I: Bus=0019 Vendor=0000 Product=0000 Version=0000
+  N: Name="pwm-vibrator"
+  P: Phys=
+  S: Sysfs=/devices/platform/vibrator/input/input0
+  U: Uniq=
+  H: Handlers=event0 
+  B: PROP=0
+  B: EV=200001
+  B: FF=107030000 0
+  
+  I: Bus=0019 Vendor=0000 Product=0000 Version=0000
+  N: Name="rk805 pwrkey"
+  P: Phys=rk805_pwrkey/input0
+  S: Sysfs=/devices/platform/ff180000.i2c/i2c-0/0-0020/rk805-pwrkey.2.auto/input/input1
+  U: Uniq=
+  H: Handlers=kbd event1 
+  B: PROP=0
+  B: EV=3
+  B: KEY=10000000000000 0
+  
+  I: Bus=0000 Vendor=0000 Product=0000 Version=0000
+  N: Name="rk817_int Headphones"
+  P: Phys=ALSA
+  S: Sysfs=/devices/platform/rk817-sound/sound/card0/input2
+  U: Uniq=
+  H: Handlers=event2 
+  B: PROP=0
+  B: EV=21
+  B: SW=4
+  
+  I: Bus=0003 Vendor=1209 Product=3100 Version=0111
+  N: Name="OpenSimHardware OSH PB Controller Keyboard"
+  P: Phys=usb-ff300000.usb-1.2/input0
+  S: Sysfs=/devices/platform/ff300000.usb/usb3/3-1/3-1.2/3-1.2:1.0/0003:1209:3100.0002/input/input6
+  U: Uniq=0BMPJ7E00SRETA
+  H: Handlers=sysrq kbd event3 
+  B: PROP=0
+  B: EV=100013
+  B: KEY=8 0 0 0 0 0 1000000000000 107ac0011000 e08effdf01cfffff fffffffffffffffe
+  B: MSC=10
+  
+  I: Bus=0003 Vendor=1209 Product=3100 Version=0111
+  N: Name="OpenSimHardware OSH PB Controller Mouse"
+  P: Phys=usb-ff300000.usb-1.2/input0
+  S: Sysfs=/devices/platform/ff300000.usb/usb3/3-1/3-1.2/3-1.2:1.0/0003:1209:3100.0002/input/input7
+  U: Uniq=0BMPJ7E00SRETA
+  H: Handlers=mouse0 event4 
+  B: PROP=0
+  B: EV=17
+  B: KEY=ff0001 0 0 0 0
+  B: REL=903
+  B: MSC=10
+  
+  I: Bus=0003 Vendor=1209 Product=3100 Version=0111
+  N: Name="OpenSimHardware OSH PB Controller"
+  P: Phys=usb-ff300000.usb-1.2/input0
+  S: Sysfs=/devices/platform/ff300000.usb/usb3/3-1/3-1.2/3-1.2:1.0/0003:1209:3100.0002/input/input8
+  U: Uniq=0BMPJ7E00SRETA
+  H: Handlers=js0 event5 
+  B: PROP=0
+  B: EV=1b
+  B: KEY=ffffffffffff 0 0 0 0 0 0 ffff000000000000 0 0 0 0
+  B: ABS=3007c
+  B: MSC=10
+  
+
+
+==================== CPUFREQ_AND_THERMAL ====================
+policy0:
+    available = 1008000 1296000 
+    governor  = ondemand
+    governors = ondemand powersave performance schedutil 
+    cur       = 1008000
+soc-thermal: 53750
+gpu-thermal: 53750
+$ ls /sys/class/devfreq/
+  ff400000.gpu
+
+ff400000.gpu: 560000000
+
+==================== POWER ====================
+-- battery
+    capacity = 84
+    charge_empty_design = 0
+    charge_full = 3380000
+    charge_full_design = 3500000
+    charge_now = 2840924
+    charge_term_current = 350000
+    charge_type = N/A
+    constant_charge_current_max = 2000000
+    constant_charge_voltage_max = 4200000
+    current_avg = -541456
+    present = 1
+    status = Discharging
+    type = Battery
+    uevent = DEVTYPE=power_supply
+    voltage_avg = 3843550
+    voltage_max_design = 4100000
+    voltage_min_design = 3500000
+-- rk817-charger
+    online = 0
+    type = USB
+    uevent = DEVTYPE=power_supply
+    usb_type = Unknown [DCP]
+    voltage_avg = 5016000
+    voltage_max_design = 5500000
+    voltage_min_design = 3800000
+$ ls /sys/class/backlight/
+  backlight
+
+backlight: 127 / 255
+
+==================== AUDIO ====================
+$ cat /proc/asound/cards
+   0 [rk817int       ]: simple-card - rk817_int
+                        rk817_int
+
+$ cat /proc/asound/pcm
+  00-00: ff070000.i2s-rk817-hifi rk817-hifi-0 : ff070000.i2s-rk817-hifi rk817-hifi-0 : playback 1 : capture 1
+
+$ ls -l /dev/snd/
+  total 0
+  drwxr-xr-x    2 root     root            60 Jun 25 05:37 by-path
+  crw-rw----    1 root     audio     116,   4 Jun 25 05:37 controlC0
+  crw-rw----    1 root     audio     116,   3 Jun 25 05:37 pcmC0D0c
+  crw-rw----    1 root     audio     116,   2 Jun 25 05:37 pcmC0D0p
+  crw-rw----    1 root     audio     116,   1 Jun 25 05:37 seq
+  crw-rw----    1 root     audio     116,  33 Jun 25 05:37 timer
+
+
+==================== MEMORY_AND_PROCESSES ====================
+$ free -m
+                 total        used        free      shared  buff/cache   available
+  Mem:             981         270         308          16         489         711
+  Swap:              0           0           0
+
+$ ps
+      PID TTY          TIME CMD
+        1 ?        00:00:08 systemd
+        2 ?        00:00:00 kthreadd
+        3 ?        00:00:00 pool_workqueue_release
+        4 ?        00:00:00 kworker/R-kvfree_rcu_reclaim
+        5 ?        00:00:00 kworker/R-rcu_gp
+        6 ?        00:00:00 kworker/R-sync_wq
+        7 ?        00:00:00 kworker/R-slub_flushwq
+        8 ?        00:00:00 kworker/R-netns
+        9 ?        00:00:00 kworker/0:0-events
+       10 ?        00:00:00 kworker/0:0H-events_highpri
+       11 ?        00:00:00 kworker/0:1-events
+       12 ?        00:00:00 kworker/u16:0-devfreq_wq
+       13 ?        00:00:00 kworker/R-mm_percpu_wq
+       14 ?        00:00:00 rcu_tasks_trace_kthread
+       15 ?        00:00:00 ksoftirqd/0
+       16 ?        00:00:00 rcu_sched
+       17 ?        00:00:00 rcu_exp_par_gp_kthread_worker/0
+       18 ?        00:00:00 rcu_exp_gp_kthread_worker
+       19 ?        00:00:00 migration/0
+       20 ?        00:00:00 cpuhp/0
+       21 ?        00:00:00 cpuhp/1
+       22 ?        00:00:00 migration/1
+       23 ?        00:00:00 ksoftirqd/1
+       24 ?        00:00:00 kworker/1:0-events
+       25 ?        00:00:00 kworker/1:0H-kblockd
+       26 ?        00:00:00 cpuhp/2
+       27 ?        00:00:00 migration/2
+       28 ?        00:00:00 ksoftirqd/2
+       29 ?        00:00:00 kworker/2:0-rcu_gp
+       30 ?        00:00:00 kworker/2:0H-events_highpri
+       31 ?        00:00:00 cpuhp/3
+       32 ?        00:00:00 migration/3
+       33 ?        00:00:00 ksoftirqd/3
+       34 ?        00:00:00 kworker/3:0-cgroup_bpf_destroy
+       35 ?        00:00:00 kworker/3:0H-events_highpri
+       36 ?        00:00:00 kdevtmpfs
+       37 ?        00:00:00 kworker/R-inet_frag_wq
+       38 ?        00:00:00 oom_reaper
+       39 ?        00:00:00 kworker/R-writeback
+       40 ?        00:00:00 kcompactd0
+       41 ?        00:00:00 ksmd
+       42 ?        00:00:00 khugepaged
+       43 ?        00:00:00 kworker/R-cryptd
+       44 ?        00:00:00 kworker/R-kblockd
+       45 ?        00:00:00 kworker/R-blkcg_punt_bio
+       46 ?        00:00:00 kworker/u16:1-kvfree_rcu_reclaim
+       47 ?        00:00:00 kworker/R-edac-poller
+       48 ?        00:00:00 kworker/R-devfreq_wq
+       49 ?        00:00:00 watchdogd
+       50 ?        00:00:00 kworker/3:1-events
+       51 ?        00:00:00 kworker/R-quota_events_unbound
+       52 ?        00:00:00 kworker/0:1H-mmc_complete
+       53 ?        00:00:00 kworker/R-rpciod
+       54 ?        00:00:00 kworker/R-xprtiod
+       55 ?        00:00:00 kworker/R-cfg80211
+       56 ?        00:00:00 kswapd0
+       57 ?        00:00:00 kworker/R-nfsiod
+       58 ?        00:00:00 kworker/u16:2-events_unbound
+       59 ?        00:00:00 kworker/2:1-rcu_gp
+       60 ?        00:00:00 irq/19-rockchip_usb2phy
+       61 ?        00:00:00 kworker/2:2-events
+       63 ?        00:00:00 kworker/2:3-events
+       65 ?        00:00:00 kworker/R-uas
+       66 ?        00:00:00 irq/31-rk817
+       67 ?        00:00:00 kworker/1:1-cgroup_bpf_destroy
+       68 ?        00:00:00 irq/57-rockchip_thermal
+       69 ?        00:00:00 kworker/R-mld
+       70 ?        00:00:00 kworker/2:1H-kblockd
+       71 ?        00:00:00 kworker/R-ipv6_addrconf
+       72 ?        00:00:00 kworker/3:1H-kblockd
+       73 ?        00:00:00 irq/64-ff370000.mmc cd
+       74 ?        00:00:00 kworker/0:2-cgroup_bpf_destroy
+       75 ?        00:00:00 card0-crtc0
+       76 ?        00:00:00 kworker/R-mmc_complete
+       77 ?        00:00:00 kworker/0:3-cgroup_release
+       78 ?        00:00:00 kworker/0:4-events
+      102 ?        00:00:00 kworker/3:2-events
+      105 ?        00:00:00 kworker/1:2-cgroup_offline
+      115 ?        00:00:00 kworker/1:1H-kblockd
+      126 ?        00:00:00 jbd2/mmcblk0p2-8
+      127 ?        00:00:00 kworker/R-ext4-rsv-conversion
+      176 ?        00:00:00 psimon
+      211 ?        00:00:00 kworker/u16:3+events_unbound
+      216 ?        00:00:00 systemd-journal
+      223 ?        00:00:00 kworker/3:3-events
+      259 ?        00:00:00 kworker/1:3-events
+      262 ?        00:00:00 kworker/1:4-cgroup_bpf_destroy
+      279 ?        00:00:00 rpcbind
+      309 ?        00:00:00 kworker/0:5
+      326 ?        00:00:00 systemd-udevd
+      337 ?        00:00:00 iwd
+      338 ?        00:00:01 pipewire
+      339 ?        00:00:00 powerstate
+      344 ?        00:00:00 systemd-logind
+      346 ?        00:00:00 rocknix-touchsc
+      347 ?        00:00:02 wireplumber
+      364 ?        00:00:03 pipewire-pulse
+      389 ?        00:00:00 kworker/0:2H-mmc_complete
+      396 ?        00:00:00 kworker/2:2H
+      473 ?        00:00:00 NetworkManager
+      512 ?        00:00:00 sshd
+      517 ?        00:00:00 seatd
+      550 ?        00:00:00 kworker/0:3H
+      757 ?        00:00:00 kworker/R-free_pages_workq
+      758 ?        00:00:00 kworker/u17:0-kbase_pm_poweroff_wait
+      759 ?        00:00:00 mali-simple-power-model-temp-poll
+      760 ?        00:00:00 kworker/u17:1-kbase_pm_poweroff_wait
+      761 ?        00:00:00 kworker/R-kbase_job_fault_resume_work_que
+     1421 ?        00:00:00 battery_led_sta
+     1783 ?        00:00:00 probe.sh
+     1902 ?        00:00:00 sway.sh
+     1917 ?        00:00:00 start_es.sh
+     1932 ?        00:00:00 dbus-daemon
+     1936 ?        00:00:14 sway
+     2204 ?        00:00:00 kworker/R-kbase_event
+     2365 ?        00:00:00 swaybg
+     2384 ?        00:00:00 mako
+     2452 ?        00:00:24 emulationstatio
+     2526 ?        00:00:00 input_sense
+     2535 ?        00:00:00 kworker/R-kbase_event
+     2579 ?        00:00:00 kworker/1:2H-kblockd
+     2593 ?        00:00:00 kworker/3:2H
+     2857 ?        00:00:00 kworker/u17:2-kbase_pm_poweroff_wait
+     3006 ?        00:00:00 input_sense
+     3007 ?        00:00:00 grep
+     3008 ?        00:00:00 input_sense
+     3009 ?        00:00:00 input_sense
+     3010 ?        00:00:00 input_sense
+     3011 ?        00:00:00 evtest
+     3012 ?        00:00:00 input_sense
+     3013 ?        00:00:00 evtest
+     3014 ?        00:00:00 evtest
+     3430 ?        00:00:00 sleep
+     3492 ?        00:00:00 sleep
+     3582 ?        00:00:00 sleep
+     3668 ?        00:00:00 ps
+     3669 ?        00:00:00 sed
+

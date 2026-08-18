@@ -211,3 +211,141 @@ root**. Hostname is `rg351p`.
 > ⚠️ EmulationStation will be holding DRM master. Phase 1 has to stop it before
 > it can modeset — expect `systemctl stop emulationstation` or equivalent to be
 > step zero of every device test.
+
+---
+
+# ROCKNIX — the system pid351 actually targets
+
+ArkOS was replaced with **ROCKNIX 20260801** (`BUILD_BRANCH=next`), a
+LibreELEC/JELOS-derived image on **mainline Linux 6.12.79**. Everything above
+tagged **[dtb]**/**[live]** was ArkOS; everything below is **[rocknix]**, from
+`probe-1.txt` through `probe-3.txt` produced by `tools/rocknix/probe.sh`.
+
+Two partitions: `p1` 2G vfat `ROCKNIX` (kernel, DTBs, overlays), `p2` 27.2G
+ext4 `STORAGE` (resized on first boot). No eMMC, so the card is still the whole
+machine and a bad flash is never fatal.
+
+`model` reads **"Anbernic RG351M"** — the image ships no `rg351p` DTB at all,
+and U-Boot's ADC probe (`uboot.hwid_adc=a,v11`) selects
+`rk3326-anbernic-rg351m.dtb` for this unit. `vendor/rocknix-rg351m.dts` is
+therefore the tree this machine really runs.
+
+## Why this distro, mechanically
+
+- `extlinux.conf` carries **`console=tty0`**, so kernel messages reach the
+  panel. That is our substitute for the UART header this board does not have.
+- It also carries **`FDTOVERLAYS`**, and `/overlays/` lives on the **vfat**
+  partition. Device tree changes are therefore a file copy and a one-line edit,
+  with no root, no reflash, and a trivial revert. `extlinux.conf.pre-pid351` is
+  kept beside it.
+- **`/storage/.config/autostart/` is a directory**, walked as root by
+  `/usr/bin/autostart` before EmulationStation starts. Not LibreELEC's single
+  `autostart.sh` file — that is silently ignored here. Entries run
+  synchronously and are followed by a `wait`, so anything slow must `setsid`
+  itself out of the way.
+- sshd is installed and its unit is wanted by `multi-user.target`, but
+  `ssh.enabled=0` is the shipped default and the daemon script gates on it.
+  `set_setting ssh.enabled 1` turns it on for good. Root password is
+  ROCKNIX's default, `rocknix`.
+
+## USB — host works, power did not
+
+Mainline is the opposite of ArkOS here, and this is the finding of the session.
+
+`usb@ff300000` gains **`usb-role-switch`** and
+**`role-switch-default-mode = "host"`**, so dwc2 comes up as a host with no
+coaxing. It enumerates the internal hub and the gamepad at boot:
+
+    usb3    1d6b:0002  DWC OTG Controller
+     3-1    05e3:0608  USB2.0 Hub          MxCh=4, Atr=e0 (self-powered)
+     3-1.2  1209:3100  OSH PB Controller   Driver=usbhid
+
+This confirms the ArkOS-era conclusion above from the other direction. The hub
+is internal and powered from the system rail, which is why it enumerates even
+with the port unpowered — and a hub's downstream port can never present itself
+as a USB *device*, which is the real reason gadget mode on ArkOS brought up
+`usb0` that no host ever saw. **Gadget mode over that socket is impossible by
+construction, not by misconfiguration.**
+
+What was broken was power alone:
+
+    usb_midu     enabled   5000000 uV  users=1   RK817 BOOST, the 5V rail
+    OTG_SWITCH   disabled          uV  users=0   the switch onto VBUS
+
+Mainline's rk817 regulator driver registers `OTG_SWITCH` from its own table,
+but the board tree gives it no node, so it has no phandle, nothing can claim it
+as a supply, and it stays off forever. dwc2 looked and found nothing:
+
+    dwc2 ff300000.usb: Looking up vbus-supply property in node /usb@ff300000 failed
+
+`tools/rocknix/overlays/pid351-usb-vbus.dtbo` gives `OTG_SWITCH` a node and
+hands it to dwc2 as `vbus-supply`. **Verified** in `probe-2.txt`:
+
+    otg_switch   enabled   users=1
+       ff300000.usb-vbus       1
+
+Deliberately not `regulator-always-on`: dwc2 enables it on entering host mode
+and drops it otherwise, so an idle console is not running a 5V boost for
+nothing.
+
+## USB — what is still not solved
+
+`rockchip-usb2phy` reports **`Requested PHY is disabled`**, because
+`usb2phy@100/otg-port` is `status = "disabled"` in both trees. dwc2 works
+anyway, but the PHY driver manages neither VBUS nor the id/bvalid interrupts.
+Untested; one overlay away if it ever matters.
+
+Enabling `usb@ff340000`/`usb@ff350000` (`pid351-usb-host.dtbo`) **works** —
+both bind and register buses 1 and 2 — but nothing is attached to either. Left
+out of `FDTOVERLAYS`, since clocking two idle controllers buys nothing. The
+`.dtbo` stays on the card.
+
+The Kensington UH1400P dock **never attaches**, with 5V now live on the port
+and a USB mass-storage stick behind it: no connect, no reset, no failed
+enumeration, no over-current, on any bus. It has a captive USB-C cable and
+announces a USB Billboard descriptor, i.e. it waits for CC negotiation — and
+there is no `typec`, `fusb302`, `tcpm` or CC GPIO anywhere in either device
+tree. **Networking is blocked on a passive USB-C-to-USB-A-female adapter and a
+bus-powered device, not on software.**
+
+## Corrections to the ArkOS-era notes above
+
+- **"mainline's OPP table declares lower points" is wrong.** ROCKNIX's
+  `opp-table-0` is 1008 / 1296 / 1416 MHz and only 1008 and 1296 survive to
+  `scaling_available_frequencies`. Both trees floor at **1008 MHz**. Adding
+  sub-GHz OPPs means choosing voltages ourselves, not copying mainline's.
+- GPU is a **single 560 MHz** OPP here, against ArkOS's 400/480/520.
+- Governors are `ondemand powersave performance schedutil`, default `ondemand`,
+  idling at 1008 MHz — better behaved than ArkOS pinning 1296.
+
+## RGA — driver present, node absent
+
+`/dev/rga` does not exist and `/sys/class/video4linux` holds only
+`rockchip,px30-vpu-enc` and `-dec` (`/dev/video0`, `/dev/video1`). ROCKNIX's
+DTB keeps `qos_rga_rd`/`qos_rga_wr` but **has no RGA device node**, so nothing
+probes.
+
+The driver itself **is compiled into the kernel** — the image contains
+`rockchip,rk3288-rga`, `rockchip,rk3399-rga`, `Cannot enable rga aclk: %d` and
+`Failed to map video buffer to RGA`. ArkOS's tree puts the hardware at
+`0xff480000` (`rockchip,rga2`). So hardware scale + rotate is reachable with an
+overlay declaring `rga@ff480000` with a mainline-matching compatible and
+mainline clock-names. **[todo]** build it; this is the single biggest Phase 1
+lever, because the panel needs a 90-degree rotation on every frame.
+
+## Panel, audio, battery, input on mainline
+
+- Panel unchanged: `card0-DSI-1`, connected, advertising **320x480** only.
+  Still portrait, still ours to rotate.
+- Audio: one card, `rk817int`, `ff070000.i2s-rk817-hifi`, playback and capture
+  on `pcmC0D0p`/`pcmC0D0c`. `hw:0,0` as before.
+- Battery: `charge_full_design` reads **3500000** here against ArkOS's
+  3450000. Idling in EmulationStation at backlight **127/255**:
+  `current_avg -541456 uA` at `voltage_avg 3843550 uV` = **2.08 W**. Not
+  comparable with the 1.35 W above, which was at backlight 63 — which is
+  exactly why every power figure has to carry its backlight level.
+- Input: same `OpenSimHardware OSH PB Controller`, but the event numbering
+  moved — keyboard `event3`, mouse `event4`, pad `event5`/`js0`, because the
+  vibrator, power key and jack detect now take `event0`-`event2`.
+  **Never hardcode an event number.** Match on the `1209:3100` VID/PID or the
+  device name, and pick the node that reports absolute axes.

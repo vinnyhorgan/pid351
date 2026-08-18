@@ -1,0 +1,32 @@
+/dts-v1/;
+/plugin/;
+
+/*
+ * Put 5V on the OTG port.
+ *
+ * The RK817 has a boost that generates 5V (BOOST, "usb_midu") and a switch
+ * that connects it to the USB VBUS pin (OTG_SWITCH). Mainline's rk817
+ * regulator driver registers OTG_SWITCH, but the board device tree gives it
+ * no node, so it has no phandle, nothing can claim it as a supply, and it
+ * sits disabled with zero users for the life of the system. The port
+ * therefore never sources power, which is why only self-powered devices
+ * have ever enumerated on this machine.
+ *
+ * Giving OTG_SWITCH a node makes it referenceable; handing it to dwc2 as
+ * vbus-supply makes dwc2 switch it on when it enters host mode and off
+ * again otherwise. Deliberately NOT regulator-always-on: leaving a 5V boost
+ * running whenever the console is on costs battery for nothing, and battery
+ * is the first priority of this project.
+ */
+
+&rk817 {
+    regulators {
+        otg_switch: OTG_SWITCH {
+            regulator-name = "otg_switch";
+        };
+    };
+};
+
+&usb20_otg {
+    vbus-supply = <&otg_switch>;
+};
