@@ -81,32 +81,69 @@ border edges visible, d-pad moves the box, paced at 59.727Hz and measured.
 
 ## Phase 3 — power
 
-Driven by the harness from 1.6, never by folklore. Backlight curve, core
-offlining, OPP cap, GPU never powered on, no busy-waiting anywhere. Each change
-gets a measured before and after, ranked by actual milliwatts.
+Driven by the harness from 1.6, never by folklore. Each change gets a measured
+before and after, ranked by actual milliwatts. Mostly done, and the ranking
+came out nothing like the folklore - see `docs/hardware.md`. Settled:
+
+- [x] OPP cap. 1296 -> 1008 MHz is 21.5 mA and costs no frames. The kernel's
+      own energy model agrees: `EM: OPP:1296000 is inefficient`, because 1296
+      and 1416 share the 1.35 V rail. Use 1008, or 1416. Never 1296.
+- [x] Backlight. Full range is 42.0 mA, 10.8% - real, but not the dominant
+      term everyone assumes it is.
+- [x] The rotate blit. STRIDED -> the staged variants is ~9.5 mA.
+- [x] GPU never powered on. Already true without us: the `gpu` genpd is `off`
+      at runtime, as are `vpu` and `vi`. Nothing to switch off, nothing to win.
+- [x] Core offlining. Rejected: `cluster-sleep` is already entered tens of
+      thousands of times a minute, so idle cores cost nothing to begin with.
+- [ ] Suspend-to-savestate on power-off. The only large term left.
 
 ## Phase 4 — our own image
 
 The risky phase, deliberately last, when everything above already works.
 
-- [ ] 4.1 Buildroot: mainline kernel + `rk3326-anbernic-rg351m` DTB, minimal config.
-- [ ] 4.2 **fbcon on tty0 is our substitute for the serial console.** If the
-      panel probes, we can read boot messages. For failures before that, the
-      initramfs `init` dumps dmesg to the FAT partition before doing anything
-      else, so a dead screen still tells us something after a power cycle.
-- [ ] 4.3 Repartition: ArkOS stays bootable, our boot files live alongside it.
+**It buys about zero milliamps.** Measured, not assumed: at the point our
+binary runs on autostart, ROCKNIX's userspace costs less than the +-7 mA noise
+floor, because sway and EmulationStation have not started yet. What the image
+buys is boot time, determinism, a kernel we can strip, and control over
+governor and idle policy without fighting anyone. Those are the reasons; do
+not go into it expecting battery.
+
+- [x] 4.1 ~~Buildroot~~: no Buildroot. Buildroot exists to build a userspace
+      with packages and we have none - the userspace is one static binary.
+      Mainline 6.12.103 (same LTS series ROCKNIX runs, so driver behaviour
+      matches every measurement we have), our own config from the binding
+      census in `docs/hardware.md`, `CONFIG_MODULES=n`, `CONFIG_NET=n`, no
+      GPU, no VPU. `image/build.sh` produces the whole thing.
+- [x] 4.2 **fbcon on tty0 is our substitute for the serial console**, and our
+      own stdout is redirected into the kernel ring buffer so both end up in
+      one place with one set of timestamps. `plat_boot_save_log` writes that
+      buffer to the FAT partition on the way out and on any failed bring-up,
+      so a dead screen still explains itself after a power cycle.
+- [x] 4.3 ~~Repartition~~: not needed. The boot chain ends in
+      `sysboot ... /extlinux/extlinux.conf`, so which system boots is a text
+      file on a FAT partition, editable from the laptop. `tools/install-image.sh`
+      installs beside ROCKNIX; `tools/restore-rocknix.sh` is the rollback.
+      Original plan, kept for the record: repartition: ROCKNIX stays bootable, our boot files live alongside it.
       A marker file on the FAT partition picks which one boots — flippable from
       the laptop, no input needed on the device.
 - [ ] 4.4 U-Boot with `ums`: the card mounts on the laptop over the same USB-C
       cable that powers the device. Kills card-swapping permanently, which is
-      what makes having only one card survivable.
-- [ ] 4.5 pid351 as PID 1, `panic=1` so a crash is a two-second reboot.
+      what makes having only one card survivable. **The stock U-Boot 2017.09 on
+      the card does not have `ums`** - it has `rockusb`, which needs a console
+      or the maskrom button to reach - so this has to be built, and until it is
+      the recovery plan is entirely physical.
+- [x] 4.5 pid351 as PID 1. It mounts `/dev`, `/proc` and `/sys` itself
+      (`CONFIG_DEVTMPFS_MOUNT` does not apply to an initramfs root), waits for
+      the DSI panel to finish its deferred probe and for the pad to enumerate
+      over USB - about 2.4 s, a wait another init used to absorb for us - and
+      never returns from `main`, because PID 1 returning is a kernel panic.
+      `panic=5` rather than 1 during bring-up: long enough to read the screen.
 - [ ] 4.6 Per-console display modes, savestate-and-poweroff suspend, 2s boot.
 
 ### Blind bring-up rules
 
 1. Change exactly one thing per boot.
-2. ArkOS stays bootable until the very end.
+2. ROCKNIX stays bootable until the very end.
 3. Every experimental kernel writes dmesg to FAT before anything else.
 4. No working card reader means no recovery — confirm the reader before the
    first repartition. (Floor below that: RK3326 maskrom over USB with
@@ -114,9 +151,22 @@ The risky phase, deliberately last, when everything above already works.
 
 ## Open questions
 
-Phase 0 answers all of these; none should be guessed at before then.
+Phase 0 and the five device runs answered all of the original ones:
 
-- What kernel and DRM stack does ArkOS actually run?
-- Is the panel already presented as landscape, or do we owe it a rotation?
-- Is the gamepad USB HID (as mainline's RG351M notes suggest) or GPIO + ADC?
-- Does the ethernet dongle work in host mode, or do we need `g_ether`?
+- ~~What kernel and DRM stack does the stock system run?~~ ROCKNIX, Linux
+  6.12.79, `rockchip-drm` + `rockchip-vop` + `dw-mipi-dsi-rockchip` + the
+  `elida,kd35t133` panel driver. GPU is the `mali_kbase` vendor blob, not
+  panfrost, and its power domain is off at runtime.
+- ~~Is the panel already presented as landscape?~~ No. It is a 320x480 portrait
+  panel and **the VOP has no `rotation` property on any plane**, so we owe it a
+  CPU rotate and always will.
+- ~~Is the gamepad USB HID or GPIO+ADC?~~ USB HID: `1209:3100` at full speed,
+  behind an internal 480 Mb/s hub. That hub is why dwc2 fires ~6700 times a
+  second, the largest wakeup source on the machine.
+- ~~Does the ethernet dongle work in host mode?~~ Moot. There is no network in
+  the design and the `gmac` power domain is off.
+
+Still open, and deliberately so:
+
+- Audio. ALSA on `rk817-codec` via `rockchip-i2s`, the unmapped volume keys on
+  the pad's keyboard interface, and headphone detect on `event2`.

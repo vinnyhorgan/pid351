@@ -614,7 +614,11 @@ there is audio, so it belongs with that work.
 
 ### The refresh mismatch does not need a clock retune
 
-The panel runs at 60.109 Hz measured and we were pacing to 59.727. Rather than
+The panel runs at **exactly 60.0186 Hz** - cpll is 408 MHz, the VOP divides by
+24 for a 17.000000 MHz pixel clock, and 584x485 totals do the rest with no
+rounding anywhere. The two flip-rate measurements, 60.109 and 60.050 Hz,
+bracket that within their own start/stop alignment error rather than
+contradicting it. We were pacing to 59.727, 0.49% slow. Rather than
 retune the pixel clock to 16917 kHz - which needs the VOP PLL to be able to
 produce it, and nobody knows whether it can - **pace to the panel**. Running
 GBA 0.64% fast is a pitch shift of about a tenth of a semitone's ninetieth,
@@ -622,3 +626,351 @@ which is inaudible, against a duplicated frame every 2.6 seconds, which is not
 invisible. Same argument already applied to NES and SNES, whose rates never
 matched anything. So the display clock is the master and audio is resampled to
 it, and the PLL question never has to be asked.
+
+## Fifth run: what the lean image actually needs, and what it will not buy
+
+`docs/first-light-5.log` and `docs/probe-4-drivers.txt`. This was the last boot
+before the image, so the point was to settle every open question that did not
+need audio.
+
+### The VOP cannot rotate. Verified, not argued.
+
+Every property on every plane was dumped. The connector carries `panel
+orientation = 2 [Left Side Up]`, which is informational - it tells a compositor
+what to do, and nothing more. The three planes carry **only** `type` and
+`IN_FORMATS`. There is no `rotation` property anywhere on the pipeline, so
+there is no rotation to enable. The CPU rotate is not a workaround for a
+feature we failed to find; it is the only mechanism that exists.
+
+Plane 32 primary, 34 cursor, 37 overlay, all on crtc 36, all offering `RG16`.
+So the double buffer and the 16-bit format were already the right calls.
+
+### The GPU costs us nothing, and the removal test was the wrong test
+
+`delete_module("panfrost")` failed both times with ENOENT because **ROCKNIX
+does not use panfrost**. It uses the ARM vendor blob, `mali_kbase`, bound as
+`mali <- ff400000.gpu`. So the `no-gpu` phase is a duplicate of `base`, which
+turns out to be useful as a third identical-condition control.
+
+The question it was meant to answer is answered better elsewhere. The genpd
+summary reads:
+
+    gpu   off-0        ff400000.gpu   suspended
+    vpu   off-0        ff442000.video-codec suspended
+    vi    off-0        ff4a8000.iommu suspended
+    vo    on           vop, dsi, phy, iommu all active
+
+The GPU power domain is **off** while we run, and the driver logs a WARN from
+`disable_gpu_power_control` at 17.4 s doing exactly that. There is no GPU cost
+to recover. My 5-15 mA pessimistic allowance was wrong in the safe direction
+and should be struck: it is zero. Same for the VPU and for the RGA's iommu
+domain - all three are gated off, all three are free.
+
+Incidentally there is no `rockchip-rga` device on the platform bus at all, so
+the missing DT node was the whole story. RGA stays closed.
+
+### ROCKNIX's daemons cost less than we can measure
+
+Four phases, and the two instruments disagreed in *direction*, so one of them
+had to be broken:
+
+| phase | charge-derived | `current_avg` |
+|---|---|---|
+| base | 448448 | 380808 |
+| no-gpu (= base) | 427093 | 374788 |
+| no-daemons (22 stopped) | 341674 | 403512 |
+| restored | 448446 | 387000 |
+
+The coulomb counter is the broken one, and the arithmetic says so exactly. Each
+29 s window contained **4 counter steps**, so the quantum is ~880 uAh. The
+deltas were 3612, 3440, **2752**, 3612 uAh - which is 4, 4, **3**, 4 steps. The
+`no-daemons` window simply closed one update early. The apparent 107 mA saving
+is precisely one quantum, one quarter of the reading. It is an artifact, and
+the near-perfect base/restored agreement (2 uA apart) was luck, not precision.
+
+That leaves `current_avg`. Three identical-condition phases read 380808,
+374788 and 387000: a 12.2 mA spread around 380.9, consistent with the +-7 mA
+floor established last run. `no-daemons` read 403512, i.e. **22.6 mA higher** -
+stopping the daemons did not help, and may have hurt (22 SIGSTOPped processes
+leave systemd, dbus and journald retrying against them).
+
+So the honest conclusion, and it is not the one I expected:
+
+> **At the moment our program runs, ROCKNIX's userspace costs less than our
+> noise floor.** Everything expensive - sway, swaybg, mako, EmulationStation,
+> the GPU compositor - has not started yet. The 553 mA we measured for a full
+> ROCKNIX session is real, but it is never concurrent with us.
+
+Our own image therefore buys **approximately zero milliamps** over "ROCKNIX
+plus our binary on autostart". The earlier 20 mA allowance is withdrawn. What
+the image actually buys is boot time, determinism, the freedom to set the
+governor and idle policy without fighting anyone, a kernel we can strip, and
+the project itself. Those are good reasons. Battery is not one of them, and it
+would have been dishonest to keep implying otherwise.
+
+Revised projection for the finished thing, against 380.9 mA today:
+
+| lever | saving | how it is known |
+|---|---|---|
+| 1296 -> 1008 MHz | 21.5 mA | measured, and free: 59.70 fps held |
+| STRIDED -> the chosen blit | ~9.5 mA | 2599 -> 1245 us at NES, at 7 mA/ms |
+| deleting ROCKNIX | 0 mA | measured this run |
+| **total** | **~31 mA** | **~350 mA, an 8% improvement** |
+
+The kernel's own energy model independently confirms the frequency call:
+`cpu cpu0: EM: OPP:1296000 is inefficient`. 1296 and 1416 MHz share the same
+1.35 V rail, so 1296 is dominated by 1416 on every metric. **Use 1008, or jump
+straight to 1416. Never 1296** - which is exactly what ROCKNIX boots at.
+
+### The biggest wakeup source is the gamepad's USB bus
+
+`/proc/interrupts` at ~35 s uptime, sorted by what matters:
+
+    63:  234651   ff300000.usb, dwc2_hsotg:usb1
+    11:    7965   arch_timer (CPU0)
+    56:    3280   dw-mci
+    27:    4337   ff3a0000.spi
+    28:    1950   ff180000.i2c
+    25:    1249   vop + its iommu
+
+dwc2 fires **~6700 times a second**, fifty times the timer tick and 190 times
+the VOP. The topology explains it: the pad is a *full-speed* HID device behind
+a *high-speed* internal hub (`1-1.2: 1209:3100` at 12 Mb/s, under `1-1:
+05e3:0608` at 480 Mb/s). dwc2 schedules split transactions for full-speed
+periodic endpoints off the start-of-frame interrupt, one per 125 us microframe.
+8000/s is the ceiling and we are at 6700.
+
+At ~2-4 us of handler that is 16-32 ms per second, or **2-4 mA** at our
+exchange rate - small, but it is the single thing that keeps CPU0 from sitting
+still, and it is unavoidable because the pad genuinely is a USB device. Worth
+knowing before blaming anything else for a jittery idle. Not worth chasing now.
+
+Idle itself is working: cpu0 logged 38688 `cluster-sleep` entries and 95149
+WFI in 35 s, and cpus 1-3 spend most of their time in `cluster-sleep`. Nothing
+to fix there.
+
+### Thermals are a non-issue
+
+46.8 C soc, 46.4 C gpu, first passive trip at 70 C, critical at 115 C. We are
+23 degrees below the first intervention while running the display flat out.
+Nothing in the power plan needs a thermal caveat.
+
+### Storage ceiling
+
+`mmc0` negotiated SD high-speed, 4-bit, 50 MHz - not UHS, not SDR104 - and
+measured **22.2 MB/s** sequential with caches dropped, on a 29.2 GiB card. That
+is the number to design ROM loading and any save-state size against.
+
+### U-Boot: there is a recovery path, but not the one I wanted
+
+    U-Boot 2017.09 (Aug 01 2026)
+    board string: Rockchip RK3326 ODROID-GO Advanced
+    commands present: rockusb, bootm, booti, sysboot, setexpr
+    commands absent:  ums
+
+No `ums`, so U-Boot cannot expose the card as a USB mass-storage device - the
+"fix a broken image without pulling the SD" trick is out. `rockusb` is present,
+which is the Rockchip loader protocol, but reaching it needs either a console
+we do not have or the maskrom button. **So the recovery plan stays physical:
+keep ROCKNIX's partitions intact and add ours beside them, and never overwrite
+the only known-good boot path.**
+
+The kernel command line shows U-Boot already does board detection for us:
+`uboot.hwid_adc=a,v11`. It reads the ADC and passes the result, so our own
+extlinux entry inherits that without doing anything.
+
+### The driver list our kernel has to reproduce
+
+This is the census the lean config is built from - everything that actually
+bound to hardware, with the noise stripped:
+
+- **CPU/power**: `psci-cpuidle`, `psci-cpuidle-domain`, `cpufreq-dt`,
+  `rockchip-pm-domain`, `rockchip-iodomain` (x2), `armv8-pmu`,
+  `rockchip-cpuinfo`, `syscon-reboot-mode`
+- **PMIC**: `rk8xx-i2c` on i2c 0-0020, then `rk808-regulator`, `rk808-rtc`,
+  `rk808-clkout`, `rk805-pwrkey`, `rk817-charger`, `rk817-codec`
+- **Display**: `rockchip-drm` (display-subsystem), `rockchip-vop`,
+  `dw-mipi-dsi-rockchip`, `inno-dsidphy`, `panel-elida-kd35t133`,
+  `pwm-backlight`, `rk_iommu` x3
+- **Storage**: `dwmmc_rockchip` + `mmcblk`, `rockchip-sfc` + `spi-nor`
+- **Input/USB**: `dwc2`, `hub`, `usbhid`, `hid-generic`
+- **Audio**: `rockchip-i2s`, `asoc-simple-card`, `rk817-codec`, `snd-soc-dummy`
+- **Misc**: `rockchip-pinctrl`, `rockchip-gpio` x4, `rk3x-i2c` x2,
+  `rockchip-pwm` x3, `rockchip-saradc`, `rockchip-thermal`, `rockchip-otp`,
+  `leds-gpio`, `leds_pwm`, `pwm-vibrator`, `dw-apb-uart` x2
+
+Everything else in ROCKNIX's config supports the other thirty-nine handhelds.
+Droppable outright: `mali_kbase`, `hantro_vpu` and its four v4l2 helpers,
+`ntfs3`, `exfat`, `snd_seq`, `algif_aead`, `nfnetlink`, and the whole network
+stack - `NetworkManager`, `iwd`, `avahi`, `sshd`, `resolved`, `timesyncd`,
+`hwdb`. The blame list shows those cost 6+ seconds of boot between them.
+
+Two more image-level notes from the boot log:
+
+- **CMA is 64 MiB.** We need two 480x320x2 dumb buffers, about 1.2 MB. `cma=8M`
+  hands 56 MB back to the emulator.
+- The DT has **no `reserved-memory` node**, so nothing else is claiming RAM.
+
+### What is still open
+
+Audio only. The volume keys are still unmapped and headphone detect on
+`event2` is still untouched, both deferred deliberately. Everything else that
+needs hardware in front of it has now been measured.
+
+## Building our own kernel: ROCKNIX was hiding two OPPs
+
+Mainline 6.12.103 carries `rk3326-anbernic-rg351m.dts` upstream, and it is the
+right board: `elida,kd35t133`, `rotation = <270>`, same reset GPIO, same
+supplies as the DTB on the card. The compiled DTB is 44735 bytes against
+ROCKNIX's 65105 - 31% smaller for the same hardware.
+
+The interesting difference is the CPU OPP table:
+
+| frequency | mainline | ROCKNIX |
+|---|---|---|
+| 600 MHz | **0.950 V**, `opp-suspend` | deleted |
+| 816 MHz | **1.050 V** | deleted |
+| 1008 MHz | 1.175 V | present |
+| 1200 MHz | 1.300 V | deleted |
+| 1296 MHz | 1.350 V | present |
+| 1416 MHz | absent | added (same 1.350 V) |
+
+**ROCKNIX strips every OPP below 1008 MHz** - they are shipping an emulation
+frontend and want headroom, so the low end is dead weight to them. It is not
+dead weight to us. Dynamic power goes as f*V^2, so against 1008 MHz:
+
+- 816 MHz at 1.05 V: `(816 x 1.05^2) / (1008 x 1.175^2)` = **0.65**
+- 600 MHz at 0.95 V: `(600 x 0.95^2) / (1008 x 1.175^2)` = **0.39**
+
+And the 21.5 mA we measured going 1296 -> 1008 was mostly a *static* saving,
+because `vdd_arm` drops with the OPP. 1008 -> 816 cuts that rail another 11%,
+which should be worth a similar amount again on the floor. **This is a lever
+that did not exist while we were running someone else's device tree**, and it
+is the first time building our own kernel has a measurable payoff attached
+rather than an aesthetic one.
+
+Whether a GBA core fits inside a frame at 816 MHz is the open question, and it
+is measurable the moment there is a core. The frontend and the lighter systems
+almost certainly fit at 600.
+
+Note mainline has no 1416 MHz. ROCKNIX added it at the same 1.350 V as 1296,
+so it is proven on this silicon and we can add it back if we ever need it -
+but the kernel's own energy model already told us 1296 is dominated, so it
+would *replace* 1296, never sit beside it.
+
+## Audio needs no oracle after all
+
+The whole topology is in the device tree, and the controls are in the driver:
+
+    simple-audio-card,widgets  = "Microphone","Mic Jack",
+                                 "Headphone","Headphones", "Speaker","Speaker"
+    simple-audio-card,routing  = "MICL","Mic Jack", "Headphones","HPOL",
+                                 "Headphones","HPOR", "Speaker","SPKO"
+    simple-audio-card,hp-det-gpio = <&gpio0 22 0>    format = i2s, mclk-fs 256
+
+`sound/soc/codecs/rk817_codec.c` exposes exactly two controls that matter:
+
+- `"Master Playback Volume"` - `SOC_DOUBLE_R_RANGE_TLV` on `DDAC_VOLL/VOLR`
+- `"Playback Mux"` - a two-entry enum, `"HP"` / `"SPK"`
+
+Everything else in the codec is a DAPM supply, which the framework powers up
+on its own when the PCM opens and the route is active. **There is nothing to
+unmute by hand.** Bring-up is: set the mux from the headphone-detect GPIO, set
+the volume, open `/dev/snd/pcmC0D0p`, write. Both can be driven through the
+ALSA ioctls directly, the same way we drive DRM, so alsa-lib is not a
+dependency either.
+
+I had argued we needed one more ROCKNIX boot to learn this at runtime. We did
+not - it was all in the source, and going to the source is the better answer.
+
+## First boot of our own kernel
+
+It came up. U-Boot -> our extlinux entry -> mainline 6.12.103 -> our binary as
+PID 1, display, pad, a full measurement run, exit on the button combo, log
+written to the FAT partition, power off. Every link in that chain worked the
+first time.
+
+(The raw log was lost: the installer clears `pid351-boot.log` so the next
+boot's is unambiguous, and it was run before the file was archived. The
+installer now moves logs into `docs/logs/` instead of deleting them. The
+numbers below were read out of it before that happened.)
+
+### The refresh question is closed, exactly
+
+    mode clock=17000 kHz htotal=584 vtotal=485 -> exact 60.019 Hz
+    vblank measured over 300 flips: 60.018 Hz
+
+**One millihertz apart.** Two earlier runs measured 60.109 and 60.050 and I
+argued those were start/stop alignment error against an exact arithmetic
+result rather than evidence of a different rate. That is now settled: the
+panel runs at 60.0186 Hz and nothing else. Pacing to 16661 us instead of the
+old 16743 moved the loop from **59.72 fps to 60.01**, which is the frame we
+were quietly dropping every 20 seconds.
+
+### Low frequencies are cheaper than they look
+
+The sweep pinned each operating point through `scaling_min/max_freq` and the
+frequency read back exactly every time, so the pinning worked:
+
+| OPP | blit median | work median | fps |
+|---|---|---|---|
+| 1296 MHz | 1665 us | 2666 us | 59.99 |
+| 1200 MHz | 1726 us | 2831 us | 59.99 |
+| 1008 MHz | 1962 us | 3226 us | 59.99 |
+| 816 MHz | 2314 us | 3777 us | 59.99 |
+| 600 MHz | 2951 us | 4790 us | **60.00** |
+
+Two things fall out of this, and neither was predictable from the clock alone.
+
+**The blit does not scale with the clock.** 600 MHz is 2.16x slower than 1296,
+but the blit only takes 1.77x longer. It is bound by write-combined stores to
+scanout, not by the core, so dropping the clock costs less than proportionally
+- exactly the shape you want when the frequency is also buying you a voltage
+cut. Anything memory-bound gets cheaper at low clocks in relative terms.
+
+**60 fps holds at 600 MHz.** 4790 us of a 16661 us frame, with the panel still
+locked. That is 3.5x headroom at the lowest and cheapest operating point on
+the machine, and it makes 600 MHz a serious candidate for the frontend and the
+lighter systems rather than a curiosity.
+
+The blit itself also got slightly faster on our kernel than on ROCKNIX -
+STAGED at 480x320 went 1512 -> 1464 us - which is consistent with a machine
+that has fewer things interrupting it.
+
+### What did not work, and why
+
+**No fuel gauge at all.** Every power column read -1: no `current_avg`, no
+`voltage_avg`, no charge counter. `CONFIG_CHARGER_RK817=y` was set and the MFD
+registers the cell unconditionally, but mainline's `rk3326-anbernic-rg351m.dtsi`
+**has no battery node**, so `rk817_charger` bails out of probe on
+`power_supply_get_battery_info` and never registers a power supply. The whole
+point of the sweep produced no power numbers.
+
+Fixed in `image/pid351-rg351p.dts`: a `simple-battery` node and a `charger`
+subnode carrying `monitored-battery`. Upstream's odroid-go2/go3 do exactly
+this and the RG351 shares their cell chemistry - the OCV table and the charger
+tuning are identical in upstream and in ROCKNIX's vendor tree, and only the
+pack capacity differs (3500 mAh here against the OGA's 3000). The pack numbers
+also match what we read out of sysfs on this device months before we built a
+kernel, so nothing here is guessed.
+
+**`Warning: unable to open an initial console`.** The initramfs had no
+`/dev/console`, and the kernel opens it for init's stdio before any of our
+code runs - devtmpfs is not mounted yet at that point. Everything we printed
+before the `/dev/kmsg` redirect went nowhere. Fixed with one line in the
+initramfs file list: `nod /dev/console 0600 0 0 c 5 1`.
+
+**`g_mass_storage` failed to bind with -22.** Harmless noise from
+`arm64 defconfig`, now off. Worth remembering though: a mass storage gadget is
+precisely the `ums` capability the stock U-Boot lacks, so pid351 could one day
+offer the SD card to the laptop over the same cable that charges it. That
+would end card swapping without touching the bootloader at all.
+
+**The RTC has no valid time** - `rk808-rtc` set the clock to 2017-08-06, which
+is why files written on the device carry that date. There is no backup cell.
+Nothing depends on wall-clock time yet; savestates eventually will.
+
+Not a bug, though it looks like one: the `gov=schedutil` in every conditions
+line is correct. The sweep selects `performance` inside the block and restores
+the original governor afterwards, and all three of those lines are printed
+outside it.

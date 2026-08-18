@@ -1,0 +1,58 @@
+=== pid351 first light ===
+Linux RK3326 6.12.79 #1 SMP Sat Aug  1 04:35:16 UTC 2026 aarch64 GNU/Linux
+uptime: 40.50 83.40
+
+pid351: connector 40, crtc 36, mode 320x480@60
+pid351: pad on /dev/input/event5 (OpenSimHardware OSH PB Controller)
+pid351: display up, rotating counter-clockwise
+pid351: before bench cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=45454 volt_uv=3754300 curr_ua=-447028 backlight=127
+pid351: clock 100 ns per plat_now_us() over 20000 calls (vDSO if well under 1000 ns, a syscall trap if not); plat_now_us resolution is 1 us by construction
+pid351: memory 300KB sequential, best of 5, us: scanout w=165 r=4218 rmw=4345   ram w=153 r=183 rmw=229   (scanout reads far above ram reads means write combined)
+pid351: mode clock=17000 kHz htotal=584 vtotal=485 -> exact 60.019 Hz
+pid351: vblank measured over 300 flips: 60.050 Hz (frame budget 16652 us against our hardcoded 16743)
+pid351: display properties
+pid351:   connector 40:
+pid351:     conn prop EDID                   = 0
+pid351:     conn prop DPMS                   = 0  [0=On]  [1=Standby]  [2=Suspend]  [3=Off]
+pid351:     conn prop link-status            = 0  [0=Good]  [1=Bad]
+pid351:     conn prop non-desktop            = 0
+pid351:     conn prop TILE                   = 0
+pid351:     conn prop panel orientation      = 2  [0=Normal]  [1=Upside Down]  [2=Left Side Up]  [3=Right Side Up]
+pid351:   crtc 36:
+pid351:     crtc prop VRR_ENABLED            = 0
+pid351:   plane 32 (crtc 36, possible_crtcs 0x1) formats: XR24 AR24 XB24 AB24 RG24 BG24 RG16 BG16 NV12 NV21 NV16 NV61 NV24 NV42
+pid351:     plane prop type                   = 1  [0=Overlay]  [1=Primary]  [2=Cursor]
+pid351:     plane prop IN_FORMATS             = 33
+pid351:   plane 34 (crtc 0, possible_crtcs 0x1) formats: XR24 AR24 XB24 AB24 RG24 BG24 RG16 BG16
+pid351:     plane prop type                   = 2  [0=Overlay]  [1=Primary]  [2=Cursor]
+pid351:     plane prop IN_FORMATS             = 35
+pid351:   plane 37 (crtc 0, possible_crtcs 0x1) formats: XR24 AR24 XB24 AB24 RG24 BG24 RG16 BG16
+pid351:     plane prop type                   = 0  [0=Overlay]  [1=Primary]  [2=Cursor]
+pid351:     plane prop IN_FORMATS             = 38
+pid351: verify: 12 comparisons run, only mismatches printed
+pid351: blit variants, 200 iterations each, tile 64, into the real back buffer, no page flip
+pid351:   GBA      240x160 src   75KB  2.000x2.000   STRIDED  1604/ 1652   STAGED  1231/ 1319   ROW  1205/ 1249
+pid351:   NES      256x240 src  120KB  1.875x1.333   STRIDED  2599/ 2696   STAGED  1303/ 1387   ROW  1245/ 1334
+pid351:   SNES     256x224 src  112KB  1.875x1.429   STRIDED  2499/ 2601   STAGED  1262/ 1362   ROW  1215/ 1304
+pid351:   GENESIS  320x224 src  140KB  1.500x1.429   STRIDED  2041/ 2097   STAGED  1329/ 1393   ROW  1239/ 1384
+pid351:   NATIVE   480x320 src  300KB  1.000x1.000   STRIDED  2507/ 2657   STAGED  1737/ 1832   ROW  2093/ 2307
+pid351:   PROBE    160x144 src   45KB  3.000x2.222   STRIDED  1580/ 1604   STAGED  1224/ 1280   ROW  1188/ 1200
+pid351:   CONTROL  480x320 x1  src  300KB  153600 sourced px   LINEAR    697/  746   <- floor: same writes, sequential reads
+pid351:   sweep 480x320 STAGED square tile   16: 2199/ 2462   32: 2067/ 2263   64: 1512/ 1821
+pid351:   sweep 480x320 ROW full-width rows     4: 2352/ 2449    8: 2263/ 2429   16: 2309/ 2393   24: 2226/ 2330   32: 2155/ 2363
+pid351: after bench  cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=49090 volt_uv=3749400 curr_ua=-476440 backlight=127
+pid351: PHASE base         gov=- khz=1296000 extra=0 bl=127 window=29.0s fps=59.70 q 2415224->2411612 uAh (35 samples, 4 steps)  implied=448448 uA  current_avg=-380808 uA  volt=3757940 uV  temp_mc=44090  blit=1675/1965  work_med=2744 us
+pid351: panfrost removal before stopping daemons: No such file or directory
+pid351: PHASE no-gpu       gov=- khz=1296000 extra=0 bl=127 window=29.0s fps=59.70 q 2411612->2408172 uAh (35 samples, 4 steps)  implied=427093 uA  current_avg=-374788 uA  volt=3757100 uV  temp_mc=45454  blit=1659/1907  work_med=2755 us
+pid351: SIGSTOP sent to 22 ROCKNIX processes (resume net armed for 150 s)
+pid351: panfrost removal after stopping daemons: No such file or directory
+pid351: PHASE no-daemons   gov=- khz=1296000 extra=0 bl=127 window=29.0s fps=59.70 q 2407312->2404560 uAh (35 samples, 4 steps)  implied=341674 uA  current_avg=-403512 uA  volt=3752060 uV  temp_mc=46363  blit=1682/1996  work_med=2759 us
+pid351: SIGCONT sent
+pid351: PHASE restored     gov=- khz=1296000 extra=0 bl=127 window=29.0s fps=59.70 q 2403700->2400088 uAh (35 samples, 4 steps)  implied=448446 uA  current_avg=-387000 uA  volt=3752480 uV  temp_mc=46818  blit=1674/1923  work_med=2731 us
+pid351: WHAT ROCKNIX COSTS  base=448448  no-gpu=427093  no-daemons=341674  restored=448446 uA (current_avg -380808 -374788 -403512 -387000)
+pid351:   adjacent pairs are the trustworthy ones: gpu = base minus no-gpu, daemons = no-gpu minus no-daemons, and restored against base bounds the drift over the whole programme
+pid351: after phases cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=46818 volt_uv=3752480 curr_ua=-387000 backlight=127
+pid351: t=10s frames=598 fps=59.72 n=256 blit=1649/1905/3090 life=1649/3584 draw=620/643/785 wait=14/18/2534 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=45909 volt_uv=3750800 curr_ua=-399556 backlight=127
+pid351: t=15s frames=954 fps=59.72 n=256 blit=1322/1672/2876 life=1649/3740 draw=194/359/737 wait=10/16/1880 cpu_khz=1296000 gov=performance gpu_hz=560000000 temp_mc=46818 volt_uv=3750800 curr_ua=-399556 backlight=127
+pid351: exit (combo) after 954 frames, 59.72 fps
+exit status: 0
