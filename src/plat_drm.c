@@ -50,12 +50,14 @@
 #define PHYS_W PANEL_H
 #define PHYS_H PANEL_W
 
-/* Which way the panel is mounted relative to how the console is held. The
- * test pattern in main.c carries deliberately asymmetric corner markers - a
- * red square top-left, a green bar top-right - precisely so that one look at
- * the screen settles this. Flip to 0 if the image comes up rotated the wrong
- * way. */
-#define ROTATE_CW 1
+/* Which way the panel is mounted relative to how the console is held.
+ *
+ * Settled by looking at it: clockwise put the red top-left marker in the
+ * bottom-right corner and the green top-right marker in the bottom-left, both
+ * markers landing exactly 180 degrees out with no mirroring, so the panel
+ * wants the other direction. That is what the asymmetric markers in main.c
+ * exist for. */
+#define ROTATE_CW 0
 
 #define NBUF 2
 
