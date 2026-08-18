@@ -35,4 +35,22 @@ void plat_sleep_until(uint64_t deadline_us);
 /* True once the platform wants the process to end (window closed, etc). */
 int plat_should_quit(void);
 
+/* Analog axes, raw driver values.
+ *
+ * Bring-up only. Not one of GBC, GBA, NES, SNES or Genesis has an analog
+ * stick, so nothing in pid351 proper will ever call this - it exists so the
+ * demo can show which physical stick drives which axis, because that is not
+ * written down anywhere and the pad reports axes the kernel names generically.
+ * Delete it once the answer is in docs/hardware.md. */
+#define PLAT_AXIS_MAX 8
+
+typedef struct {
+    const char *name;    /* short label from the kernel's code, e.g. "RX" */
+    int value;
+    int min, max;        /* driver-reported range, for scaling a bar */
+} plat_axis_t;
+
+/* Fills up to max entries, returns how many. */
+int plat_axes(plat_axis_t *out, int max);
+
 #endif /* PLATFORM_H */

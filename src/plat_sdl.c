@@ -140,3 +140,12 @@ int plat_should_quit(void)
 {
     return quit_requested;
 }
+
+/* No sticks on a keyboard, and adding fake ones would only teach us something
+ * about SDL rather than about the handheld. The demo says so on screen. */
+int plat_axes(plat_axis_t *out, int max)
+{
+    (void)out;
+    (void)max;
+    return 0;
+}

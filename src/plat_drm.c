@@ -87,6 +87,10 @@ static struct {
     int      pad_fd;
     uint32_t buttons;
     int      quit;
+
+    plat_axis_t axis[PLAT_AXIS_MAX];
+    uint16_t    axis_code[PLAT_AXIS_MAX];
+    int         axis_count;
 } g;
 
 /* ---------------------------------------------------------------- helpers */
@@ -273,6 +277,60 @@ static int make_buffer(struct dumb_buf *b)
 
 /* ----------------------------------------------------------------- input */
 
+/* The kernel names axes generically, so these labels are only a rendering
+ * convenience - which physical stick moves which is what the demo is for. */
+static const char *axis_name(unsigned code)
+{
+    switch (code) {
+    case ABS_X:        return "X";
+    case ABS_Y:        return "Y";
+    case ABS_Z:        return "Z";
+    case ABS_RX:       return "RX";
+    case ABS_RY:       return "RY";
+    case ABS_RZ:       return "RZ";
+    case ABS_THROTTLE: return "THR";
+    case ABS_RUDDER:   return "RUD";
+    case ABS_WHEEL:    return "WHL";
+    case ABS_GAS:      return "GAS";
+    case ABS_BRAKE:    return "BRK";
+    default:           return "ABS";
+    }
+}
+
+/* The hats are the d-pad and are already reported as buttons, so they are not
+ * axes as far as anything above here is concerned. */
+static void discover_axes(int fd)
+{
+    unsigned long bits[(ABS_CNT + 8 * sizeof(long) - 1) / (8 * sizeof(long))];
+    memset(bits, 0, sizeof bits);
+    if (ioctl(fd, (unsigned long)EVIOCGBIT(EV_ABS, sizeof bits), bits) < 0)
+        return;
+
+    /* Unsigned rather than uint16_t so that EVIOCGABS's internal 0x40 + code
+     * stays unsigned instead of promoting to int and back. */
+    for (unsigned code = 0; code < ABS_CNT && g.axis_count < PLAT_AXIS_MAX;
+         code++) {
+        size_t word = code / (8 * sizeof(long));
+        size_t bit  = code % (8 * sizeof(long));
+        if (!(bits[word] & (1UL << bit)))
+            continue;
+        if (code == ABS_HAT0X || code == ABS_HAT0Y)
+            continue;
+
+        struct input_absinfo ai;
+        memset(&ai, 0, sizeof ai);
+        if (ioctl(fd, (unsigned long)EVIOCGABS(code), &ai) < 0)
+            continue;
+
+        int i = g.axis_count++;
+        g.axis_code[i]  = (uint16_t)code;
+        g.axis[i].name  = axis_name(code);
+        g.axis[i].value = ai.value;
+        g.axis[i].min   = ai.minimum;
+        g.axis[i].max   = ai.maximum;
+    }
+}
+
 /* Event node numbering is not stable - the pad was event2 on ArkOS and event5
  * on ROCKNIX, because the vibrator, power key and jack detect took the low
  * numbers. So match on the USB id, and among this device's three nodes take
@@ -308,6 +366,7 @@ static int open_pad(void)
             char name[128] = "";
             ioctl(fd, EVIOCGNAME(sizeof name), name);
             printf("pid351: pad on %s (%s)\n", path, name);
+            discover_axes(fd);
             found = fd;
             break;
         }
@@ -387,6 +446,12 @@ static void pump_input(void)
                 g.buttons &= ~(uint32_t)(PAD_UP | PAD_DOWN);
                 if (ev.value < 0) g.buttons |= PAD_UP;
                 if (ev.value > 0) g.buttons |= PAD_DOWN;
+            } else {
+                for (int i = 0; i < g.axis_count; i++)
+                    if (g.axis_code[i] == ev.code) {
+                        g.axis[i].value = ev.value;
+                        break;
+                    }
             }
         }
     }
@@ -605,4 +670,12 @@ void plat_sleep_until(uint64_t deadline_us)
 int plat_should_quit(void)
 {
     return g.quit;
+}
+
+int plat_axes(plat_axis_t *out, int max)
+{
+    int n = g.axis_count < max ? g.axis_count : max;
+    for (int i = 0; i < n; i++)
+        out[i] = g.axis[i];
+    return n;
 }
