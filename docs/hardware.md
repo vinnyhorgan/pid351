@@ -408,7 +408,28 @@ buffers, page flip on vblank, evdev input. Log in `first-light-1.log`.
   directions observed.
 - **`BTN_SELECT` (0x13a) and `BTN_START` (0x13b) are correct.**
 
-**[todo]** The pad speaks the **legacy `BTN_A`..`BTN_Z` range** (0x130-0x135),
-not `BTN_SOUTH/EAST/NORTH/WEST`. Those alias only partly, so `BTN_C` (0x132)
-and `BTN_Z` (0x135) currently fall through unmapped - 0x135 was observed. One
-deliberate pass over every button with `PAD_TRACE` on completes the map.
+### The full button map, measured
+
+Derived by pressing every button in a known order with `PAD_TRACE` on
+(`first-light-2.log`). The pad emits a plain sequential HID button order from
+0x130, and **the kernel's names for that range do not describe this shell**:
+
+| Shell   | Code  | Kernel name  |
+|---------|-------|--------------|
+| A       | 0x130 | `BTN_A`      |
+| B       | 0x131 | `BTN_B`      |
+| X       | 0x132 | `BTN_C`      |
+| Y       | 0x133 | `BTN_X`      |
+| L1      | 0x134 | `BTN_Y`      |
+| R1      | 0x135 | `BTN_Z`      |
+| SELECT  | 0x136 | `BTN_TL`     |
+| START   | 0x137 | `BTN_TR`     |
+| L3      | 0x138 | `BTN_TL2`    |
+| R3      | 0x139 | `BTN_TR2`    |
+| L2      | 0x13a | `BTN_SELECT` |
+| R2      | 0x13b | `BTN_START`  |
+
+L2 is `BTN_SELECT` and SELECT is `BTN_TL`, so **mapping this pad by kernel
+name is guaranteed to be wrong**. Map by number. The sticks do click, which
+makes L3 the one button on the shell no target console can claim - it is the
+menu key.

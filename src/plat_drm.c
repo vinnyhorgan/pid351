@@ -59,12 +59,10 @@
  * exist for. */
 #define ROTATE_CW 0
 
-/* Log every key event with its raw code during bring-up. The pad turns out to
- * speak the legacy BTN_A..BTN_Z range rather than BTN_SOUTH/EAST/NORTH/WEST -
- * the two overlap only partly, so which physical button carries which code
- * has to be read off one deliberate pass over the pad. Goes to 0 once the map
- * below is confirmed. */
-#define PAD_TRACE 1
+/* Log every key event with its raw code. Off now that the map below is
+ * confirmed against the hardware; turn it back on to re-derive the map if a
+ * different shell ever turns up. */
+#define PAD_TRACE 0
 
 #define NBUF 2
 
@@ -323,25 +321,38 @@ static int open_pad(void)
     return found;
 }
 
-/* Grounded in the pad's actual capability bitmap, which advertises
- * BTN_SOUTH..BTN_THUMBR and ABS_HAT0X/Y (docs/hardware.md). Which physical
- * button carries which code still has to be read off the screen once, so
- * anything unrecognised gets printed rather than silently dropped. */
+/* The pad reports a plain sequential HID button order starting at BTN_A
+ * (0x130), and the kernel's names across that range describe a generic
+ * gamepad rather than this shell. They disagree badly: 0x13a is BTN_SELECT to
+ * the kernel and L2 on the plastic, 0x136 is BTN_TL to the kernel and SELECT
+ * on the plastic. Mapping by kernel name therefore produces a pad where
+ * START+SELECT does nothing and L2+R2 opens the menu, which is precisely what
+ * it did.
+ *
+ * So the codes are written numerically with the shell's own label beside each
+ * one, derived by pressing every button in a known order and reading the log
+ * back (docs/first-light-2.log). Numbers with a comment beat names that lie.
+ */
 static uint32_t map_key(uint16_t code)
 {
     switch (code) {
-    case BTN_SOUTH:  return PAD_A;
-    case BTN_EAST:   return PAD_B;
-    case BTN_NORTH:  return PAD_X;
-    case BTN_WEST:   return PAD_Y;
-    case BTN_TL:     return PAD_L1;
-    case BTN_TR:     return PAD_R1;
-    case BTN_TL2:    return PAD_L2;
-    case BTN_TR2:    return PAD_R2;
-    case BTN_SELECT: return PAD_SELECT;
-    case BTN_START:  return PAD_START;
-    case BTN_MODE:   return PAD_MENU;
-    default:         return 0;
+    case 0x130: return PAD_A;        /* kernel BTN_A      */
+    case 0x131: return PAD_B;        /* kernel BTN_B      */
+    case 0x132: return PAD_X;        /* kernel BTN_C      */
+    case 0x133: return PAD_Y;        /* kernel BTN_X      */
+    case 0x134: return PAD_L1;       /* kernel BTN_Y      */
+    case 0x135: return PAD_R1;       /* kernel BTN_Z      */
+    case 0x136: return PAD_SELECT;   /* kernel BTN_TL     */
+    case 0x137: return PAD_START;    /* kernel BTN_TR     */
+    /* Stick clicks. No target console has them, which makes the left one the
+     * natural menu key - it is the only button on the shell that can never
+     * belong to a game. The right one stays spare rather than being given a
+     * job it does not need yet. */
+    case 0x138: return PAD_MENU;     /* kernel BTN_TL2, left stick click  */
+    case 0x139: return 0;            /* kernel BTN_TR2, right stick click */
+    case 0x13a: return PAD_L2;       /* kernel BTN_SELECT */
+    case 0x13b: return PAD_R2;       /* kernel BTN_START  */
+    default:    return 0;
     }
 }
 

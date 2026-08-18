@@ -1,0 +1,83 @@
+=== pid351 first light ===
+Linux RK3326 6.12.79 #1 SMP Sat Aug  1 04:35:16 UTC 2026 aarch64 GNU/Linux
+uptime: 25.90 45.26
+
+pid351: connector 40, crtc 36, mode 320x480@60
+pid351: pad on /dev/input/event5 (OpenSimHardware OSH PB Controller)
+pid351: display up, rotating counter-clockwise
+pid351: key 0x130 down
+input: 0001 A
+pid351: key 0x130 up  
+input: 0000
+pid351: key 0x131 down
+input: 0002 B
+pid351: key 0x131 up  
+input: 0000
+pid351: key 0x132 down   UNMAPPED
+pid351: key 0x132 up     UNMAPPED
+pid351: key 0x133 down
+input: 0004 X
+pid351: key 0x133 up  
+input: 0000
+pid351: key 0x134 down
+input: 0008 Y
+pid351: key 0x134 up  
+input: 0000
+pid351: key 0x135 down   UNMAPPED
+pid351: key 0x135 up     UNMAPPED
+pid351: key 0x13a down
+input: 1000 SELECT
+pid351: key 0x13a up  
+input: 0000
+pid351: key 0x13b down
+input: 2000 START
+pid351: key 0x13b up  
+input: 0000
+pid351: key 0x138 down
+input: 0400
+pid351: key 0x138 up  
+input: 0000
+pid351: key 0x139 down
+input: 0800
+pid351: key 0x139 up  
+input: 0000
+pid351: key 0x137 down
+pid351: key 0x136 down
+input: 0300
+pid351: key 0x137 up  
+pid351: key 0x136 up  
+input: 0000
+pid351: key 0x136 down
+pid351: key 0x137 down
+input: 0300
+pid351: key 0x136 up  
+input: 0200
+pid351: key 0x137 up  
+input: 0000
+pid351: key 0x136 down
+input: 0100
+pid351: key 0x137 down
+input: 0300
+pid351: key 0x137 up  
+pid351: key 0x136 up  
+input: 0000
+pid351: key 0x136 down
+input: 0100
+pid351: key 0x137 down
+input: 0300
+pid351: key 0x136 up  
+pid351: key 0x137 up  
+input: 0000
+pid351: key 0x136 down
+pid351: key 0x137 down
+input: 0300
+pid351: key 0x137 up  
+input: 0100
+pid351: key 0x136 up  
+input: 0000
+pid351: key 0x13a down
+input: 1000 SELECT
+pid351: key 0x13b down
+input: 3000 START SELECT
+pid351: exit (combo) after 2134 frames
+exit status: 0
