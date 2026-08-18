@@ -1,2 +1,13 @@
+# Build output.
 build/
 *.o
+image/out/
+
+# The kernel tree and its tarball: 2.8 GB of someone else's source, which git
+# should never see. image/build.sh fetches and verifies the tarball when it is
+# missing, so a fresh clone still builds a bootable image with one command.
+image/linux-*/
+image/linux-*.tar.xz
+
+# Editor state, not project state.
+.vscode/
