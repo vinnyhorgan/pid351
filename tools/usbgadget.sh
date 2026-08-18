@@ -29,8 +29,8 @@ echo
 echo "  Connect a USB-C cable from the handheld to the laptop"
 echo "  FIRST, then press any key. Ctrl-C or wait to abort."
 echo
-echo -n "  Press any key to continue... "
-read -n 1 -s -t 60 || { echo; echo "  aborted."; exit 0; }
+echo "  Starting in 20s. Power off now to abort."
+sleep 20
 echo; echo "  Working..."
 
 {
@@ -108,5 +108,5 @@ echo "  Report: $OUT"
 echo
 echo "  Reboot to restore the gamepad."
 echo
-echo -n "  Press any key to exit... "
-read -n 1 -s -t 120
+echo "  This screen stays up for 2 minutes."
+sleep 120

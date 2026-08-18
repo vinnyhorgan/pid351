@@ -1,0 +1,12 @@
+[Unit]
+Description=pid351 development network and ssh
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/pid351-net.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
