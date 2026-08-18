@@ -401,14 +401,12 @@ static uint32_t map_key(uint16_t code)
     case 0x133: return PAD_Y;        /* kernel BTN_X      */
     case 0x134: return PAD_L1;       /* kernel BTN_Y      */
     case 0x135: return PAD_R1;       /* kernel BTN_Z      */
-    case 0x136: return PAD_SELECT;   /* kernel BTN_TL     */
-    case 0x137: return PAD_START;    /* kernel BTN_TR     */
-    /* Stick clicks. No target console has them, which makes the left one the
-     * natural menu key - it is the only button on the shell that can never
-     * belong to a game. The right one stays spare rather than being given a
-     * job it does not need yet. */
-    case 0x138: return PAD_MENU;     /* kernel BTN_TL2, left stick click  */
-    case 0x139: return 0;            /* kernel BTN_TR2, right stick click */
+    /* The pad reports START before SELECT, which is the opposite of how they
+     * sit on the shell. Confirmed by pressing them. */
+    case 0x136: return PAD_START;    /* kernel BTN_TL     */
+    case 0x137: return PAD_SELECT;   /* kernel BTN_TR     */
+    case 0x138: return PAD_L3;       /* kernel BTN_TL2, left stick click  */
+    case 0x139: return PAD_R3;       /* kernel BTN_TR2, right stick click */
     case 0x13a: return PAD_L2;       /* kernel BTN_SELECT */
     case 0x13b: return PAD_R2;       /* kernel BTN_START  */
     default:    return 0;

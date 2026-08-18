@@ -430,6 +430,50 @@ Derived by pressing every button in a known order with `PAD_TRACE` on
 | R2      | 0x13b | `BTN_START`  |
 
 L2 is `BTN_SELECT` and SELECT is `BTN_TL`, so **mapping this pad by kernel
-name is guaranteed to be wrong**. Map by number. The sticks do click, which
-makes L3 the one button on the shell no target console can claim - it is the
-menu key.
+name is guaranteed to be wrong**. Map by number.
+
+Note that **0x136 is START and 0x137 is SELECT** - the pad reports them in the
+opposite order to how they sit on the shell, where SELECT is left of the
+screen and START is right. Both stick clicks work and are reported.
+
+### Analog sticks
+
+Two 12-bit axes per stick, range **0 to 4095**, and the two sticks do not
+agree about sign:
+
+| Stick | Kernel axis | 0 is        | 4095 is    |
+|-------|-------------|-------------|------------|
+| Left  | `ABS_Z`     | full right  | full left  |
+| Left  | `ABS_RX`    | full down   | full up    |
+| Right | `ABS_RY`    | full left   | full right |
+| Right | `ABS_RZ`    | full up     | full down  |
+
+So the **left stick is inverted on both axes** relative to the right, and the
+right stick follows the usual evdev convention of down and right being
+positive. Nothing pid351 targets uses a stick, so this is recorded rather than
+acted on - but a menu driven by a stick would be upside down and backwards on
+the left one if this were assumed rather than measured.
+
+`ABS_THROTTLE` is advertised by the pad and never moves. Presumably a field in
+the HID report with nothing behind it.
+
+## The baseline pid351 has to beat, measured
+
+pid351's demo running on the panel, before EmulationStation starts:
+
+    power       400 mA at 3.81 V = 1.52 W   (backlight 127/255)
+    cpu         1296 MHz, performance governor
+    gpu         560 MHz
+    temps       ~50 C both zones
+    memory      176 MB of 981 MB
+    frame rate  59.72 fps measured against a 59.727 Hz target
+    frames      11929 in ~200 seconds, no stalls
+
+Against **2.08 W** for ROCKNIX sitting in EmulationStation at the same
+backlight: **a 27% saving before a single power optimisation**, purely from
+not running a frontend. And measured with the CPU pinned at its 1296 MHz
+maximum under the `performance` governor, so the governor and OPP work in
+phase 3 is all still on the table.
+
+The frame pacing is confirmed: 59.72 measured against 59.727 asked for, over
+twelve thousand frames.

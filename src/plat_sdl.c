@@ -84,7 +84,8 @@ uint32_t plat_input(void)
     if (k[SDL_SCANCODE_2])         held |= PAD_R2;
     if (k[SDL_SCANCODE_RETURN])    held |= PAD_START;
     if (k[SDL_SCANCODE_BACKSPACE]) held |= PAD_SELECT;
-    if (k[SDL_SCANCODE_ESCAPE])    held |= PAD_MENU;
+    if (k[SDL_SCANCODE_3])         held |= PAD_L3;
+    if (k[SDL_SCANCODE_4])         held |= PAD_R3;
 
     return held;
 }

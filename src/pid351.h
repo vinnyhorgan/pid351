@@ -44,7 +44,13 @@ enum {
     PAD_R2     = 1u << 11,
     PAD_SELECT = 1u << 12,
     PAD_START  = 1u << 13,
-    PAD_MENU   = 1u << 14,
+    /* The sticks click. No console pid351 targets uses a stick, so these are
+     * the only two controls on the shell that can never belong to a game -
+     * which makes them the natural place to hang menus and hotkeys. There is
+     * no PAD_MENU: this machine has no menu button, and pretending otherwise
+     * put a logical idea in a list of physical ones. */
+    PAD_L3     = 1u << 14,
+    PAD_R3     = 1u << 15,
 };
 
 #endif /* PID351_H */

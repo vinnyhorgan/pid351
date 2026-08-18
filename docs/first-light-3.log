@@ -1,0 +1,9 @@
+=== pid351 first light ===
+Linux RK3326 6.12.79 #1 SMP Sat Aug  1 04:35:16 UTC 2026 aarch64 GNU/Linux
+uptime: 26.66 46.48
+
+pid351: connector 40, crtc 36, mode 320x480@60
+pid351: pad on /dev/input/event5 (OpenSimHardware OSH PB Controller)
+pid351: display up, rotating counter-clockwise
+pid351: exit (menu) after 11929 frames, 59.72 fps
+exit status: 0

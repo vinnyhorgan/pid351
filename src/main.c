@@ -319,10 +319,8 @@ static void draw_pad(canvas_t *c, int x, int y, uint32_t b)
     key_cap(c, x + 74,  y + 118, 40, 12, "SEL",  b & PAD_SELECT);
     key_cap(c, x + 122, y + 118, 40, 12, "STRT", b & PAD_START);
 
-    /* Only L3 is bound - it is the menu key, being the one button no console
-     * we target can claim. R3 shows raw so a dead switch still shows up. */
-    round_key(c, x + 46,  y + 124, 13, "L3", b & PAD_MENU);
-    round_key(c, x + 186, y + 124, 13, "R3", 0);
+    round_key(c, x + 46,  y + 124, 13, "L3", b & PAD_L3);
+    round_key(c, x + 186, y + 124, 13, "R3", b & PAD_R3);
 }
 
 static void draw_axes(canvas_t *c, int x, int y)
@@ -411,7 +409,9 @@ int main(void)
     for (;;) {
         uint32_t held = plat_input();
 
-        if (held & PAD_MENU)                            { reason = "menu";  break; }
+        /* Only the combo exits. Binding a single button to quit meant that
+         * button could never be seen to light up, which is the one thing this
+         * program is for. */
         if ((held & PAD_START) && (held & PAD_SELECT))  { reason = "combo"; break; }
         if (plat_should_quit())                         { reason = "quit";  break; }
 
@@ -435,7 +435,7 @@ int main(void)
         gfx_text(&c, 6, 2, "PID351", 2, C_ACCENT);
         gfx_text(&c, 84, 5, "ONE PID EVER RUNNING", 1, C_DIM);
         {
-            const char *hint = "L3 OR START+SELECT TO EXIT";
+            const char *hint = "START+SELECT TO EXIT";
             gfx_text(&c, PANEL_W - gfx_text_w(hint, 1) - 6, 5, hint, 1, C_DIM);
         }
 
