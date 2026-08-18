@@ -26,6 +26,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,6 +82,13 @@
 #define STICK_Y_AXIS  ABS_RX
 #define STICK_DEADZONE_PCT 45
 
+/* Which rotate blit the live path uses, and its tile size. Compile-time
+ * because they are settled by measurement once and then never vary - there
+ * are no config files and there will not be any. Set from what the sweep in
+ * main.c reports on this panel. */
+#define BLIT_IMPL PLAT_BLIT_STRIDED
+#define BLIT_TILE 32
+
 #define NBUF 2
 
 struct dumb_buf {
@@ -90,6 +98,18 @@ struct dumb_buf {
     uint64_t size;
     px_t    *px;
 };
+
+/* Separate from g.quit because a handler may only touch this type, and
+ * because SIGTERM is how first-light.sh ends the run - without this the most
+ * informative run would exit through _exit() with its report unwritten and
+ * the cpu governor left wherever the measurement put it. */
+static volatile sig_atomic_t sig_quit;
+
+static void on_signal(int sig)
+{
+    (void)sig;
+    sig_quit = 1;
+}
 
 static struct {
     int      fd;
@@ -525,72 +545,31 @@ static void pump_input(void)
 
 /* ----------------------------------------------------------- rotate+scale */
 
-/* One pass, writing whole destination scanlines in order. A destination
- * scanline is a column of the landscape image, so the source reads stride
- * across a framebuffer small enough to sit in cache while the writes - the
- * expensive half on this memory bus - stay linear. */
-static void blit_rotated(struct dumb_buf *b, const px_t *src, int w, int h)
-{
-    rect_t r = fit_integer(w, h, PANEL_W, PANEL_H);
-    int scale = r.w / w;
-    int stride = (int)(b->pitch / sizeof(px_t));
-
-    /* Destination x maps to a fixed logical y, so resolve it once per frame
-     * rather than once per pixel. */
-    static int map_sy[PHYS_W];
-    for (int px = 0; px < PHYS_W; px++) {
-#if ROTATE_CW
-        int ly = PANEL_H - 1 - px;
-#else
-        int ly = px;
-#endif
-        map_sy[px] = (ly >= r.y && ly < r.y + r.h) ? (ly - r.y) / scale : -1;
-    }
-
-    for (int py = 0; py < PHYS_H; py++) {
-#if ROTATE_CW
-        int lx = py;
-#else
-        int lx = PANEL_W - 1 - py;
-#endif
-        px_t *dst = b->px + (size_t)py * (size_t)stride;
-
-        if (lx < r.x || lx >= r.x + r.w) {
-            memset(dst, 0, (size_t)PHYS_W * sizeof(px_t));
-            continue;
-        }
-        const px_t *col = src + (lx - r.x) / scale;
-
-        for (int px = 0; px < PHYS_W; px++) {
-            int sy = map_sy[px];
-            dst[px] = (sy < 0) ? (px_t)0 : col[(size_t)sy * (size_t)w];
-        }
-    }
-}
-
-/* ------------------------------------------------ candidate rotate+scale */
-
-/* Bring-up only, and on their way to being one of them replacing the above.
+/* Policy: the source always fills the panel. No black bars on anything, which
+ * is a decision about how it looks rather than about code - but it has a cost
+ * worth stating, because it deletes the cheap cases. The 4:3 consoles used to
+ * be half black bar being memset; now every console lands on the same 153600
+ * pixel blit, so there is exactly one blit configuration in the system and it
+ * is the expensive one.
  *
- * The measurement that motivates these: at 480x320 the blit above takes
- * 2487 us, and the same loop writing the same bytes with a sequential source
- * takes 695. Nearly three quarters of the cost is not the work, it is walking
- * down a column of the source and touching a fresh cache line for every two
- * bytes we keep.
+ * Scaling is therefore non-integer everywhere except GBA, whose 240x160 is
+ * exactly half the panel. That costs nothing here: both directions resolve
+ * through a table built once per frame, and an arbitrary ratio is the same
+ * lookup as an integer one.
  *
- * Both candidates fix that by turning the source read around. The difference
- * between them is where the awkwardness gets pushed to, and that matters
- * because nobody here knows whether the dumb buffer is cached or
- * write-combined - which decides whether scattered writes are nearly free or
- * ruinous. Rather than guess, both get built and both get measured. */
+ * The measurement that shaped the rest: at full screen the strided blit takes
+ * 2487 us against 695 us for the same writes with a sequential source. Nearly
+ * three quarters of the cost is walking down a column of the source, touching
+ * a fresh cache line for every two bytes kept. So there are three
+ * implementations here and the panel's own silicon picks the winner. */
 
 /* Destination x picks a source row, destination y picks a source column.
- * Resolving both once per frame is also what makes a non-integer scale free
- * later: an arbitrary mapping is the same table lookup as an integer one. */
+ * Filling means neither can ever be out of range, so the per-pixel bounds
+ * test that the bordered version needed is gone from all three inner loops. */
 static int map_row[PHYS_W];
 static int map_col[PHYS_H];
 
-static void build_maps(const rect_t *r, int scale)
+static void build_maps(int w, int h)
 {
     for (int px = 0; px < PHYS_W; px++) {
 #if ROTATE_CW
@@ -598,8 +577,7 @@ static void build_maps(const rect_t *r, int scale)
 #else
         int ly = px;
 #endif
-        map_row[px] = (ly >= r->y && ly < r->y + r->h)
-                    ? (ly - r->y) / scale : -1;
+        map_row[px] = ly * h / PANEL_H;
     }
     for (int py = 0; py < PHYS_H; py++) {
 #if ROTATE_CW
@@ -607,8 +585,25 @@ static void build_maps(const rect_t *r, int scale)
 #else
         int lx = PANEL_W - 1 - py;
 #endif
-        map_col[py] = (lx >= r->x && lx < r->x + r->w)
-                    ? (lx - r->x) / scale : -1;
+        map_col[py] = lx * w / PANEL_W;
+    }
+}
+
+/* Linear writes, strided reads. What shipped first, and the baseline the
+ * other two have to beat. A destination scanline is a column of the landscape
+ * image, so the writes stay sequential and the source pays for it. */
+static void blit_strided(struct dumb_buf *b, const px_t *src, int w, int h)
+{
+    int stride = (int)(b->pitch / sizeof(px_t));
+
+    build_maps(w, h);
+
+    for (int py = 0; py < PHYS_H; py++) {
+        px_t *dst = b->px + (size_t)py * (size_t)stride;
+        const px_t *col = src + map_col[py];
+
+        for (int px = 0; px < PHYS_W; px++)
+            dst[px] = col[(size_t)map_row[px] * (size_t)w];
     }
 }
 
@@ -618,11 +613,9 @@ static void build_maps(const rect_t *r, int scale)
 static void blit_tiled(struct dumb_buf *b, const px_t *src, int w, int h,
                        int tile)
 {
-    rect_t r = fit_integer(w, h, PANEL_W, PANEL_H);
-    int scale = r.w / w;
     int stride = (int)(b->pitch / sizeof(px_t));
 
-    build_maps(&r, scale);
+    build_maps(w, h);
 
     for (int py0 = 0; py0 < PHYS_H; py0 += tile) {
         int pyN = py0 + tile < PHYS_H ? py0 + tile : PHYS_H;
@@ -631,15 +624,11 @@ static void blit_tiled(struct dumb_buf *b, const px_t *src, int w, int h,
             int pxN = px0 + tile < PHYS_W ? px0 + tile : PHYS_W;
 
             for (int px = px0; px < pxN; px++) {
-                int sy = map_row[px];
-                const px_t *row = (sy < 0) ? NULL
-                                : src + (size_t)sy * (size_t)w;
+                const px_t *row = src + (size_t)map_row[px] * (size_t)w;
 
-                for (int py = py0; py < pyN; py++) {
-                    int sx = map_col[py];
+                for (int py = py0; py < pyN; py++)
                     b->px[(size_t)py * (size_t)stride + (size_t)px] =
-                        (!row || sx < 0) ? (px_t)0 : row[sx];
-                }
+                        row[map_col[py]];
             }
         }
     }
@@ -649,7 +638,7 @@ static void blit_tiled(struct dumb_buf *b, const px_t *src, int w, int h,
  * live in L1, transposing it there where a scattered write costs nothing,
  * then writes each destination row out as one contiguous run. This is the
  * variant that should survive a write-combined destination, where partial
- * line writes are exactly what hurts. */
+ * cache line writes are exactly what hurts. */
 #define STAGE_MAX 64
 
 static void blit_staged(struct dumb_buf *b, const px_t *src, int w, int h,
@@ -657,14 +646,12 @@ static void blit_staged(struct dumb_buf *b, const px_t *src, int w, int h,
 {
     static px_t stage[STAGE_MAX * STAGE_MAX];
 
-    rect_t r = fit_integer(w, h, PANEL_W, PANEL_H);
-    int scale = r.w / w;
     int stride = (int)(b->pitch / sizeof(px_t));
 
     if (tile > STAGE_MAX)
         tile = STAGE_MAX;
 
-    build_maps(&r, scale);
+    build_maps(w, h);
 
     for (int py0 = 0; py0 < PHYS_H; py0 += tile) {
         int pyN = py0 + tile < PHYS_H ? py0 + tile : PHYS_H;
@@ -673,16 +660,11 @@ static void blit_staged(struct dumb_buf *b, const px_t *src, int w, int h,
             int pxN = px0 + tile < PHYS_W ? px0 + tile : PHYS_W;
 
             for (int px = px0; px < pxN; px++) {
-                int sy = map_row[px];
-                const px_t *row = (sy < 0) ? NULL
-                                : src + (size_t)sy * (size_t)w;
+                const px_t *row = src + (size_t)map_row[px] * (size_t)w;
 
-                for (int py = py0; py < pyN; py++) {
-                    int sx = map_col[py];
+                for (int py = py0; py < pyN; py++)
                     stage[(size_t)(py - py0) * (size_t)tile
-                          + (size_t)(px - px0)] =
-                        (!row || sx < 0) ? (px_t)0 : row[sx];
-                }
+                          + (size_t)(px - px0)] = row[map_col[py]];
             }
 
             for (int py = py0; py < pyN; py++)
@@ -693,8 +675,9 @@ static void blit_staged(struct dumb_buf *b, const px_t *src, int w, int h,
     }
 }
 
-/* The control from the first round, kept as a variant: same writes, same loop
- * shape, sequential source. It is the floor any candidate is aiming at. */
+/* The control: same writes, same loop shape, sequential source, no rotation.
+ * Not a candidate - it draws the wrong thing - but it is the floor the
+ * candidates are aiming at, and the gap to it is what the striding costs. */
 static void blit_linear(struct dumb_buf *b, const px_t *src)
 {
     int stride = (int)(b->pitch / sizeof(px_t));
@@ -711,10 +694,10 @@ static void run_variant(struct dumb_buf *b, const px_t *src, int w, int h,
                         int variant, int tile)
 {
     switch (variant) {
-    case PLAT_BLIT_LINEAR:  blit_linear(b, src);                 break;
-    case PLAT_BLIT_TILED:   blit_tiled(b, src, w, h, tile);      break;
-    case PLAT_BLIT_STAGED:  blit_staged(b, src, w, h, tile);     break;
-    default:                blit_rotated(b, src, w, h);          break;
+    case PLAT_BLIT_LINEAR: blit_linear(b, src);            break;
+    case PLAT_BLIT_TILED:  blit_tiled(b, src, w, h, tile);  break;
+    case PLAT_BLIT_STAGED: blit_staged(b, src, w, h, tile); break;
+    default:               blit_strided(b, src, w, h);      break;
     }
 }
 
@@ -743,6 +726,15 @@ int plat_init(void)
         return -1;
     }
     g.had_master = 1;
+
+    /* SA_RESTART deliberately absent: the point is to interrupt the blocking
+     * read on the drm fd and the nanosleep, so the loop notices within a
+     * frame rather than at the next vblank. */
+    struct sigaction sa;
+    memset(&sa, 0, sizeof sa);
+    sa.sa_handler = on_signal;
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGINT,  &sa, NULL);
 
     if (pick_display() < 0)
         goto err;
@@ -841,7 +833,7 @@ void plat_present(const px_t *fb, int w, int h)
     uint64_t t1 = plat_now_us();
 
     int back = g.front ^ 1;
-    blit_rotated(&g.buf[back], fb, w, h);
+    run_variant(&g.buf[back], fb, w, h, BLIT_IMPL, BLIT_TILE);
     uint64_t t2 = plat_now_us();
 
     g.wait_us = (uint32_t)(t1 - t0);
@@ -889,7 +881,7 @@ void plat_sleep_until(uint64_t deadline_us)
 
 int plat_should_quit(void)
 {
-    return g.quit;
+    return g.quit || sig_quit;
 }
 
 int plat_axes(plat_axis_t *out, int max)
@@ -912,9 +904,9 @@ int plat_bench(const px_t *src, int src_w, int src_h, int variant, int tile,
     if (g.fd < 0 || !src || !samples || n <= 0 || tile <= 0)
         return -1;
 
-    /* fit_integer clamps the scale to at least 1, so a source larger than the
-     * panel would leave the blit reading past the end of it. Refuse rather
-     * than measure a buffer overrun. */
+    /* The maps index the source by a ratio, so a source larger than the panel
+     * would still be read in range - but nothing we target is, and accepting
+     * one here would silently measure a case that cannot occur. */
     if (src_w <= 0 || src_h <= 0 || src_w > PANEL_W || src_h > PANEL_H)
         return -1;
 
@@ -944,7 +936,7 @@ int plat_blit_verify(const px_t *src, int src_w, int src_h,
     struct dumb_buf *b = &g.buf[g.front ^ 1];
     int stride = (int)(b->pitch / sizeof(px_t));
 
-    blit_rotated(b, src, src_w, src_h);
+    run_variant(b, src, src_w, src_h, PLAT_BLIT_STRIDED, BLIT_TILE);
     for (int py = 0; py < PHYS_H; py++)
         memcpy(ref + (size_t)py * (size_t)PHYS_W,
                b->px + (size_t)py * (size_t)stride,
@@ -959,4 +951,104 @@ int plat_blit_verify(const px_t *src, int src_w, int src_h,
                 != ref[(size_t)py * (size_t)PHYS_W + (size_t)px])
                 bad++;
     return bad;
+}
+
+/* ------------------------------------------------------------- probes */
+
+static volatile uint32_t mem_sink;
+
+static uint32_t time_seq(px_t *p, int stride, int iters, int mode)
+{
+    uint32_t best = UINT32_MAX;
+
+    for (int i = 0; i < iters; i++) {
+        uint64_t t0 = plat_now_us();
+        uint32_t acc = 0;
+
+        for (int y = 0; y < PHYS_H; y++) {
+            px_t *row = p + (size_t)y * (size_t)stride;
+            switch (mode) {
+            case 0:                                    /* write */
+                for (int x = 0; x < PHYS_W; x++)
+                    row[x] = (px_t)x;
+                break;
+            case 1:                                    /* read */
+                for (int x = 0; x < PHYS_W; x++)
+                    acc += row[x];
+                break;
+            default:                                   /* read-modify-write */
+                for (int x = 0; x < PHYS_W; x++)
+                    row[x] = (px_t)(row[x] + 1u);
+                break;
+            }
+        }
+
+        mem_sink = acc;   /* or the read loop is legal to delete entirely */
+        uint32_t d = (uint32_t)(plat_now_us() - t0);
+        if (d < best)
+            best = d;
+    }
+    return best;
+}
+
+int plat_mem_probe(plat_mem_t *out, int iters)
+{
+    static px_t ram[PHYS_W * PHYS_H];
+
+    if (g.fd < 0 || !out || iters <= 0)
+        return -1;
+
+    struct dumb_buf *b = &g.buf[g.front ^ 1];
+    int stride = (int)(b->pitch / sizeof(px_t));
+
+    out->fb_write  = time_seq(b->px, stride, iters, 0);
+    out->fb_read   = time_seq(b->px, stride, iters, 1);
+    out->fb_rmw    = time_seq(b->px, stride, iters, 2);
+    out->ram_write = time_seq(ram, PHYS_W, iters, 0);
+    out->ram_read  = time_seq(ram, PHYS_W, iters, 1);
+    out->ram_rmw   = time_seq(ram, PHYS_W, iters, 2);
+    return 0;
+}
+
+void plat_mode_timing(uint32_t *exact_mhz, uint32_t *clock_khz,
+                      uint32_t *htotal, uint32_t *vtotal)
+{
+    uint32_t ht = g.mode.htotal, vt = g.mode.vtotal, ck = g.mode.clock;
+
+    if (clock_khz) *clock_khz = ck;
+    if (htotal)    *htotal    = ht;
+    if (vtotal)    *vtotal    = vt;
+    if (exact_mhz)
+        *exact_mhz = (ht && vt)
+                   ? (uint32_t)((uint64_t)ck * 1000000u / ((uint64_t)ht * vt))
+                   : 0;
+}
+
+int plat_vblank_probe(int flips, uint32_t *measured_mhz)
+{
+    if (g.fd < 0 || flips <= 0 || !measured_mhz)
+        return -1;
+
+    /* One flip up front so the first interval below starts from a vblank
+     * rather than from wherever in the frame we happened to be called. */
+    wait_flip();
+
+    uint64_t t0 = plat_now_us();
+    for (int i = 0; i < flips; i++) {
+        int back = g.front ^ 1;
+        struct drm_mode_crtc_page_flip flip;
+        memset(&flip, 0, sizeof flip);
+        flip.crtc_id = g.crtc_id;
+        flip.fb_id   = g.buf[back].fb_id;
+        flip.flags   = DRM_MODE_PAGE_FLIP_EVENT;
+        if (xioctl(DRM_IOCTL_MODE_PAGE_FLIP, &flip) < 0)
+            return -1;
+        g.flip_pending = 1;
+        g.front = back;
+        wait_flip();
+    }
+    uint64_t dt = plat_now_us() - t0;
+
+    *measured_mhz = dt ? (uint32_t)((uint64_t)flips * 1000000000u / dt) : 0;
+    return 0;
 }

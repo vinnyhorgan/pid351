@@ -153,43 +153,51 @@ static void bench_blit(void)
 
     /* Correctness before speed. The three walk the buffer in three different
      * orders and a faster blit that draws the wrong thing is worth nothing. */
+    int checked = 0;
     for (size_t v = 1; v < sizeof variants / sizeof variants[0]; v++) {
         for (size_t k = 0; k < sizeof sizes / sizeof sizes[0]; k++) {
             int bad = plat_blit_verify(framebuffer, sizes[k].w, sizes[k].h,
                                        variants[v].id, TILE);
-            if (bad != 0) {
+            if (bad < 0)
+                continue;               /* backend has nothing to compare */
+            checked++;
+            if (bad > 0) {
                 printf("pid351: VERIFY %s %s: %d pixels differ\n",
                        variants[v].name, sizes[k].name, bad);
                 fflush(stdout);
             }
         }
     }
-    printf("pid351: verify done (only mismatches are printed above)\n");
+    printf("pid351: verify: %d comparisons run, only mismatches printed\n",
+           checked);
 
     printf("pid351: blit variants, %d iterations each, tile %d, into the real "
            "back buffer, no page flip\n", ITER, TILE);
 
     for (size_t k = 0; k < sizeof sizes / sizeof sizes[0]; k++) {
-        rect_t r = fit_integer(sizes[k].w, sizes[k].h, PANEL_W, PANEL_H);
-        int sc = r.w / sizes[k].w;
-
-        printf("pid351:   %-8s %3dx%-3d x%d  src %4uKB  %6u sourced px",
-               sizes[k].name, sizes[k].w, sizes[k].h, sc,
+        /* Every console fills the panel now, so the destination is always
+         * 153600 pixels and the only thing that varies is the source and the
+         * ratio it is stretched by. */
+        printf("pid351:   %-8s %3dx%-3d src %4uKB  %.3fx%.3f",
+               sizes[k].name, sizes[k].w, sizes[k].h,
                (unsigned)((size_t)sizes[k].w * (size_t)sizes[k].h
                           * sizeof(px_t) / 1024),
-               (unsigned)(r.w * r.h));
+               (double)PANEL_W / sizes[k].w, (double)PANEL_H / sizes[k].h);
 
+        int ok = 1;
         for (size_t v = 0; v < sizeof variants / sizeof variants[0]; v++) {
             if (plat_bench(framebuffer, sizes[k].w, sizes[k].h,
                            variants[v].id, TILE, samples, ITER) < 0) {
-                printf("   unavailable on this backend");
+                ok = 0;
                 break;
             }
             stat_t s = stat_of(samples, ITER);
             printf("   %s %5u/%5u", variants[v].name, s.min, s.med);
         }
-        printf("\n");
+        printf("%s\n", ok ? "" : "   unavailable on this backend");
         fflush(stdout);
+        if (!ok)
+            return;
     }
 
     if (plat_bench(framebuffer, PANEL_W, PANEL_H, PLAT_BLIT_LINEAR, TILE,
@@ -280,6 +288,7 @@ struct sysinfo_s {
     long voltage_uv;
     long current_ua;
     long backlight, backlight_max;
+    long charge_uah;     /* coulomb counter, see power_phase */
     long mem_total_kb, mem_avail_kb;
     long uptime_s;
 };
@@ -297,6 +306,16 @@ static void sysinfo_read(struct sysinfo_s *s)
     static const char *const cap[] = {
         "/sys/class/power_supply/battery/capacity",
         "/sys/class/power_supply/BAT0/capacity", NULL };
+    /* The rk817 exposes current_avg and voltage_avg but no _now, so every
+     * current reading is already filtered and lags a load change by longer
+     * than a short measurement lasts - which is exactly how the first run
+     * reported the same 663 mA before and after a seven second benchmark.
+     * charge_now is the coulomb counter underneath it: unfiltered, and a
+     * difference across a known interval is an average current with no
+     * filter to wait out. */
+    static const char *const chg[] = {
+        "/sys/class/power_supply/battery/charge_now",
+        "/sys/class/power_supply/BAT0/charge_now", NULL };
 
     if (!read_text("/proc/device-tree/model", s->model, sizeof s->model))
         snprintf(s->model, sizeof s->model, "-");
@@ -314,6 +333,7 @@ static void sysinfo_read(struct sysinfo_s *s)
     s->capacity   = read_long_any(cap,  -1);
     s->voltage_uv = read_long_any(volt, -1);
     s->current_ua = read_long_any(curr, -1);
+    s->charge_uah = read_long_any(chg, -1);
     s->backlight     = read_long("/sys/class/backlight/backlight/brightness", -1);
     s->backlight_max = read_long("/sys/class/backlight/backlight/max_brightness", -1);
 
@@ -334,6 +354,36 @@ static void sysinfo_read(struct sysinfo_s *s)
         }
         fclose(f);
     }
+}
+
+#define GOV_PATH "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
+#define BL_PATH  "/sys/class/backlight/backlight/brightness"
+
+static int write_long(const char *path, long v)
+{
+    FILE *f = fopen(path, "w");
+    if (!f)
+        return -1;
+    int ok = fprintf(f, "%ld", v) > 0;
+    if (fclose(f) != 0)
+        ok = 0;
+    return ok ? 0 : -1;
+}
+
+
+/* All four cores share policy0 on this SoC, so there is one governor and one
+ * frequency for the machine. Only 1008 and 1296 MHz exist; anything lower has
+ * to be authored with voltages we would be choosing ourselves, which is phase
+ * 4 work. Until then powersave is the whole of the low end. */
+static int write_governor(const char *g)
+{
+    FILE *f = fopen(GOV_PATH, "w");
+    if (!f)
+        return -1;
+    int ok = fputs(g, f) >= 0;
+    if (fclose(f) != 0)
+        ok = 0;
+    return ok ? 0 : -1;
 }
 
 /* ------------------------------------------------------------- info column */
@@ -612,6 +662,235 @@ static void draw_panel_check(canvas_t *c, int x, int y, int w)
 
 /* ------------------------------------------------------------------- main */
 
+/* What non-integer scaling actually looks like, which arithmetic cannot
+ * settle. Filling the panel means 15/8 across and 10/7 down for NES and SNES,
+ * so some source pixels become two on the panel and some stay one. The
+ * pattern repeats every 8 and every 7, which should read as a regular texture
+ * rather than as noise - but should is doing a lot of work in that sentence,
+ * and single pixel lines are where it either holds up or does not. So most of
+ * this card is single pixel lines, and one thing on it moves, because shimmer
+ * is a motion artefact that a still frame hides completely. */
+static void draw_testcard(canvas_t *c, const char *label, unsigned frame)
+{
+    gfx_rect(c, 0, 0, c->w, c->h, C_BG);
+
+    int top = 14, bot = c->h - 26;
+    int third = c->w / 3;
+
+    for (int x = 2; x < third - 4; x += 2)
+        gfx_rect(c, x, top, 1, bot - top, C_TEXT);
+
+    for (int y = top; y < bot; y += 2)
+        gfx_rect(c, third + 4, y, third - 12, 1, C_TEXT);
+
+    for (int i = 0; i < bot - top; i++)
+        gfx_px(c, third * 2 + 4 + i / 2, top + i, C_ACCENT);
+
+    gfx_disc(c, c->w - third / 3, (top + bot) / 2, third / 4, C_LIT);
+    gfx_frame(c, 0, 0, c->w, c->h, C_ACCENT);
+
+    gfx_rect(c, (int)(frame % (unsigned)(c->w - 10)), bot + 2, 8, 6, C_ACCENT);
+
+    gfx_text(c, 3, 3, label, 1, C_ACCENT);
+    gfx_text(c, 3, c->h - 10, "L1/R1 SOURCE", 1, C_DIM);
+}
+
+/* ------------------------------------------------------------ power slope */
+
+/* The question this answers is the one the whole project turns on, and it has
+ * never been measured: what is a millisecond of Cortex-A35 time worth in
+ * milliamps? Without it, "the blit costs 2.5 ms a frame" cannot be converted
+ * into a battery argument, and every optimisation is justified by taste.
+ *
+ * So: hold everything else fixed - same backlight, same panel, same drawing -
+ * and vary only how many extra blits happen per frame. The slope of current
+ * against CPU time is the exchange rate. Then repeat the zero-load point at
+ * the lower operating point, which gives the other lever's worth on the same
+ * scale.
+ *
+ * Current comes from differencing the coulomb counter rather than reading the
+ * filtered current_avg, and the first seconds of each phase are discarded, so
+ * neither the governor settling nor the gauge's own filter is inside the
+ * window being attributed to the load. */
+struct phase_result {
+    const char *name;
+    long   khz;
+    int    extra;
+    double secs, fps;
+    long   q0, q1, ua_implied, ua_avg, uv, temp_mc;
+    int    q_samples, q_steps;   /* how often the counter actually moved */
+    uint32_t blit_min, blit_med, work_med;
+};
+
+static long read_charge_uah(void)
+{
+    static const char *const p[] = {
+        "/sys/class/power_supply/battery/charge_now",
+        "/sys/class/power_supply/BAT0/charge_now", NULL };
+    return read_long_any(p, -1);
+}
+
+static void power_phase(canvas_t *c, const char *name, const char *gov,
+                        int extra, int backlight, int secs,
+                        struct phase_result *out)
+{
+    enum { SETTLE_S = 6 };
+
+    memset(out, 0, sizeof *out);
+    out->name = name;
+    out->ua_implied = -1;
+
+    /* Once the run is ending, every remaining phase would otherwise print a
+     * zero length window that reads exactly like a real measurement. */
+    if (plat_should_quit()) {
+        printf("pid351: PHASE %-12s skipped, run ending\n", name);
+        fflush(stdout);
+        return;
+    }
+
+    static uint32_t junk[8];
+    static uint32_t work[TIME_RING];
+
+    struct sysinfo_s si;
+    memset(&si, 0, sizeof si);
+
+    if (gov && write_governor(gov) != 0)
+        printf("pid351: WARN could not write governor %s\n", gov);
+    if (backlight >= 0 && write_long(BL_PATH, backlight) != 0)
+        printf("pid351: WARN could not write backlight %d\n", backlight);
+
+    uint64_t t0 = plat_now_us();
+    uint64_t next = t0;
+    uint64_t mark_at = t0 + (uint64_t)SETTLE_S * 1000000u;
+    unsigned frames = 0, marked_frames = 0;
+    int wn = 0, wi = 0;
+    long q_mark = -1;
+    int  marked = 0;      /* separate from q_mark: the counter may read -1 */
+    uint64_t t_mark = 0;
+    uint64_t q_at = t0;
+    long q_last = -1;
+    int q_n = 0, q_steps = 0;
+
+    ring_n = ring_i = 0;
+    memset(blit_ring, 0, sizeof blit_ring);
+
+    for (;;) {
+        uint64_t now = plat_now_us();
+        if (now - t0 >= (uint64_t)secs * 1000000u)
+            break;
+
+        uint32_t held = plat_input();
+        if (plat_should_quit() || ((held & PAD_START) && (held & PAD_SELECT)))
+            break;
+
+        /* The load. Deliberately the same blit the real path runs, so the
+         * slope is expressed in the units we care about rather than in some
+         * synthetic loop's. */
+        if (extra > 0)
+            plat_bench(framebuffer, PANEL_W, PANEL_H, PLAT_BLIT_STRIDED,
+                       32, junk, extra);
+
+        uint64_t w0 = plat_now_us();
+
+        gfx_rect(c, 0, 0, PANEL_W, PANEL_H, C_BG);
+        gfx_text(c, 8, 8, "PID351 POWER MEASUREMENT", 2, C_ACCENT);
+        gfx_text(c, 8, 40, "DO NOT TOUCH - LEAVE IT ALONE", 1, C_DIM);
+        {
+            char v[96];
+            snprintf(v, sizeof v, "PHASE %s", name);
+            gfx_text(c, 8, 70, v, 1, C_TEXT);
+            snprintf(v, sizeof v, "EXTRA BLITS %d", extra);
+            gfx_text(c, 8, 84, v, 1, C_TEXT);
+            snprintf(v, sizeof v, "%lu / %d S",
+                     (unsigned long)((now - t0) / 1000000u), secs);
+            gfx_text(c, 8, 98, v, 1, C_TEXT);
+            gfx_rect(c, 8, 116, 464, 10, C_PANEL);
+            gfx_rect(c, 8, 116,
+                     (int)((now - t0) * 464u / ((uint64_t)secs * 1000000u)),
+                     10, C_ACCENT);
+            gfx_text(c, 8, 140, "START+SELECT ABORTS", 1, C_DIM);
+        }
+
+        plat_present(framebuffer, PANEL_W, PANEL_H);
+
+        uint32_t b_us = 0, w_us = 0;
+        plat_frame_us(&b_us, &w_us);
+        blit_ring[ring_i] = b_us;
+        ring_i = (ring_i + 1) % TIME_RING;
+        if (ring_n < TIME_RING)
+            ring_n++;
+        work[wi] = (uint32_t)(plat_now_us() - w0);
+        wi = (wi + 1) % TIME_RING;
+        if (wn < TIME_RING)
+            wn++;
+
+        frames++;
+        if (!marked && plat_now_us() >= mark_at) {
+            marked = 1;
+            sysinfo_read(&si);
+            q_mark = si.charge_uah;
+            t_mark = plat_now_us();
+            marked_frames = frames;
+        }
+
+        /* A counter that only ticks once or twice inside the window would
+         * make the implied current meaningless while still printing a
+         * confident number, so its granularity is measured alongside it. */
+        if (plat_now_us() >= q_at) {
+            long q = read_charge_uah();
+            if (q_n && q != q_last)
+                q_steps++;
+            q_last = q;
+            q_n++;
+            q_at += 1000000u;
+        }
+
+        next += FRAME_US;
+        plat_sleep_until(next);
+    }
+
+    sysinfo_read(&si);
+    uint64_t t_end = plat_now_us();
+
+    stat_t b = stat_of(blit_ring, ring_n);
+    stat_t w = stat_of(work, wn);
+
+    out->name  = name;
+    out->khz   = si.cpu_khz;
+    out->extra = extra;
+    out->q0    = q_mark;
+    out->q1    = si.charge_uah;
+    out->ua_avg = si.current_ua;
+    out->uv    = si.voltage_uv;
+    out->temp_mc = si.temp_mc;
+    out->blit_min = b.min;
+    out->blit_med = b.med;
+    out->work_med = w.med;
+    out->q_samples = q_n;
+    out->q_steps   = q_steps;
+
+    double dt = marked ? (double)(t_end - t_mark) / 1000000.0 : 0.0;
+    out->secs = dt;
+    out->fps  = dt > 0.0 ? (double)(frames - marked_frames) / dt : 0.0;
+
+    /* uAh over dt seconds back to uA. Discharging counts down, so the
+     * difference is taken in the direction that yields a positive draw. */
+    out->ua_implied = (q_mark >= 0 && dt > 0.5 && si.charge_uah >= 0)
+                    ? (long)((double)(q_mark - si.charge_uah) * 3600.0 / dt)
+                    : -1;
+
+    printf("pid351: PHASE %-12s gov=%s khz=%ld extra=%d bl=%ld window=%.1fs fps=%.2f "
+           "q %ld->%ld uAh (%d samples, %d steps)  implied=%ld uA  "
+           "current_avg=%ld uA  volt=%ld uV  "
+           "temp_mc=%ld  blit=%u/%u  work_med=%u us\n",
+           name, gov ? gov : "-", out->khz, extra, si.backlight,
+           out->secs, out->fps,
+           out->q0, out->q1, out->q_samples, out->q_steps, out->ua_implied,
+           out->ua_avg, out->uv,
+           out->temp_mc, out->blit_min, out->blit_med, out->work_med);
+    fflush(stdout);
+}
+
 int main(void)
 {
     if (plat_init() != 0) {
@@ -632,11 +911,130 @@ int main(void)
      * sizes look faster than the earlier ones for reasons that have nothing
      * to do with the blit. A 1008 MHz sample and a 1296 MHz one differ by
      * 29% before anything interesting has happened. */
+    char gov0[24];
+    snprintf(gov0, sizeof gov0, "%s", si.governor);
+
     conditions("before bench", &si);
     clock_calibrate();
+
+    /* Whether the scanout buffer is cached or write combined is the fact the
+     * entire blit argument rests on, and it has been assumed in both
+     * directions across this session without once being checked. */
+    {
+        plat_mem_t m;
+        if (plat_mem_probe(&m, 5) == 0)
+            printf("pid351: memory 300KB sequential, best of 5, us: "
+                   "scanout w=%u r=%u rmw=%u   ram w=%u r=%u rmw=%u   "
+                   "(scanout reads far above ram reads means write combined)\n",
+                   m.fb_write, m.fb_read, m.fb_rmw,
+                   m.ram_write, m.ram_read, m.ram_rmw);
+        else
+            printf("pid351: memory probe unavailable\n");
+        fflush(stdout);
+    }
+
+    /* We have been pacing to a hardcoded 59.727 Hz and reading back 59.72,
+     * which proves the sleep works and nothing else. Per-console timing needs
+     * the panel's real rate, so take it from the mode's own arithmetic and
+     * then from flipping as fast as the hardware allows. */
+    {
+        uint32_t exact = 0, ck = 0, ht = 0, vt = 0, meas = 0;
+        plat_mode_timing(&exact, &ck, &ht, &vt);
+        printf("pid351: mode clock=%u kHz htotal=%u vtotal=%u -> exact %u.%03u Hz\n",
+               ck, ht, vt, exact / 1000u, exact % 1000u);
+        if (plat_vblank_probe(300, &meas) == 0)
+            printf("pid351: vblank measured over 300 flips: %u.%03u Hz "
+                   "(frame budget %u us against our hardcoded %d)\n",
+                   meas / 1000u, meas % 1000u,
+                   meas ? (unsigned)(1000000000u / meas) : 0u, FRAME_US);
+        else
+            printf("pid351: vblank probe unavailable\n");
+        fflush(stdout);
+    }
+
     bench_blit();
     sysinfo_read(&si);
     conditions("after bench ", &si);
+
+    /* Four phases, about two and a half minutes. Three at the high operating
+     * point with rising load give the slope of current against CPU time; the
+     * fourth repeats the idle point at the low one, which puts both levers on
+     * the same scale for the first time. */
+    long bl0 = si.backlight;
+    {
+        struct phase_result bl[3];
+
+        /* The backlight first, because if it turns out to dominate then every
+         * CPU number that follows is a rounding error and we should know that
+         * before reading them. It has been called the largest consumer on
+         * this device three times in this project without anyone measuring
+         * it once. */
+        power_phase(&c, "bl-255", "performance", 0, 255, 35, &bl[0]);
+        power_phase(&c, "bl-127", "performance", 0, 127, 35, &bl[1]);
+        power_phase(&c, "bl-32",  "performance", 0,  32, 35, &bl[2]);
+        if (bl[0].ua_implied >= 0 && bl[2].ua_implied >= 0)
+            printf("pid351: BACKLIGHT 255=%ld  127=%ld  32=%ld uA  "
+                   "-> %ld uA between full and near dark\n",
+                   bl[0].ua_implied, bl[1].ua_implied, bl[2].ua_implied,
+                   bl[0].ua_implied - bl[2].ua_implied);
+        fflush(stdout);
+
+        /* Everything below is at the backlight the machine arrived with, so
+         * the CPU phases are comparable with each other and with the run we
+         * already have. */
+        struct phase_result pr[5];
+        power_phase(&c, "base-1296",  "performance", 0, (int)bl0, 35, &pr[0]);
+        power_phase(&c, "load2-1296", "performance", 2, -1, 35, &pr[1]);
+        power_phase(&c, "load4-1296", "performance", 4, -1, 35, &pr[2]);
+        power_phase(&c, "base-1008",  "powersave",   0, -1, 35, &pr[3]);
+        /* The control. Phases run cold to hot, and leakage rises with
+         * temperature, so without repeating the first point at the end a
+         * thermal drift would be indistinguishable from the slope we are
+         * trying to measure. If this disagrees with base-1296, the slope is
+         * contaminated and the numbers above it are not to be trusted. */
+        power_phase(&c, "base-1296-b", "performance", 0, -1, 35, &pr[4]);
+
+        /* The whole point of the exercise, stated in the units the decision
+         * gets made in. Extra CPU per frame is the count times the blit we
+         * just measured, converted to a duty cycle against the frame. */
+        /* Against the work actually measured, not against extra x blit_med.
+         * Those differ whenever a phase failed to hold 60 fps, and using the
+         * assumed figure would hide exactly that failure. */
+        for (int i = 1; i < 3; i++) {
+            if (pr[i].ua_implied < 0 || pr[0].ua_implied < 0)
+                continue;
+            double dms = ((double)pr[i].work_med
+                        - (double)pr[0].work_med) / 1000.0;
+            double dua = (double)(pr[i].ua_implied - pr[0].ua_implied);
+            printf("pid351: SLOPE %s vs base: +%.2f ms/frame measured -> "
+                   "%+.0f uA (%.1f uA per ms per frame)%s\n",
+                   pr[i].name, dms, dua, dms > 0.0 ? dua / dms : 0.0,
+                   pr[i].fps < 59.0 ? "   INVALID: dropped below 59 fps" : "");
+        }
+        printf("pid351: THERMAL CONTROL base-1296 %ld uA vs base-1296-b %ld uA "
+               "at %ld and %ld mC - a large gap here invalidates the slopes\n",
+               pr[0].ua_implied, pr[4].ua_implied,
+               pr[0].temp_mc, pr[4].temp_mc);
+        if (pr[3].ua_implied >= 0 && pr[0].ua_implied >= 0)
+            printf("pid351: OPP 1296 %ld uA vs 1008 %ld uA -> %+ld uA "
+                   "(%.1f%%) for the lower operating point at idle load\n",
+                   pr[0].ua_implied, pr[3].ua_implied,
+                   pr[3].ua_implied - pr[0].ua_implied,
+                   pr[0].ua_implied ? (double)(pr[3].ua_implied
+                       - pr[0].ua_implied) * 100.0 / (double)pr[0].ua_implied
+                       : 0.0);
+        fflush(stdout);
+    }
+
+    /* Put it back. Leaving the machine on powersave after a measurement would
+     * silently poison every number taken after it, including the ones read off
+     * the panel by eye. */
+    if (gov0[0] && gov0[0] != '-' && write_governor(gov0) != 0)
+        printf("pid351: WARN could not restore governor %s\n", gov0);
+    if (bl0 >= 0 && write_long(BL_PATH, bl0) != 0)
+        printf("pid351: WARN could not restore backlight %ld\n", bl0);
+    sysinfo_read(&si);
+    conditions("after phases", &si);
 
     uint64_t start = plat_now_us();
     uint64_t next  = start;
@@ -647,14 +1045,32 @@ int main(void)
     double fps = 0.0;
     const char *reason = "?";
 
+    /* NES and SNES are the same 256x224, so three cards cover all four
+     * consoles. Cycled by hand because the only way to settle whether
+     * non-integer scaling looks acceptable is to look at it. */
+    static const struct { const char *name; int w, h; } src[] = {
+        { "NATIVE 480X320 - NO SCALING",   480, 320 },
+        { "GBA 240X160 - EXACT 2X",        240, 160 },
+        { "NES/SNES 256X224 - 15/8 X 10/7", 256, 224 },
+        { "GENESIS 320X224 - 3/2 X 10/7",  320, 224 },
+    };
+    const int src_n = (int)(sizeof src / sizeof src[0]);
+    int src_i = 0;
+    uint32_t prev_held = 0;
+
     for (;;) {
         uint32_t held = plat_input();
+        uint32_t went_down = held & ~prev_held;
+        prev_held = held;
 
         /* Only the combo exits. Binding a single button to quit meant that
          * button could never be seen to light up, which is the one thing this
          * program is for. */
         if ((held & PAD_START) && (held & PAD_SELECT))  { reason = "combo"; break; }
         if (plat_should_quit())                         { reason = "quit";  break; }
+
+        if (went_down & PAD_R1) src_i = (src_i + 1) % src_n;
+        if (went_down & PAD_L1) src_i = (src_i + src_n - 1) % src_n;
 
         uint64_t now = plat_now_us();
 
@@ -683,13 +1099,35 @@ int main(void)
 
         uint64_t draw_t0 = plat_now_us();
 
+        if (src_i != 0) {
+            canvas_t tc = { framebuffer, src[src_i].w, src[src_i].h };
+            draw_testcard(&tc, src[src_i].name, frames);
+            uint32_t d_us = (uint32_t)(plat_now_us() - draw_t0);
+            plat_present(framebuffer, src[src_i].w, src[src_i].h);
+
+            uint32_t bb = 0, ww = 0;
+            plat_frame_us(&bb, &ww);
+            blit_ring[ring_i] = bb;
+            wait_ring[ring_i] = ww;
+            draw_ring[ring_i] = d_us;
+            ring_i = (ring_i + 1) % TIME_RING;
+            if (ring_n < TIME_RING)
+                ring_n++;
+
+            frames++;
+            fps_frames++;
+            next += FRAME_US;
+            plat_sleep_until(next);
+            continue;
+        }
+
         gfx_rect(&c, 0, 0, PANEL_W, PANEL_H, C_BG);
         gfx_rect(&c, 0, 0, PANEL_W, 17, C_PANEL);
         gfx_rect(&c, 0, 17, PANEL_W, 1, C_ACCENT);
         gfx_text(&c, 6, 2, "PID351", 2, C_ACCENT);
         gfx_text(&c, 84, 5, "ONE PID EVER RUNNING", 1, C_DIM);
         {
-            const char *hint = "START+SELECT TO EXIT";
+            const char *hint = "L1/R1 SOURCE  START+SELECT EXIT";
             gfx_text(&c, PANEL_W - gfx_text_w(hint, 1) - 6, 5, hint, 1, C_DIM);
         }
 

@@ -99,4 +99,40 @@ int plat_bench(const px_t *src, int src_w, int src_h, int variant, int tile,
 int plat_blit_verify(const px_t *src, int src_w, int src_h,
                      int variant, int tile);
 
+/* Microseconds to touch a full panel's worth of pixels sequentially, in the
+ * scanout buffer and in ordinary memory, taking the best of iters.
+ *
+ * This is the question the whole blit argument has been resting on without
+ * anyone checking: a DRM dumb buffer may be cached or it may be write
+ * combined, and that single fact decides which candidate can win. Write
+ * combined memory takes sequential writes at close to full speed and punishes
+ * reads and partial line writes brutally, so if fb_read and fb_rmw come back
+ * an order of magnitude above ram_read and ram_rmw, the staged variant is the
+ * only one that can help and the tiled one will be worse than what we have.
+ *
+ * Cheap to measure, and it turns the choice from an argument into a lookup. */
+typedef struct {
+    uint32_t fb_write, fb_read, fb_rmw;
+    uint32_t ram_write, ram_read, ram_rmw;
+} plat_mem_t;
+
+int plat_mem_probe(plat_mem_t *out, int iters);
+
+/* The panel's real refresh rate, two independent ways.
+ *
+ * Both are needed because they can disagree and the disagreement is the
+ * interesting part. exact_mhz is what the mode's own timing says: the pixel
+ * clock divided by the total line and frame counts, which is what the
+ * hardware will actually do. measured_mhz comes from doing flips back to back
+ * with no sleep at all and counting how long they took, which is what we will
+ * actually get.
+ *
+ * We have been pacing to a hardcoded 59.727 Hz and reading back 59.72, which
+ * proves only that the sleep works. Per-console timing in phase 2 needs the
+ * real number. Both are in millihertz. */
+void plat_mode_timing(uint32_t *exact_mhz, uint32_t *clock_khz,
+                      uint32_t *htotal, uint32_t *vtotal);
+
+int plat_vblank_probe(int flips, uint32_t *measured_mhz);
+
 #endif /* PLATFORM_H */

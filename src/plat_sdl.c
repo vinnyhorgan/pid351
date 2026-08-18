@@ -150,6 +150,27 @@ int plat_blit_verify(const px_t *src, int src_w, int src_h,
     return -1;   /* there is no rotate blit on this backend to compare against */
 }
 
+int plat_mem_probe(plat_mem_t *out, int iters)
+{
+    (void)out; (void)iters;
+    return -1;   /* no scanout buffer here; the question does not arise */
+}
+
+void plat_mode_timing(uint32_t *exact_mhz, uint32_t *clock_khz,
+                      uint32_t *htotal, uint32_t *vtotal)
+{
+    if (exact_mhz) *exact_mhz = 0;
+    if (clock_khz) *clock_khz = 0;
+    if (htotal)    *htotal    = 0;
+    if (vtotal)    *vtotal    = 0;
+}
+
+int plat_vblank_probe(int flips, uint32_t *measured_mhz)
+{
+    (void)flips; (void)measured_mhz;
+    return -1;   /* the compositor decides when this presents, not the panel */
+}
+
 uint64_t plat_now_us(void)
 {
     struct timespec ts;
