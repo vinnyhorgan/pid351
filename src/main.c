@@ -780,6 +780,73 @@ static long read_charge_uah(void)
     return read_long_any(p, -1);
 }
 
+/* ------------------------------------------------ diagnosing the fuel gauge */
+
+/* The battery is missing and the kernel will not say why. rk817_charger has
+ * exactly one silent failure path - it returns -ENODEV without a word when it
+ * cannot find a `charger` child under the PMIC's device tree node - and the
+ * driver core logs -ENODEV at pr_debug, which is compiled out. Meanwhile the
+ * node demonstrably is in the device tree we booted.
+ *
+ * So the three questions are: does the kernel see that node, was the platform
+ * device created at all, and did anything bind to it. Static reading of the
+ * source has not settled it, so ask the machine. */
+static void list_dir(const char *path, const char *match)
+{
+    DIR *d = opendir(path);
+    struct dirent *e;
+    int n = 0;
+
+    if (!d) {
+        printf("pid351:   %s: %s\n", path, strerror(errno));
+        return;
+    }
+    while ((e = readdir(d)) != NULL) {
+        if (e->d_name[0] == '.')
+            continue;
+        if (match && !strstr(e->d_name, match))
+            continue;
+
+        /* A platform device with no `driver` symlink was created and then
+         * either rejected or never matched, which is the whole question. */
+        char sub[512];
+        snprintf(sub, sizeof sub, "%s/%s/driver", path, e->d_name);
+        printf("pid351:   %-28s %s\n", e->d_name,
+               access(sub, F_OK) == 0 ? "<- driver bound" : "");
+        n++;
+    }
+    closedir(d);
+    if (!n)
+        printf("pid351:   (nothing%s%s)\n", match ? " matching " : "",
+               match ? match : "");
+}
+
+static void census(void)
+{
+    static const char *const dt[] = {
+        "/proc/device-tree/i2c@ff180000/pmic@20",
+        "/proc/device-tree/i2c@ff180000/pmic@20/charger",
+        "/proc/device-tree/i2c@ff180000/pmic@20/charger/monitored-battery",
+        "/proc/device-tree/battery",
+        "/proc/device-tree/battery/compatible",
+        NULL
+    };
+
+    printf("pid351: fuel gauge census\n");
+    printf("pid351:  device tree, as the kernel sees it:\n");
+    for (int i = 0; dt[i]; i++)
+        printf("pid351:   %-62s %s\n", dt[i],
+               access(dt[i], F_OK) == 0 ? "present" : "MISSING");
+
+    printf("pid351:  platform devices matching rk8:\n");
+    list_dir("/sys/bus/platform/devices", "rk8");
+    printf("pid351:  power supplies:\n");
+    list_dir("/sys/class/power_supply", NULL);
+    printf("pid351:  drivers matching rk8:\n");
+    list_dir("/sys/bus/platform/drivers", "rk8");
+    fflush(stdout);
+}
+
 static void power_phase(canvas_t *c, const char *name, const char *gov,
                         int extra, int backlight, int secs,
                         struct phase_result *out)
@@ -1024,6 +1091,10 @@ int main(void)
     bench_blit();
     sysinfo_read(&si);
     conditions("after bench ", &si);
+
+    /* Before the sweep, because a sweep with no power numbers is 3.5 minutes
+     * of nothing and we would rather know why up front. */
+    census();
 
     /* The OPP sweep. This is the first measurement in the project that could
      * not have been taken on ROCKNIX at all: their device tree deletes every
