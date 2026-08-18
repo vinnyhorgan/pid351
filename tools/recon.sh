@@ -108,6 +108,16 @@ ps ax 2>/dev/null | wc -l
 run ps aux --sort=-rss
 run systemctl list-units --type=service --state=running
 
+sec "cross-compiled binary"
+# Proves a statically linked aarch64 binary built with Debian's gcc 14 runs on
+# this 2021-vintage 4.4 kernel, before phase 1 is built on that assumption.
+BIN="$(dirname "$0")/pid351"
+if [ -x "$BIN" ]; then
+    run "$BIN"
+else
+    say "(pid351 binary not present next to this script)"
+fi
+
 sec "modules"
 run lsmod
 
