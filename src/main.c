@@ -76,22 +76,22 @@ int main(void)
 
         if (held != prev_held) {
             printf("input: %04x%s%s%s%s%s%s\n", held,
-                   (held & BTN_A) ? " A" : "", (held & BTN_B) ? " B" : "",
-                   (held & BTN_X) ? " X" : "", (held & BTN_Y) ? " Y" : "",
-                   (held & BTN_START) ? " START" : "",
-                   (held & BTN_SELECT) ? " SELECT" : "");
+                   (held & PAD_A) ? " A" : "", (held & PAD_B) ? " B" : "",
+                   (held & PAD_X) ? " X" : "", (held & PAD_Y) ? " Y" : "",
+                   (held & PAD_START) ? " START" : "",
+                   (held & PAD_SELECT) ? " SELECT" : "");
             fflush(stdout);
             prev_held = held;
         }
 
-        if (held & BTN_MENU)                                 { reason = "menu";  break; }
-        if ((held & BTN_START) && (held & BTN_SELECT))       { reason = "combo"; break; }
+        if (held & PAD_MENU)                                 { reason = "menu";  break; }
+        if ((held & PAD_START) && (held & PAD_SELECT))       { reason = "combo"; break; }
         if (plat_should_quit())                              { reason = "quit";  break; }
 
-        if (held & BTN_LEFT)  box_x -= 2;
-        if (held & BTN_RIGHT) box_x += 2;
-        if (held & BTN_UP)    box_y -= 2;
-        if (held & BTN_DOWN)  box_y += 2;
+        if (held & PAD_LEFT)  box_x -= 2;
+        if (held & PAD_RIGHT) box_x += 2;
+        if (held & PAD_UP)    box_y -= 2;
+        if (held & PAD_DOWN)  box_y += 2;
 
         draw_test_pattern(frame++, box_x, box_y);
         plat_present(fb, CORE_W, CORE_H);

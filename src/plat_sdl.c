@@ -70,21 +70,21 @@ uint32_t plat_input(void)
     const bool *k = SDL_GetKeyboardState(NULL);
     uint32_t held = 0;
 
-    if (k[SDL_SCANCODE_X])         held |= BTN_A;
-    if (k[SDL_SCANCODE_Z])         held |= BTN_B;
-    if (k[SDL_SCANCODE_S])         held |= BTN_X;
-    if (k[SDL_SCANCODE_A])         held |= BTN_Y;
-    if (k[SDL_SCANCODE_UP])        held |= BTN_UP;
-    if (k[SDL_SCANCODE_DOWN])      held |= BTN_DOWN;
-    if (k[SDL_SCANCODE_LEFT])      held |= BTN_LEFT;
-    if (k[SDL_SCANCODE_RIGHT])     held |= BTN_RIGHT;
-    if (k[SDL_SCANCODE_Q])         held |= BTN_L1;
-    if (k[SDL_SCANCODE_W])         held |= BTN_R1;
-    if (k[SDL_SCANCODE_1])         held |= BTN_L2;
-    if (k[SDL_SCANCODE_2])         held |= BTN_R2;
-    if (k[SDL_SCANCODE_RETURN])    held |= BTN_START;
-    if (k[SDL_SCANCODE_BACKSPACE]) held |= BTN_SELECT;
-    if (k[SDL_SCANCODE_ESCAPE])    held |= BTN_MENU;
+    if (k[SDL_SCANCODE_X])         held |= PAD_A;
+    if (k[SDL_SCANCODE_Z])         held |= PAD_B;
+    if (k[SDL_SCANCODE_S])         held |= PAD_X;
+    if (k[SDL_SCANCODE_A])         held |= PAD_Y;
+    if (k[SDL_SCANCODE_UP])        held |= PAD_UP;
+    if (k[SDL_SCANCODE_DOWN])      held |= PAD_DOWN;
+    if (k[SDL_SCANCODE_LEFT])      held |= PAD_LEFT;
+    if (k[SDL_SCANCODE_RIGHT])     held |= PAD_RIGHT;
+    if (k[SDL_SCANCODE_Q])         held |= PAD_L1;
+    if (k[SDL_SCANCODE_W])         held |= PAD_R1;
+    if (k[SDL_SCANCODE_1])         held |= PAD_L2;
+    if (k[SDL_SCANCODE_2])         held |= PAD_R2;
+    if (k[SDL_SCANCODE_RETURN])    held |= PAD_START;
+    if (k[SDL_SCANCODE_BACKSPACE]) held |= PAD_SELECT;
+    if (k[SDL_SCANCODE_ESCAPE])    held |= PAD_MENU;
 
     return held;
 }
