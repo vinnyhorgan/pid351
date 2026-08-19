@@ -79,21 +79,30 @@ static const opt_t nes_opts[] = {
 #define PAD_MAP_IDS 16
 typedef uint32_t pad_map_t[PAD_MAP_IDS];
 
-/* The NES pad is two buttons side by side, B on the left and A on the right.
- * The horizontal pair on our diamond is Y and A, so Y/A reproduces the real
- * geometry while B/A matches the printed labels. Both are live at once
- * rather than choosing: there is no config file to record a preference in,
- * getting it wrong makes the console feel wrong, and a second bit in a mask
- * costs nothing at runtime.
+/* The NES pad is two buttons side by side, B on the left and A on the right,
+ * and B is run while A is jump in the game this was tuned against.
+ *
+ * Rather than reproduce that pair once, the diamond is split along its
+ * diagonal: left and top are run, bottom and right are jump. Every way of
+ * holding it then works - Y/B is the SNES diagonal that Super Mario World
+ * taught everyone's thumb, Y/A is the true NES horizontal pair, X/A is the
+ * upper diagonal and X/B the vertical one. Binding one pair and leaving the
+ * others dead was the alternative, and it makes three of the four natural
+ * grips silently wrong.
+ *
+ * The cost is that our B drives the NES's A, so that one label is crossed.
+ * Taken deliberately: muscle memory beats silkscreen, and our A still lands
+ * on the NES's A.
  *
  * The shoulders stay unbound. A real NES pad has nothing there and turbo was
  * an accessory rather than part of the console, so binding them would invent
- * hardware. L3 and R3 are absent for a different reason - they are the only
- * controls no target console has, which is what reserves them for the menu.
- */
+ * hardware - and L1/R1 are owned by the GBA and SNES shoulders and by a
+ * six-button Genesis pad's top row, which has six face buttons against our
+ * four. L2, R2, L3 and R3 are absent for the opposite reason: no console we
+ * target has them, which is what frees them for fast mode and the menu. */
 static const pad_map_t nes_pad = {
-    [RETRO_DEVICE_ID_JOYPAD_B]      = PAD_Y | PAD_B,
-    [RETRO_DEVICE_ID_JOYPAD_A]      = PAD_A | PAD_X,
+    [RETRO_DEVICE_ID_JOYPAD_B]      = PAD_Y | PAD_X,   /* run  */
+    [RETRO_DEVICE_ID_JOYPAD_A]      = PAD_B | PAD_A,   /* jump */
     [RETRO_DEVICE_ID_JOYPAD_UP]     = PAD_UP,
     [RETRO_DEVICE_ID_JOYPAD_DOWN]   = PAD_DOWN,
     [RETRO_DEVICE_ID_JOYPAD_LEFT]   = PAD_LEFT,
@@ -101,7 +110,6 @@ static const pad_map_t nes_pad = {
     [RETRO_DEVICE_ID_JOYPAD_SELECT] = PAD_SELECT,
     [RETRO_DEVICE_ID_JOYPAD_START]  = PAD_START,
 };
-
 typedef struct {
     const char *name;
     const char *exts;          /* space separated, lower case, no dots */
@@ -164,9 +172,17 @@ static int fmt_agreed;
 static px_t vbuf[PANEL_W * PANEL_H];
 static int vw, vh, vnew;
 
+/* Fast mode. `fast_extra` is how many additional emulated frames to run per
+ * panel frame, and `discard` marks a run whose picture and samples are thrown
+ * away rather than shown and heard. */
+static int fast_extra, discard;
+
 static void cb_video(const void *data, unsigned width, unsigned height,
                      size_t pitch)
 {
+    if (discard)
+        return;
+
     if (!data || width == 0 || height == 0)
         return;                      /* legal: means "repeat last frame" */
     if ((int)width > PANEL_W || (int)height > PANEL_H) {
@@ -224,6 +240,8 @@ static unsigned ring_level(void)
 
 static size_t cb_audio_batch(const int16_t *data, size_t frames)
 {
+    if (discard)
+        return frames;
     for (size_t i = 0; i < frames; i++) {
         if (ring_level() >= RING_FRAMES - 2)
             break;                    /* full: dropping beats corrupting */
@@ -291,6 +309,14 @@ void core_audio(void)
         if (ring_r > ring_w)
             ring_r = ring_w;
     }
+
+    /* After the loop, not instead of it: rs_pos and ring_r must advance
+     * exactly as they would at normal speed, or the resampler comes back from
+     * fast mode with its read position somewhere the ring has never been.
+     * Silence rather than the chopped one-in-four audio that keeping the
+     * samples would give, which is worse to listen to than nothing. */
+    if (fast_extra > 0)
+        memset(out, 0, (size_t)n * 2 * sizeof out[0]);
 
     aud_write(out, n);
 }
@@ -523,10 +549,23 @@ const px_t *core_run(uint32_t held, int *w, int *h)
         return NULL;
     pad_held = held;
     vnew = 0;
+    /* The skipped frames run first so that the one we keep is the newest,
+     * which is what makes fast mode feel like fast motion rather than like
+     * dropped frames. */
+    for (int i = 0; i < fast_extra; i++) {
+        discard = 1;
+        cur->run();
+    }
+    discard = 0;
     cur->run();
     if (w) *w = vw;
     if (h) *h = vh;
     return vw && vh ? vbuf : NULL;
+}
+
+void core_fast(int extra)
+{
+    fast_extra = extra < 0 ? 0 : extra;
 }
 
 const char *core_name(void)   { return cur ? cur->name : "none"; }

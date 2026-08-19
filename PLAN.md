@@ -98,25 +98,35 @@ otherwise.
 
 ### Controls, settled
 
-The console mapping lives per core in `src/core.c`. For the NES both Y/A and
-B/A drive the two console buttons at once - Y/A is the real pad's geometry,
-B/A matches the printed labels, and there is no config file in which to
-record a preference between them.
+The console mapping lives per core in `src/core.c`. For the NES the diamond
+splits along its diagonal - **left and top are run, bottom and right are
+jump** - so Y/B, Y/A, X/A and X/B all work, rather than one pair working and
+three grips being silently wrong. The cost is that our B drives the NES's A;
+muscle memory beats silkscreen.
 
-The hotkey layer is **one click of R3, which opens the menu**. Nothing is
-held. Holding a stick click while reaching for a face button is a two-handed
-contortion, and the buttons that would be comfortable to hold - the shoulders
-- belong to the SNES and the Genesis. R3 is used rather than L3 because the
-left stick stands in for the d-pad, so L3 gets clicked by accident while
-moving; L3 is therefore left unassigned rather than given a job that would be
-triggered by mistake. Rejected: a held modifier, and per-core hotkeys.
+Shoulders, by who owns them:
 
-The menu carries save, load, reset, brightness, volume and exit. Volume moves
-to the shell's physical volume keys once `event3` is mapped.
+- **L1, R1** belong to the GBA's and SNES's real shoulders, and to a
+  six-button Genesis pad's top row - six face buttons against our four. Free
+  on the NES, which has none, and left unbound there rather than invented.
+- **L2, R2** are free on all four consoles: none has a second pair. Unlike
+  L3/R3 they are comfortable to hold, which is what makes R2 the fast-mode
+  button. L2 is unassigned.
+- **L3, R3** are free for the same reason but awkward to hold, so they carry
+  only single clicks. R3 opens the menu. L3 is unassigned deliberately: the
+  left stick stands in for the d-pad, so L3 gets clicked by accident while
+  moving, and anything reachable that way has to be harmless.
 
-There is no fast-forward. A held one has the ergonomic problem above, a
-toggled one can be left on and quietly spend battery, and no console we
-target needs it.
+**Fast mode is held R2, four times speed, silent.** Held rather than toggled
+because fast mode costs battery and a toggle can be left running in a pocket.
+Silent rather than chopped because keeping one frame of audio in four sounds
+worse than nothing; the resampler still advances exactly as it would at normal
+speed, so leaving fast mode does not leave its read position stranded.
+
+The menu carries save, load, reset, brightness, volume and exit. Nothing is
+held to reach it. Volume moves to the shell's physical volume keys once
+`event3` is mapped. Rejected: a held modifier for hotkeys, and per-core
+hotkeys.
 
 ## Phase 3 — power
 

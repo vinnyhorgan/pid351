@@ -1104,6 +1104,11 @@ static void power_phase(canvas_t *c, const char *name, const char *gov,
  * core can be proven end to end before there is any menu to reach it
  * through, which is the same order the display and the pad were brought up
  * in. The frontend replaces the ROM argument, not this loop. */
+/* Four times speed. Enough to be worth reaching for and low enough that the
+ * A35 still lands every panel frame; past this the frame loop starts running
+ * late, which reads as stutter rather than as speed. */
+#define FAST_EXTRA 3
+
 static int run_game(const char *rom, int as_init)
 {
     if (plat_init() != 0) {
@@ -1127,6 +1132,11 @@ static int run_game(const char *rom, int as_init)
         uint32_t held = plat_input();
         if ((held & PAD_START) && (held & PAD_SELECT)) { reason = "combo"; break; }
         if (plat_should_quit())                        { reason = "quit";  break; }
+
+        /* R2 rather than a stick click: no console we target has a second
+         * pair of shoulders, so R2 is as safe as L3/R3 and, unlike a stick
+         * click, comfortable to hold down while still playing. */
+        core_fast((held & PAD_R2) ? FAST_EXTRA : 0);
 
         int w = 0, h = 0;
         const px_t *fb = core_run(held, &w, &h);
