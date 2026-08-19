@@ -65,6 +65,20 @@ int core_state_save(void);
 int core_state_load(void);
 int core_state_undo(void);
 
+/* Saving is split: core_state_save does the part that must happen on the
+ * frame the button was pressed, core_state_tick finishes it a few frames
+ * later, and core_state_sync forces that immediately. Call tick once per
+ * frame; nothing else is required. See core.c for why. */
+/* Frames of writeback the tick allows before it forces the fsync. Exposed
+ * only so the session report can say how long the durable half was deferred
+ * rather than have the number appear in two places. */
+#define SAVE_SETTLE_FRAMES 6
+
+int core_state_tick(void);
+int core_state_sync(void);
+uint32_t core_state_save_us(void);
+uint32_t core_state_sync_us(void);
+
 /* Whether any core claims this file by extension. The launcher's whole
  * filter, and the reason ROM discovery does not need its own table. */
 int core_accepts(const char *path);

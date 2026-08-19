@@ -318,6 +318,7 @@ struct sysinfo_s {
     long current_ua;
     long backlight, backlight_max;
     long charge_uah;     /* coulomb counter, see power_phase */
+    long charge_full_uah;
     long mem_total_kb, mem_avail_kb;
     long uptime_s;
 };
@@ -359,6 +360,10 @@ static void sysinfo_read(struct sysinfo_s *s)
         "/sys/class/power_supply/rk817-battery/charge_now",
         "/sys/class/power_supply/battery/charge_now",
         "/sys/class/power_supply/BAT0/charge_now", NULL };
+    static const char *const full[] = {
+        "/sys/class/power_supply/rk817-battery/charge_full",
+        "/sys/class/power_supply/battery/charge_full",
+        "/sys/class/power_supply/BAT0/charge_full", NULL };
 
     if (!read_text("/proc/device-tree/model", s->model, sizeof s->model))
         snprintf(s->model, sizeof s->model, "-");
@@ -377,6 +382,7 @@ static void sysinfo_read(struct sysinfo_s *s)
     s->voltage_uv = read_long_any(volt, -1);
     s->current_ua = read_long_any(curr, -1);
     s->charge_uah = read_long_any(chg, -1);
+    s->charge_full_uah = read_long_any(full, -1);
     s->backlight     = read_long("/sys/class/backlight/backlight/brightness", -1);
     s->backlight_max = read_long("/sys/class/backlight/backlight/max_brightness", -1);
 
@@ -1395,6 +1401,7 @@ static unsigned fast_panel, fast_emu, late_frames;
  * assumption and printed 5.99x for something delivering 1.97x. */
 static uint64_t fast_us;
 static int ring_lo = INT32_MAX, ring_hi;
+static int aud_lo = INT32_MAX;   /* codec buffer low water */
 static long temp_hi = -300000;
 static struct sysinfo_s si_start;
 
@@ -1467,11 +1474,19 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
         printf("pid351: fast mode: never used\n");
     }
 
-    printf("pid351: audio: %d xruns, core ring %d..%d, codec level %d\n",
+    printf("pid351: audio: %d xruns, core ring %d..%d, codec low water %d "
+           "frames (%.1f ms)\n",
            aud_xruns(), ring_lo == INT32_MAX ? 0 : ring_lo, ring_hi,
-           aud_level());
-    printf("pid351: state: %u saved, %u loaded, %u undone\n",
-           n_save, n_load, n_undo);
+           aud_lo == INT32_MAX ? 0 : aud_lo,
+           aud_lo == INT32_MAX ? 0.0
+               : (double)aud_lo * 1000.0 / (double)(aud_rate() ? aud_rate()
+                                                              : 48000));
+    printf("pid351: state: %u saved, %u loaded, %u undone; last save %u us "
+           "on the frame, %u us fsync %d frames later\n",
+           n_save, n_load, n_undo, core_state_save_us(),
+           core_state_sync_us(), SAVE_SETTLE_FRAMES);
+    printf("pid351: power: backlight %ld/%ld, governor %s, %ld MHz\n",
+           si.backlight, si.backlight_max, si.governor, si.cpu_khz / 1000);
     printf("pid351: power: %ld%% -> %ld%%, %ld -> %ld uA, %ld MHz, "
            "temp %ld.%01ld -> %ld.%01ld peak %ld.%01ld C\n",
            si_start.capacity, si.capacity, si_start.current_ua, si.current_ua,
@@ -1479,11 +1494,24 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
            si_start.temp_mc / 1000, (si_start.temp_mc % 1000) / 100,
            si.temp_mc / 1000, (si.temp_mc % 1000) / 100,
            temp_hi / 1000, (temp_hi % 1000) / 100);
-    if (si_start.charge_uah > 0 && si.charge_uah > 0 && secs > 30.0)
-        printf("pid351: drain: %ld uAh over %.1f s = %.0f mA average\n",
-               si_start.charge_uah - si.charge_uah, secs,
-               (double)(si_start.charge_uah - si.charge_uah) / secs
-                   * 3600.0 / 1000.0);
+    if (si_start.charge_uah > 0 && si.charge_uah > 0 && secs > 30.0) {
+        double mA = (double)(si_start.charge_uah - si.charge_uah) / secs
+                    * 3600.0 / 1000.0;
+        double full = (double)(si.charge_full_uah > 0 ? si.charge_full_uah
+                                                     : 3450000) / 1000.0;
+
+        /* Projected here rather than worked out later, because the two things
+         * it needs - the drain over a real session and this pack's actual
+         * charge_full - are both only available on the device, and every time
+         * that arithmetic has been done off it, it has been done against the
+         * design capacity instead of the battery that is fitted. */
+        printf("pid351: drain: %ld uAh over %.1f s = %.0f mA, "
+               "%.0f mAh pack -> %.1f h from full, %.1f h left at %ld%%\n",
+               si_start.charge_uah - si.charge_uah, secs, mA, full,
+               mA > 0 ? full / mA : 0.0,
+               mA > 0 ? full * (double)si.capacity / 100.0 / mA : 0.0,
+               si.capacity);
+    }
 
     /* Thresholds fixed in advance. See the comment above. */
     printf("pid351: verdict:\n");
@@ -1624,6 +1652,14 @@ static int run_game(const char *rom, int as_init)
             if (rl < ring_lo) ring_lo = rl;
             if (rl > ring_hi) ring_hi = rl;
         }
+        /* The codec buffer, not our ring. This is the one that xruns, and
+         * after the first few seconds its minimum is the entire question of
+         * whether fast mode has enough margin. */
+        int al = aud_level();
+        if (al >= 0 && frames > 300 && al < aud_lo)
+            aud_lo = al;
+
+        core_state_tick();
 
         frames++;
         win++;

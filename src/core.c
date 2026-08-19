@@ -16,9 +16,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include "pid351.h"
+#include "platform.h"
 #include "core.h"
 #include "aud.h"
 #include "../cores/libretro.h"
@@ -488,30 +490,113 @@ static int state_alloc(const char *rom_path)
     return 0;
 }
 
+#ifndef SYNC_FILE_RANGE_WRITE
+#define SYNC_FILE_RANGE_WRITE 2
+#endif
+
+/* Declared rather than obtained by widening the feature-test macros, which is
+ * the same trade plat_drm.c makes for __NR_sync and __NR_syslog and for the
+ * same reason: _GNU_SOURCE changes what every other header in the file
+ * declares, to get one prototype. */
+extern long syscall(long number, ...);
+
+/* Start writeback on a range and return without waiting for it. There is no
+ * POSIX call for this, so the syscall directly - see above. */
+static void writeback_start(int fd, size_t len)
+{
+#ifdef __NR_sync_file_range
+    syscall(__NR_sync_file_range, fd, (long)0, (long)len,
+            SYNC_FILE_RANGE_WRITE);
+#else
+    (void)fd;
+    (void)len;
+#endif
+}
+
+/* Saving, in two parts, because the whole of it does not fit in a frame.
+ *
+ * Measured: pressing save cost about 93 ms and the panel repeated a frame six
+ * times. Nearly all of it is fsync - a small write to a vfat partition on an
+ * SD card is tens of milliseconds of nothing happening, and it was being done
+ * between the emulator and the page flip.
+ *
+ * So the frame that presses the button now does only the parts that must
+ * happen on that exact frame - serialise the state, write it, and ask the
+ * kernel to begin writeback - and the durable half is done a few frames
+ * later. That is not deferring the work so much as letting the card do it
+ * while we are busy: by the time fsync is called the writeback it would have
+ * waited for has already been running for eighty milliseconds.
+ *
+ * The state is not durable during those frames, which is the price. The
+ * previous state is still intact throughout, because the rename is the last
+ * thing that happens and is what makes the new one visible at all - so a
+ * power cut in the window loses the save, never the game. */
+static int  pend_fd = -1;
+static int  pend_wait;
+static char pend_tmp[sizeof st_path + 8];
+static uint32_t save_us, sync_us;
+
+uint32_t core_state_save_us(void) { return save_us; }
+uint32_t core_state_sync_us(void) { return sync_us; }
+
+/* The half that has to happen on the frame the button was pressed. */
 int core_state_save(void)
 {
-    if (!cur || !st_buf || !cur->serialize(st_buf, st_size))
+    if (!cur || !st_buf)
         return -1;
 
-    /* Temp file, fsync, rename. This is the only record the machine keeps of
-     * a game, so losing power mid-write has to leave the previous state
-     * intact rather than half of the new one. On vfat the rename is a
-     * directory entry update, which is the strongest guarantee the card's
-     * filesystem offers. */
-    char tmp[sizeof st_path + 8];
-    snprintf(tmp, sizeof tmp, "%s.tmp", st_path);
+    /* A save while one is still in flight finishes that one first rather
+     * than abandoning a temp file and its open descriptor. */
+    if (pend_fd >= 0)
+        core_state_sync();
 
-    int fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+    uint64_t t0 = plat_now_us();
+    if (!cur->serialize(st_buf, st_size))
+        return -1;
+
+    snprintf(pend_tmp, sizeof pend_tmp, "%s.tmp", st_path);
+    int fd = open(pend_tmp, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
     if (fd < 0)
         return -1;
-    ssize_t n = write(fd, st_buf, st_size);
-    int ok = n == (ssize_t)st_size && fsync(fd) == 0;
-    close(fd);
-    if (!ok || rename(tmp, st_path) != 0) {
-        unlink(tmp);
+    if (write(fd, st_buf, st_size) != (ssize_t)st_size) {
+        close(fd);
+        unlink(pend_tmp);
+        return -1;
+    }
+    writeback_start(fd, st_size);
+    pend_fd   = fd;
+    pend_wait = SAVE_SETTLE_FRAMES;
+    save_us   = (uint32_t)(plat_now_us() - t0);
+    return 0;
+}
+
+/* The durable half. Blocks, so it is called from core_state_tick when the
+ * settling frames have passed, and directly at close. */
+int core_state_sync(void)
+{
+    if (pend_fd < 0)
+        return 0;
+
+    uint64_t t0 = plat_now_us();
+    int ok = fsync(pend_fd) == 0;
+    sync_us = (uint32_t)(plat_now_us() - t0);
+    close(pend_fd);
+    pend_fd = -1;
+    pend_wait = 0;
+    if (!ok || rename(pend_tmp, st_path) != 0) {
+        unlink(pend_tmp);
         return -1;
     }
     return 0;
+}
+
+/* Once per frame. Cheap enough to call unconditionally - it is a load and a
+ * branch on every frame that is not settling a save. */
+int core_state_tick(void)
+{
+    if (pend_fd < 0 || --pend_wait > 0)
+        return 0;
+    return core_state_sync();
 }
 
 int core_state_load(void)
@@ -668,6 +753,7 @@ void core_close(void)
     rom_data = NULL;
     rom_size = 0;
     free(st_buf);
+    core_state_sync();
     free(undo_buf);
     st_buf = undo_buf = NULL;
     st_size = 0;

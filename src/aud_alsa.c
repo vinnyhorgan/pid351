@@ -555,16 +555,23 @@ int aud_silence(void)
      *
      * Nothing exact is needed here because the content is silence: the only
      * job is keeping the buffer off empty, so it is filled by level rather
-     * than by rate. Three quarters leaves room for a panel frame far longer
-     * than the ones we have measured, and costs only that much silence to
-     * drain when fast mode ends. */
+     * than by rate.
+     *
+     * Filled to one period short of full, which is as high as it can go
+     * without the write itself blocking. Three quarters was enough when a
+     * fast frame was 4x and took 40 ms; at 6x a frame takes 54 ms, the codec
+     * drains 2596 of the 4096 frames in the buffer while it runs, and three
+     * quarters left about 10 ms of margin. One xrun in 43 seconds of fast
+     * mode came out of that. One period short of full is 21 ms of margin for
+     * the same frame, and the only cost is that much more silence to drain
+     * when R2 comes back up - a fifth of a frame. */
     static const int16_t zeros[512 * 2];
     int lvl = aud_level();
 
     if (fd < 0 || lvl < 0)
         return 0;
 
-    int want = (int)buffer * 3 / 4 - lvl, wrote = 0;
+    int want = (int)(buffer - period) - lvl, wrote = 0;
     while (want > 0) {
         int n = want > 512 ? 512 : want;
         if (aud_write(zeros, n) < 0)
