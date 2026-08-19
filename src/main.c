@@ -1496,9 +1496,9 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
                : (double)aud_lo * 1000.0 / (double)(aud_rate() ? aud_rate()
                                                               : 48000));
     printf("pid351: state: %u saved, %u loaded, %u undone; last save %u us "
-           "on the frame, %u us fsync %d frames later\n",
+           "on the frame, then %d frames later fsync %u us + rename %u us\n",
            n_save, n_load, n_undo, core_state_save_us(),
-           core_state_sync_us(), SAVE_SETTLE_FRAMES);
+           SAVE_SETTLE_FRAMES, core_state_sync_us(), core_state_rename_us());
     printf("pid351: power: backlight %ld/%ld, governor %s, %ld MHz\n",
            si.backlight, si.backlight_max, si.governor, si.cpu_khz / 1000);
     printf("pid351: power: %ld%% -> %ld%%, %ld -> %ld uA, %ld MHz, "
@@ -1637,6 +1637,14 @@ static int run_game(const char *rom, int as_init)
         /* After the run, because the core produces this frame's samples
          * during it, and before the present, because the present blocks on
          * vblank and the codec should not be waiting through that. */
+        /* Sampled here, immediately before the top-up rather than after it.
+         * The first version read aud_level once per frame after core_audio
+         * had already refilled the buffer, which measures the fill target and
+         * not the trough - it reported 34 ms of margin through a session
+         * where five saves each drained the buffer to an xrun. */
+        int al = aud_level();
+        if (al >= 0 && frames > 300 && al < aud_lo)
+            aud_lo = al;
         core_audio();
         if (fb) {
             draw_bar(held);
@@ -1667,13 +1675,6 @@ static int run_game(const char *rom, int as_init)
             if (rl < ring_lo) ring_lo = rl;
             if (rl > ring_hi) ring_hi = rl;
         }
-        /* The codec buffer, not our ring. This is the one that xruns, and
-         * after the first few seconds its minimum is the entire question of
-         * whether fast mode has enough margin. */
-        int al = aud_level();
-        if (al >= 0 && frames > 300 && al < aud_lo)
-            aud_lo = al;
-
         core_state_tick();
 
         frames++;

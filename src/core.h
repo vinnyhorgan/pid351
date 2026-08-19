@@ -71,13 +71,20 @@ int core_state_undo(void);
  * frame; nothing else is required. See core.c for why. */
 /* Frames of writeback the tick allows before it forces the fsync. Exposed
  * only so the session report can say how long the durable half was deferred
- * rather than have the number appear in two places. */
-#define SAVE_SETTLE_FRAMES 6
+ * rather than have the number appear in two places.
+ *
+ * Six frames - 100 ms - left the fsync at 63.7 ms on the card, which is not
+ * enough of a reduction to say whether the wait helps at all. Half a second
+ * is far more than 13.8 KB of writeback can need, so if the fsync is still
+ * tens of milliseconds after this then it is not waiting on our data and no
+ * settling window will fix it. That is the experiment. */
+#define SAVE_SETTLE_FRAMES 30
 
 int core_state_tick(void);
 int core_state_sync(void);
 uint32_t core_state_save_us(void);
 uint32_t core_state_sync_us(void);
+uint32_t core_state_rename_us(void);
 
 /* Whether any core claims this file by extension. The launcher's whole
  * filter, and the reason ROM discovery does not need its own table. */

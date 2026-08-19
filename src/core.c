@@ -534,10 +534,11 @@ static void writeback_start(int fd, size_t len)
 static int  pend_fd = -1;
 static int  pend_wait;
 static char pend_tmp[sizeof st_path + 8];
-static uint32_t save_us, sync_us;
+static uint32_t save_us, sync_us, rename_us;
 
 uint32_t core_state_save_us(void) { return save_us; }
 uint32_t core_state_sync_us(void) { return sync_us; }
+uint32_t core_state_rename_us(void) { return rename_us; }
 
 /* The half that has to happen on the frame the button was pressed. */
 int core_state_save(void)
@@ -577,13 +578,28 @@ int core_state_sync(void)
     if (pend_fd < 0)
         return 0;
 
+    /* The codec gets a cushion first. fsync on this card blocks for tens of
+     * milliseconds, which is longer than the buffer holds, and every save in
+     * the last session cost exactly one xrun. Topping up to one period short
+     * of full covers a stall of about 75 ms; what the listener gets instead
+     * of a click is a few milliseconds of silence, and only if the stall runs
+     * past the real audio already queued. */
+    aud_silence();
+
     uint64_t t0 = plat_now_us();
     int ok = fsync(pend_fd) == 0;
-    sync_us = (uint32_t)(plat_now_us() - t0);
+    uint64_t t1 = plat_now_us();
     close(pend_fd);
     pend_fd = -1;
     pend_wait = 0;
-    if (!ok || rename(pend_tmp, st_path) != 0) {
+    int bad = !ok || rename(pend_tmp, st_path) != 0;
+    /* Timed apart from the fsync because they are separate questions: fsync
+     * waits on our data, rename waits on the directory entry, and on vfat
+     * either could be the expensive one. Deciding whether to stop calling
+     * fsync at all needs to know which. */
+    rename_us = (uint32_t)(plat_now_us() - t1);
+    sync_us   = (uint32_t)(t1 - t0);
+    if (bad) {
         unlink(pend_tmp);
         return -1;
     }
