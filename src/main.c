@@ -28,6 +28,7 @@
 #include "gfx.h"
 #include "scale.h"
 #include "aud.h"
+#include "core.h"
 
 /* The panel's real period, not a console's. cpll runs at 408 MHz and the VOP
  * divides it by exactly 24 for a 17.000000 MHz pixel clock, so 584x485 totals
@@ -1097,7 +1098,74 @@ static void power_phase(canvas_t *c, const char *name, const char *gov,
     fflush(stdout);
 }
 
-int main(void)
+/* Runs one ROM and nothing else: no demo, no sweep, no census.
+ *
+ * This is not the frontend and is not going to grow into one - it exists so a
+ * core can be proven end to end before there is any menu to reach it
+ * through, which is the same order the display and the pad were brought up
+ * in. The frontend replaces the ROM argument, not this loop. */
+static int run_game(const char *rom, int as_init)
+{
+    if (plat_init() != 0) {
+        fprintf(stderr, "pid351: platform init failed\n");
+        plat_boot_save_log("pid351-fail.log");
+        plat_boot_shutdown(0);
+        return 1;
+    }
+    if (aud_open() != 0)
+        printf("pid351: WARN continuing without audio\n");
+    if (core_open(rom) != 0) {
+        plat_shutdown();
+        return 1;
+    }
+
+    uint64_t start = plat_now_us(), next = start, mark = start;
+    unsigned frames = 0, win = 0;
+    const char *reason = "?";
+
+    for (;;) {
+        uint32_t held = plat_input();
+        if ((held & PAD_START) && (held & PAD_SELECT)) { reason = "combo"; break; }
+        if (plat_should_quit())                        { reason = "quit";  break; }
+
+        int w = 0, h = 0;
+        const px_t *fb = core_run(held, &w, &h);
+        /* After the run, because the core produces this frame's samples
+         * during it, and before the present, because the present blocks on
+         * vblank and the codec should not be waiting through that. */
+        core_audio();
+        if (fb)
+            plat_present(fb, w, h);
+
+        frames++;
+        win++;
+        uint64_t now = plat_now_us();
+        if (now - mark >= 5000000) {
+            printf("pid351: %s %.2f fps  frames=%u  ring=%d  aud=%d x%d\n",
+                   core_name(), (double)win * 1000000.0 / (double)(now - mark),
+                   frames, core_audio_level(), aud_level(), aud_xruns());
+            fflush(stdout);
+            win = 0;
+            mark = now;
+        }
+
+        next += FRAME_US;
+        plat_sleep_until(next);
+    }
+
+    printf("pid351: exit (%s) after %u frames\n", reason, frames);
+    fflush(stdout);
+    core_close();
+    aud_close();
+    plat_shutdown();
+    if (as_init) {
+        plat_boot_save_log("pid351-boot.log");
+        plat_boot_shutdown(1);
+    }
+    return 0;
+}
+
+int main(int argc, char **argv)
 {
     /* First, because everything below assumes /dev, /proc and /sys exist,
      * and as PID 1 none of them do. No-op when we are not PID 1. */
@@ -1106,6 +1174,12 @@ int main(void)
     if (as_init)
         printf("pid351: running as PID 1\n");
     fflush(stdout);
+
+    /* A ROM on the command line skips the demo entirely. There are no
+     * arguments when we are PID 1, so on the device this is unreachable
+     * until the frontend picks the ROM instead. */
+    if (argc > 1)
+        return run_game(argv[1], as_init);
 
     if (plat_init() != 0) {
         fprintf(stderr, "pid351: platform init failed\n");

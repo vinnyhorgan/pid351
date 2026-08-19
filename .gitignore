@@ -15,3 +15,9 @@ image/linux-*.tar.xz
 # Local insurance copy of the card boot partition. 24 MB of vendor binary,
 # useful on this laptop, not something to push.
 docs/card-backup/
+
+# Cores are fetched and built by cores/get.sh, not carried in the tree.
+cores/*.o
+cores/*.a
+cores/*.tar.gz
+cores/libretro-*/

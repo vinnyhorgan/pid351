@@ -17,11 +17,19 @@ CFLAGS   = $(WARN) -O2 -g -Isrc -D_POSIX_C_SOURCE=200809L
 # aud_alsa.c is in COMMON rather than in either backend on purpose: both
 # targets are Linux with ALSA, so the audio path that runs on the laptop is
 # byte for byte the one that runs on the device.
-COMMON   = src/main.c src/aud_alsa.c
+COMMON   = src/main.c src/aud_alsa.c src/core.c
 
 HOST_CFLAGS = $(CFLAGS) $(shell pkg-config --cflags sdl3)
-HOST_LIBS   = $(shell pkg-config --libs sdl3)
+HOST_LIBS   = $(shell pkg-config --libs sdl3) -lm
 HOST_SRC    = $(COMMON) src/plat_sdl.c
+
+# Cores are prebuilt relocatable objects, one per console, each exporting a
+# prefixed copy of the libretro API and nothing else. Built by cores/get.sh
+# rather than here: they have their own build systems, they will never be
+# clean under our warning flags, and they change only when refetched.
+# -lm is theirs too - no part of pid351 proper uses libm.
+CORE_OBJ     = cores/nes_core.o
+CORE_OBJ_DEV = cores/nes_core_aarch64.o
 
 # -static so the device binary carries no runtime dependency whatsoever, which
 # is the point: eventually it is the only thing in userspace.
@@ -39,13 +47,13 @@ all: host
 host: build/host/pid351
 device: build/device/pid351
 
-build/host/pid351: $(HOST_SRC) src/*.h
+build/host/pid351: $(HOST_SRC) src/*.h $(CORE_OBJ)
 	@mkdir -p $(@D)
-	$(CC) $(HOST_CFLAGS) -o $@ $(HOST_SRC) $(HOST_LIBS)
+	$(CC) $(HOST_CFLAGS) -o $@ $(HOST_SRC) $(CORE_OBJ) $(HOST_LIBS)
 
-build/device/pid351: $(DEV_SRC) src/*.h
+build/device/pid351: $(DEV_SRC) src/*.h $(CORE_OBJ_DEV)
 	@mkdir -p $(@D)
-	$(CROSS)gcc $(DEV_CFLAGS) -o $@ $(DEV_SRC)
+	$(CROSS)gcc $(DEV_CFLAGS) -o $@ $(DEV_SRC) $(CORE_OBJ_DEV) -lm
 
 run: host
 	./build/host/pid351
