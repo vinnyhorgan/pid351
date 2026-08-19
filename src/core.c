@@ -66,10 +66,47 @@ static const opt_t nes_opts[] = {
     { NULL, NULL },
 };
 
+/* Which shell buttons drive which console button, per console.
+ *
+ * libretro's joypad IDs are SNES-shaped: JOYPAD_B is the bottom of the
+ * diamond and JOYPAD_A the right one. A console with fewer buttons than that
+ * borrows whichever subset its core picked, so this table is a property of
+ * the console rather than of the shell, which is why it sits per core and
+ * not in the platform layer.
+ *
+ * Indexed by RETRO_DEVICE_ID_JOYPAD_*. Entries are masks, so more than one
+ * physical button may drive one console button. */
+#define PAD_MAP_IDS 16
+typedef uint32_t pad_map_t[PAD_MAP_IDS];
+
+/* The NES pad is two buttons side by side, B on the left and A on the right.
+ * The horizontal pair on our diamond is Y and A, so Y/A reproduces the real
+ * geometry while B/A matches the printed labels. Both are live at once
+ * rather than choosing: there is no config file to record a preference in,
+ * getting it wrong makes the console feel wrong, and a second bit in a mask
+ * costs nothing at runtime.
+ *
+ * The shoulders stay unbound. A real NES pad has nothing there and turbo was
+ * an accessory rather than part of the console, so binding them would invent
+ * hardware. L3 and R3 are absent for a different reason - they are the only
+ * controls no target console has, which is what reserves them for the menu.
+ */
+static const pad_map_t nes_pad = {
+    [RETRO_DEVICE_ID_JOYPAD_B]      = PAD_Y | PAD_B,
+    [RETRO_DEVICE_ID_JOYPAD_A]      = PAD_A | PAD_X,
+    [RETRO_DEVICE_ID_JOYPAD_UP]     = PAD_UP,
+    [RETRO_DEVICE_ID_JOYPAD_DOWN]   = PAD_DOWN,
+    [RETRO_DEVICE_ID_JOYPAD_LEFT]   = PAD_LEFT,
+    [RETRO_DEVICE_ID_JOYPAD_RIGHT]  = PAD_RIGHT,
+    [RETRO_DEVICE_ID_JOYPAD_SELECT] = PAD_SELECT,
+    [RETRO_DEVICE_ID_JOYPAD_START]  = PAD_START,
+};
+
 typedef struct {
     const char *name;
     const char *exts;          /* space separated, lower case, no dots */
     const opt_t *opts;
+    const uint32_t *pad;
     void (*set_environment)(retro_environment_t);
     void (*set_video_refresh)(retro_video_refresh_t);
     void (*set_audio_sample)(retro_audio_sample_t);
@@ -85,8 +122,8 @@ typedef struct {
     void (*unload_game)(void);
 } core_t;
 
-#define CORE_ENTRY(p, nm, ex, op) { \
-    nm, ex, op, \
+#define CORE_ENTRY(p, nm, ex, op, pd) { \
+    nm, ex, op, pd, \
     p##_retro_set_environment, p##_retro_set_video_refresh, \
     p##_retro_set_audio_sample, p##_retro_set_audio_sample_batch, \
     p##_retro_set_input_poll, p##_retro_set_input_state, \
@@ -98,7 +135,7 @@ typedef struct {
  * the entire point of the renaming; if it ever takes more, something above
  * has gone wrong. */
 static const core_t cores[] = {
-    CORE_ENTRY(nes, "fceumm", "nes fds unf unif", nes_opts),
+    CORE_ENTRY(nes, "fceumm", "nes fds unf unif", nes_opts, nes_pad),
 };
 
 #define NCORES ((int)(sizeof cores / sizeof cores[0]))
@@ -272,26 +309,13 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 {
     if (port != 0 || device != RETRO_DEVICE_JOYPAD || index != 0)
         return 0;
+    /* Cores also query RETRO_DEVICE_ID_JOYPAD_MASK (256) when the frontend
+     * advertises bitmasks. We do not, so anything past the table is a button
+     * this console does not have. */
+    if (id >= PAD_MAP_IDS)
+        return 0;
 
-    /* Named against the shell, not against any one console; per-core
-     * remapping is a frontend problem and does not exist yet. */
-    switch (id) {
-    case RETRO_DEVICE_ID_JOYPAD_A:      return (pad_held & PAD_A)      != 0;
-    case RETRO_DEVICE_ID_JOYPAD_B:      return (pad_held & PAD_B)      != 0;
-    case RETRO_DEVICE_ID_JOYPAD_X:      return (pad_held & PAD_X)      != 0;
-    case RETRO_DEVICE_ID_JOYPAD_Y:      return (pad_held & PAD_Y)      != 0;
-    case RETRO_DEVICE_ID_JOYPAD_UP:     return (pad_held & PAD_UP)     != 0;
-    case RETRO_DEVICE_ID_JOYPAD_DOWN:   return (pad_held & PAD_DOWN)   != 0;
-    case RETRO_DEVICE_ID_JOYPAD_LEFT:   return (pad_held & PAD_LEFT)   != 0;
-    case RETRO_DEVICE_ID_JOYPAD_RIGHT:  return (pad_held & PAD_RIGHT)  != 0;
-    case RETRO_DEVICE_ID_JOYPAD_L:      return (pad_held & PAD_L1)     != 0;
-    case RETRO_DEVICE_ID_JOYPAD_R:      return (pad_held & PAD_R1)     != 0;
-    case RETRO_DEVICE_ID_JOYPAD_L2:     return (pad_held & PAD_L2)     != 0;
-    case RETRO_DEVICE_ID_JOYPAD_R2:     return (pad_held & PAD_R2)     != 0;
-    case RETRO_DEVICE_ID_JOYPAD_START:  return (pad_held & PAD_START)  != 0;
-    case RETRO_DEVICE_ID_JOYPAD_SELECT: return (pad_held & PAD_SELECT) != 0;
-    default:                            return 0;
-    }
+    return (pad_held & cur->pad[id]) != 0;
 }
 
 /* ------------------------------------------------------- environment */

@@ -96,6 +96,28 @@ otherwise.
 - [ ] 2.3 snes9x, a NES core, Genesis Plus GX.
 - [ ] 2.4 Savestates, launcher, per-console scaling policy.
 
+### Controls, settled
+
+The console mapping lives per core in `src/core.c`. For the NES both Y/A and
+B/A drive the two console buttons at once - Y/A is the real pad's geometry,
+B/A matches the printed labels, and there is no config file in which to
+record a preference between them.
+
+The hotkey layer is **one click of R3, which opens the menu**. Nothing is
+held. Holding a stick click while reaching for a face button is a two-handed
+contortion, and the buttons that would be comfortable to hold - the shoulders
+- belong to the SNES and the Genesis. R3 is used rather than L3 because the
+left stick stands in for the d-pad, so L3 gets clicked by accident while
+moving; L3 is therefore left unassigned rather than given a job that would be
+triggered by mistake. Rejected: a held modifier, and per-core hotkeys.
+
+The menu carries save, load, reset, brightness, volume and exit. Volume moves
+to the shell's physical volume keys once `event3` is mapped.
+
+There is no fast-forward. A held one has the ergonomic problem above, a
+toggled one can be left on and quietly spend battery, and no console we
+target needs it.
+
 ## Phase 3 — power
 
 Driven by the harness from 1.6, never by folklore. Each change gets a measured
