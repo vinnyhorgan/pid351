@@ -1,0 +1,292 @@
+<6>[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd042]
+<5>[    0.000000] Linux version 6.12.103 (dvh@hp) (aarch64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #29 SMP PREEMPT Wed Aug 19 20:18:45 CEST 2026
+<4>[    0.000000] KASLR disabled due to lack of seed
+<6>[    0.000000] Machine model: Anbernic RG351P (pid351)
+<6>[    0.000000] efi: UEFI not found.
+<6>[    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+<6>[    0.000000] NUMA: Faking a node at [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000] NODE_DATA(0) allocated [mem 0x3fdc31c0-0x3fdc57ff]
+<6>[    0.000000] Zone ranges:
+<6>[    0.000000]   DMA      [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000]   DMA32    empty
+<6>[    0.000000]   Normal   empty
+<6>[    0.000000] Movable zone start for each node
+<6>[    0.000000] Early memory node ranges
+<6>[    0.000000]   node   0: [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000] Initmem setup node 0 [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000] On node 0, zone DMA: 512 pages in unavailable ranges
+<6>[    0.000000] cma: Reserved 16 MiB at 0x000000003dc00000 on node -1
+<6>[    0.000000] psci: probing for conduit method from DT.
+<6>[    0.000000] psci: PSCIv1.1 detected in firmware.
+<6>[    0.000000] psci: Using standard PSCI v0.2 function IDs
+<6>[    0.000000] psci: MIGRATE_INFO_TYPE not supported.
+<6>[    0.000000] psci: SMC Calling Convention v1.2
+<6>[    0.000000] percpu: Embedded 22 pages/cpu s57504 r0 d32608 u90112
+<7>[    0.000000] pcpu-alloc: s57504 r0 d32608 u90112 alloc=22*4096
+<7>[    0.000000] pcpu-alloc: [0] 0 [0] 1 [0] 2 [0] 3 
+<6>[    0.000000] Detected VIPT I-cache on CPU0
+<6>[    0.000000] alternatives: applying boot alternatives
+<5>[    0.000000] Kernel command line: console=ttyS2,1500000 console=tty0 quiet vt.global_cursor_default=0 fbcon=rotate:3 panic=5 cma=16M printk.devkmsg=on
+<6>[    0.000000] Dentry cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+<6>[    0.000000] Inode-cache hash table entries: 65536 (order: 7, 524288 bytes, linear)
+<6>[    0.000000] Fallback order for Node 0: 0 
+<6>[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 261632
+<6>[    0.000000] Policy zone: DMA
+<6>[    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+<6>[    0.000000] software IO TLB: SWIOTLB bounce buffer size adjusted to 0MB
+<6>[    0.000000] software IO TLB: area num 4.
+<6>[    0.000000] software IO TLB: mapped [mem 0x000000003da80000-0x000000003db80000] (1MB)
+<6>[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+<6>[    0.000000] rcu: Preemptible hierarchical RCU implementation.
+<6>[    0.000000] rcu: 	RCU event tracing is enabled.
+<6>[    0.000000] rcu: 	RCU restricting CPUs from NR_CPUS=512 to nr_cpu_ids=4.
+<6>[    0.000000] 	Trampoline variant of Tasks RCU enabled.
+<6>[    0.000000] 	Tracing variant of Tasks RCU enabled.
+<6>[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 25 jiffies.
+<6>[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+<6>[    0.000000] RCU Tasks: Setting shift to 2 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=4.
+<6>[    0.000000] RCU Tasks Trace: Setting shift to 2 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=4.
+<6>[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+<6>[    0.000000] Root IRQ handler: gic_handle_irq
+<6>[    0.000000] GIC: Using split EOI/Deactivate mode
+<6>[    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.
+<6>[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+<6>[    0.000000] arch_timer: cp15 timer(s) running at 24.00MHz (phys).
+<6>[    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+<6>[    0.000002] sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+<6>[    0.001428] Console: colour dummy device 80x25
+<6>[    0.001465] printk: legacy console [tty0] enabled
+<6>[    0.001747] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+<6>[    0.001785] pid_max: default: 32768 minimum: 301
+<6>[    0.001947] LSM: initializing lsm=capability
+<6>[    0.002118] Mount-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+<6>[    0.002153] Mountpoint-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+<4>[    0.004302] cacheinfo: Unable to detect cache hierarchy for CPU 0
+<6>[    0.007232] rcu: Hierarchical SRCU implementation.
+<6>[    0.007267] rcu: 	Max phase no-delay instances is 1000.
+<6>[    0.007987] Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+<6>[    0.008951] EFI services will not be available.
+<6>[    0.009649] smp: Bringing up secondary CPUs ...
+<6>[    0.010856] Detected VIPT I-cache on CPU1
+<6>[    0.011044] CPU1: Booted secondary processor 0x0000000001 [0x410fd042]
+<6>[    0.012851] Detected VIPT I-cache on CPU2
+<6>[    0.013035] CPU2: Booted secondary processor 0x0000000002 [0x410fd042]
+<6>[    0.014633] Detected VIPT I-cache on CPU3
+<6>[    0.014813] CPU3: Booted secondary processor 0x0000000003 [0x410fd042]
+<6>[    0.015162] smp: Brought up 1 node, 4 CPUs
+<6>[    0.015202] SMP: Total of 4 processors activated.
+<6>[    0.015216] CPU: All CPU(s) started at EL2
+<6>[    0.015287] CPU features: detected: 32-bit EL0 Support
+<6>[    0.015300] CPU features: detected: 32-bit EL1 Support
+<6>[    0.015317] CPU features: detected: CRC32 instructions
+<6>[    0.015418] alternatives: applying system-wide alternatives
+<6>[    0.017985] Memory: 972352K/1046528K available (15872K kernel code, 3132K rwdata, 7952K rodata, 3200K init, 1034K bss, 53216K reserved, 16384K cma-reserved)
+<6>[    0.019494] devtmpfs: initialized
+<6>[    0.038173] futex hash table entries: 1024 (order: 4, 65536 bytes, linear)
+<6>[    0.040328] 24896 pages in range for non-PLT usage
+<6>[    0.040367] 516416 pages in range for PLT usage
+<6>[    0.041023] pinctrl core: initialized pinctrl subsystem
+<6>[    0.042354] DMI not present or invalid.
+<6>[    0.045013] DMA: preallocated 128 KiB GFP_KERNEL pool for atomic allocations
+<6>[    0.045898] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations
+<6>[    0.047383] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations
+<6>[    0.050994] thermal_sys: Registered thermal governor 'step_wise'
+<6>[    0.051025] thermal_sys: Registered thermal governor 'power_allocator'
+<6>[    0.051199] cpuidle: using governor menu
+<6>[    0.051771] hw-breakpoint: found 6 breakpoint and 4 watchpoint registers.
+<6>[    0.051994] ASID allocator initialised with 65536 entries
+<6>[    0.053377] Serial: AMBA PL011 UART driver
+<6>[    0.075418] /dsi@ff450000: Fixed dependency cycle(s) with /dsi@ff450000/panel@0
+<6>[    0.075759] /dsi@ff450000/panel@0: Fixed dependency cycle(s) with /dsi@ff450000
+<6>[    0.076431] /dsi@ff450000: Fixed dependency cycle(s) with /vop@ff460000
+<6>[    0.076583] /vop@ff460000: Fixed dependency cycle(s) with /dsi@ff450000
+<4>[    0.097067] gpio gpiochip0: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.097946] rockchip-gpio ff040000.gpio: probed /pinctrl/gpio@ff040000
+<4>[    0.098744] gpio gpiochip1: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.099201] rockchip-gpio ff250000.gpio: probed /pinctrl/gpio@ff250000
+<4>[    0.100054] gpio gpiochip2: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.100497] rockchip-gpio ff260000.gpio: probed /pinctrl/gpio@ff260000
+<4>[    0.101350] gpio gpiochip3: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.101842] rockchip-gpio ff270000.gpio: probed /pinctrl/gpio@ff270000
+<6>[    0.108369] HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages
+<6>[    0.108408] HugeTLB: 0 KiB vmemmap can be freed for a 1.00 GiB page
+<6>[    0.108428] HugeTLB: registered 32.0 MiB page size, pre-allocated 0 pages
+<6>[    0.108442] HugeTLB: 0 KiB vmemmap can be freed for a 32.0 MiB page
+<6>[    0.108460] HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages
+<6>[    0.108474] HugeTLB: 0 KiB vmemmap can be freed for a 2.00 MiB page
+<6>[    0.108492] HugeTLB: registered 64.0 KiB page size, pre-allocated 0 pages
+<6>[    0.108506] HugeTLB: 0 KiB vmemmap can be freed for a 64.0 KiB page
+<6>[    0.113108] ACPI: Interpreter disabled.
+<6>[    0.114572] iommu: Default domain type: Translated
+<6>[    0.114609] iommu: DMA domain TLB invalidation policy: strict mode
+<5>[    0.116158] SCSI subsystem initialized
+<7>[    0.116652] libata version 3.00 loaded.
+<6>[    0.117164] usbcore: registered new interface driver usbfs
+<6>[    0.117236] usbcore: registered new interface driver hub
+<6>[    0.117329] usbcore: registered new device driver usb
+<6>[    0.119354] EDAC MC: Ver: 3.0.0
+<6>[    0.120167] scmi_core: SCMI protocol bus registered
+<6>[    0.121344] FPGA manager framework
+<6>[    0.121991] Advanced Linux Sound Architecture Driver Initialized.
+<6>[    0.122388] vgaarb: loaded
+<6>[    0.123243] clocksource: Switched to clocksource arch_sys_counter
+<5>[    0.124159] VFS: Disk quotas dquot_6.6.0
+<6>[    0.124240] VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+<6>[    0.125019] pnp: PnP ACPI: disabled
+<6>[    0.142417] PCI: CLS 0 bytes, default 64
+<6>[    0.152456] kvm [1]: nv: 554 coarse grained trap handlers
+<6>[    0.153668] kvm [1]: IPA Size Limit: 40 bits
+<6>[    0.158167] kvm [1]: vgic interrupt IRQ9
+<6>[    0.158267] kvm [1]: Hyp nVHE mode initialized successfully
+<6>[    0.162400] workingset: timestamp_bits=42 max_order=18 bucket_order=0
+<6>[    0.163177] squashfs: version 4.0 (2009/01/31) Phillip Lougher
+<6>[    0.163764] fuse: init (API version 7.41)
+<6>[    0.326824] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 244)
+<6>[    0.326869] io scheduler mq-deadline registered
+<6>[    0.326901] io scheduler kyber registered
+<6>[    0.326999] io scheduler bfq registered
+<6>[    0.342986] ledtrig-cpu: registered to indicate activity on CPUs
+<6>[    0.355132] dma-pl330 ff240000.dma-controller: Loaded driver for PL330 DMAC-241330
+<6>[    0.355181] dma-pl330 ff240000.dma-controller: 	DBUFF-128x8bytes Num_Chans-8 Num_Peri-32 Num_Events-16
+<6>[    0.368924] Serial: 8250/16550 driver, 4 ports, IRQ sharing enabled
+<6>[    0.374181] printk: legacy console [ttyS2] disabled
+<6>[    0.375009] ff160000.serial: ttyS2 at MMIO 0xff160000 (irq = 22, base_baud = 1500000) is a 16550A
+<6>[    0.375201] printk: legacy console [ttyS2] enabled
+<6>[    0.385546] rockchip-vop ff460000.vop: Adding to iommu group 0
+<6>[    0.389983] /dsi@ff450000: Fixed dependency cycle(s) with /dsi@ff450000/panel@0
+<6>[    0.390180] /dsi@ff450000/panel@0: Fixed dependency cycle(s) with /dsi@ff450000
+<6>[    0.421855] loop: module loaded
+<6>[    0.424543] megasas: 07.727.03.00-rc1
+<6>[    0.424733] mpt3sas version 48.100.00.00 loaded
+<6>[    0.446533] VFIO - User Level meta-driver version: 0.3
+<4>[    0.448566] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+<4>[    0.448656] dwc2 ff300000.usb: supply vusb_d not found, using dummy regulator
+<4>[    0.448977] dwc2 ff300000.usb: supply vusb_a not found, using dummy regulator
+<4>[    0.449261] dwc2 ff300000.usb: Configuration mismatch. dr_mode forced to host
+<4>[    0.461784] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+<4>[    0.461827] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+<6>[    0.461851] dwc2 ff300000.usb: DWC OTG Controller
+<6>[    0.461907] dwc2 ff300000.usb: new USB bus registered, assigned bus number 1
+<6>[    0.461969] dwc2 ff300000.usb: irq 27, io mem 0xff300000
+<6>[    0.463658] hub 1-0:1.0: USB hub found
+<6>[    0.463749] hub 1-0:1.0: 1 port detected
+<6>[    0.467730] usbcore: registered new interface driver cdc_acm
+<6>[    0.467768] cdc_acm: USB Abstract Control Model driver for USB modems and ISDN adapters
+<6>[    0.467861] usbcore: registered new interface driver usb-storage
+<6>[    0.468045] usbcore: registered new interface driver cp210x
+<6>[    0.468105] usbserial: USB Serial support registered for cp210x
+<6>[    0.468175] usbcore: registered new interface driver ftdi_sio
+<6>[    0.468230] usbserial: USB Serial support registered for FTDI USB Serial Device
+<6>[    0.468326] usbcore: registered new interface driver option
+<6>[    0.468382] usbserial: USB Serial support registered for GSM modem (1-port)
+<6>[    0.468967] usbcore: registered new device driver onboard-usb-dev
+<4>[    0.475531] pwm-vibrator vibrator: supply vcc not found, using dummy regulator
+<6>[    0.476223] input: pwm-vibrator as /devices/platform/vibrator/input/input0
+<6>[    0.479649] i2c_dev: i2c /dev entries driver
+<6>[    0.516329] vcc_bl: Bringing 2800000uV into 3300000-3300000uV
+<6>[    0.518199] vcc_lcd: Bringing 1800000uV into 2800000-2800000uV
+<6>[    0.521329] usb_midu: Bringing 4700000uV into 5000000-5000000uV
+<6>[    0.526639] input: rk805 pwrkey as /devices/platform/ff180000.i2c/i2c-0/0-0020/rk805-pwrkey.2.auto/input/input1
+<6>[    0.532438] rk808-rtc rk808-rtc.3.auto: registered as rtc0
+<6>[    0.533334] rk808-rtc rk808-rtc.3.auto: setting system clock to 2017-08-07T13:23:59 UTC (1502112239)
+<4>[    0.551956] rockchip-thermal ff280000.tsadc: Missing tshut mode property, using default (cru)
+<4>[    0.552007] rockchip-thermal ff280000.tsadc: Missing tshut-polarity property, using default (low)
+<6>[    0.556237] device-mapper: ioctl: 4.48.0-ioctl (2023-03-01) initialised: dm-devel@lists.linux.dev
+<6>[    0.558971] cpu cpu0: EM: created perf domain
+<6>[    0.562961] sdhci: Secure Digital Host Controller Interface driver
+<6>[    0.562992] sdhci: Copyright(c) Pierre Ossman
+<6>[    0.564231] Synopsys Designware Multimedia Card Interface Driver
+<6>[    0.565761] sdhci-pltfm: SDHCI platform and OF driver helper
+<6>[    0.567699] dwmmc_rockchip ff370000.mmc: IDMAC supports 32-bit address mode.
+<6>[    0.567775] dwmmc_rockchip ff370000.mmc: Using internal DMA controller.
+<6>[    0.567793] dwmmc_rockchip ff370000.mmc: Version ID is 270a
+<6>[    0.567887] dwmmc_rockchip ff370000.mmc: DW MMC controller at irq 55,32 bit host data width,256 deep fifo
+<6>[    0.568231] SMCCC: SOC_ID: ARCH_SOC_ID not implemented, skipping ....
+<6>[    0.569068] dwmmc_rockchip ff370000.mmc: Got CD GPIO
+<6>[    0.569419] usbcore: registered new interface driver usbhid
+<6>[    0.569437] usbhid: USB HID core driver
+<4>[    0.575120] SPI driver st-magn-spi has no spi_device_id for st,lis3mdl-magn
+<4>[    0.575151] SPI driver st-magn-spi has no spi_device_id for st,lsm303agr-magn
+<4>[    0.575159] SPI driver st-magn-spi has no spi_device_id for st,lsm9ds1-magn
+<4>[    0.575167] SPI driver st-magn-spi has no spi_device_id for st,lsm303c-magn
+<6>[    0.577778] hw perfevents: enabled with armv8_cortex_a35 PMU driver, 7 (0,8000003f) counters available
+<6>[    0.580519]  cs_system_cfg: CoreSight Configuration manager initialised
+<6>[    0.583771] gnss: GNSS driver registered with major 236
+<6>[    0.583919] mmc_host mmc0: Bus speed (slot 0) = 400000Hz (slot req 400000Hz, actual 400000HZ div = 0)
+<6>[    0.618183] Demotion targets for Node 0: null
+<6>[    0.649596] mmc_host mmc0: Bus speed (slot 0) = 50000000Hz (slot req 50000000Hz, actual 50000000HZ div = 0)
+<6>[    0.650018] mmc0: new high speed SDHC card at address 0001
+<6>[    0.651654] mmcblk0: mmc0:0001 00000 29.2 GiB
+<6>[    0.655027]  mmcblk0: p1 p2
+<6>[    0.655869] rockchip-drm display-subsystem: bound ff460000.vop (ops vop_component_ops)
+<6>[    0.656384] rockchip-drm display-subsystem: bound ff450000.dsi (ops dw_mipi_dsi_rockchip_ops)
+<6>[    0.657883] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+<6>[    0.755651] usb 1-1: new high-speed USB device number 2 using dwc2
+<6>[    0.953135] hub 1-1:1.0: USB hub found
+<6>[    0.953600] hub 1-1:1.0: 4 ports detected
+<6>[    1.101492] Console: switching to colour frame buffer device 60x20
+<6>[    1.121322] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+<6>[    1.146429] input: rk817_int Headphones as /devices/platform/rk817-sound/sound/card0/input2
+<6>[    1.148659] clk: Disabling unused clocks
+<6>[    1.149049] PM: genpd: Disabling unused power domains
+<6>[    1.149127] ALSA device list:
+<6>[    1.149137]   #0: rk817_int
+<6>[    1.153495] Freeing unused kernel memory: 3200K
+<6>[    1.153694] Run /init as init process
+<7>[    1.153705]   with arguments:
+<7>[    1.153711]     /init
+<7>[    1.153717]   with environment:
+<7>[    1.153723]     HOME=/
+<7>[    1.153729]     TERM=linux
+<12>[    1.157078] pid351: running as PID 1
+<4>[    1.162418] FAT-fs (mmcblk0p1): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.
+<12>[    1.171558] pid351: playing /boot/pid351/roms/smb3.nes
+<12>[    1.171903] pid351: connector 40, crtc 36, mode 320x480@60
+<6>[    1.407500] usb 1-1.2: new full-speed USB device number 3 using dwc2
+<6>[    1.505613] input: OpenSimHardware OSH PB Controller Keyboard as /devices/platform/ff300000.usb/usb1/1-1/1-1.2/1-1.2:1.0/0003:1209:3100.0001/input/input3
+<6>[    1.560586] input: OpenSimHardware OSH PB Controller Mouse as /devices/platform/ff300000.usb/usb1/1-1/1-1.2/1-1.2:1.0/0003:1209:3100.0001/input/input4
+<6>[    1.561481] input: OpenSimHardware OSH PB Controller as /devices/platform/ff300000.usb/usb1/1-1/1-1.2/1-1.2:1.0/0003:1209:3100.0001/input/input5
+<6>[    1.561960] hid-generic 0003:1209:3100.0001: input: USB HID v1.11 Keyboard [OpenSimHardware OSH PB Controller] on usb-ff300000.usb-1.2/input0
+<12>[    1.696216] pid351: pad on /dev/input/event5 (OpenSimHardware OSH PB Controller)
+<12>[    1.696314] pid351: pad appeared after 60 ms
+<12>[    1.696338] pid351: display up, rotating counter-clockwise
+<12>[    1.704378] pid351: audio card 0 is "rk817int" driver "simple-card" (rk817_int)
+<12>[    1.704477] pid351: audio "Playback Mux" = 0
+<12>[    1.705560] pid351: audio "Master Playback Volume" = 255
+<12>[    1.799672] pid351: audio jack /dev/input/event2 "rk817_int Headphones" reports headphones INSERTED
+<12>[    1.968128] pid351: audio accepts channels     2 .. 8
+<12>[    1.968186] pid351: audio accepts rate         8000 .. 96000
+<12>[    1.968212] pid351: audio accepts period_size  4 .. 65536
+<12>[    1.968235] pid351: audio accepts periods      2 .. 32768
+<12>[    1.968258] pid351: audio accepts buffer_size  8 .. 131072
+<12>[    1.976671] pid351: audio /dev/snd/pcmC0D0p: 48000 Hz, period 512, buffer 4096 (85.3 ms), 799 frames/video frame
+<12>[    2.043375] pid351: first frame 256x224 pitch=512 (2.0 bytes/pixel)
+<12>[    2.049925] pid351: core fceumm, 256x224, par 1.1429, 60.100 fps, 48000 Hz -> 48000 Hz (stretch -0.133%)
+<5>[    3.447499] random: crng init done
+<12>[    8.701271] pid351: fceumm 59.76 fps  emu 59.76 (1.00x)  frames=299  ring=1532  aud=1713 x2  scale=7381 blit=3657 us
+<12>[   13.716310] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=600  ring=1479  aud=1713 x2  scale=3254 blit=2526 us
+<12>[   18.730944] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=901  ring=1424  aud=1730 x2  scale=3204 blit=2285 us
+<12>[   19.697715] 
+<12>[   19.697750] pid351: ==== session report ====
+<12>[   19.697799] pid351: exit (combo) 16.0 s, 959 panel frames, 959 emulated
+<12>[   19.697812] pid351: normal frames (959 of 959, budget 16661 us):
+<12>[   19.697999] pid351:   emu      p50   7311  p90   7834  p99   8069  max  12784 us   43.9% of frame
+<12>[   19.698078] pid351:   scale    p50   2996  p90   3009  p99   3254  max   7381 us   18.0% of frame
+<12>[   19.698137] pid351:   blit     p50   2081  p90   2201  p99   2339  max   3657 us   12.5% of frame
+<12>[   19.698304] pid351:   busy     p50  12608  p90  13120  p99  14208  max  25841 us   75.7% of frame
+<12>[   19.698325] pid351:   audio    p50     43  p90     45  p99     59  max    717 us    0.3% of frame
+<12>[   19.698415] pid351:   vblank   p50   3854  p90   4233  p99   4636  max   5439 us   23.1% of frame
+<12>[   19.698577] pid351:   latency  p50  30848  p90  31040  p99  31232  max  39429 us  185.2% of frame
+<12>[   19.698735] pid351:   deadtime p50  14208  p90  14464  p99  14656  max  16679 us   85.3% of frame
+<12>[   19.698751] pid351:   latency is pad read to the latching vblank; the panel then paints it over 16661 us more, none of that at the first pixel scanned and all of it at the last
+<12>[   19.698773] pid351: pacing: 3 over budget of 959 normal frames (0.313%), 59.9381 fps against 60.0204 panel
+<12>[   19.698785] pid351: fast mode: never used
+<12>[   19.698803] pid351: audio: 2 xruns, core ring 1414..1586, codec low water 1337 frames (27.9 ms)
+<12>[   19.698817] pid351: state: 0 saved, 0 loaded, 0 undone; last save 0 us on the frame, published 30 frames later in 0 us
+<12>[   19.698831] pid351: power: backlight 833/1666, governor schedutil, 1296 MHz
+<12>[   19.698847] pid351: power: 51% -> 51%, -209840 -> -489340 uA, 1296 MHz, temp 32.2 -> 43.6 peak 43.6 C
+<12>[   19.698857] pid351: verdict:
+<12>[   19.698866] pid351:   pacing   FAIL  (late frames under 0.1%)
+<12>[   19.698876] pid351:   audio    FAIL  (no xrun after the first 5 s)
+<12>[   19.698886] pid351:   ring     PASS  (never starved)
+<12>[   19.698896] pid351:   thermal  PASS  (peak under 70 C)
