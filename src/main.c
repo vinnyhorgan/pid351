@@ -32,6 +32,8 @@
 #include "aud.h"
 #include "core.h"
 #include "tele.h"
+#include "ui.h"
+#include "palette.h"
 
 /* The panel's real period, not a console's. cpll runs at 408 MHz and the VOP
  * divides it by exactly 24 for a 17.000000 MHz pixel clock, so 584x485 totals
@@ -47,16 +49,11 @@
 #define SPLASH_HOLD_US 2000000u
 
 
-#define C_BG     RGB565(  8, 10, 14)
-#define C_PANEL  RGB565( 20, 24, 32)
-#define C_EDGE   RGB565( 46, 56, 72)
-#define C_TEXT   RGB565(198,208,220)
-#define C_DIM    RGB565(104,116,132)
-#define C_ACCENT RGB565( 54,200,170)
-#define C_LIT    RGB565(255,186, 40)
-#define C_WARN   RGB565(232, 76, 62)
-
 static px_t framebuffer[PANEL_W * PANEL_H];
+/* The pillarbox beside an 8:7 picture, drawn separately because the blit
+ * takes the game and the column as two sources rather than compositing them
+ * into one buffer it would then have to read back. */
+static px_t barbuf[BAR_W * PANEL_H];
 
 /* ------------------------------------------------------------- system info */
 
@@ -219,18 +216,8 @@ static void sysinfo_read(struct sysinfo_s *s)
  * diagnosed by looking at it.
  *
  * Fails silently off the device, where there is no such file. */
-static void backlight(long v);
 
-static int write_long(const char *path, long v)
-{
-    FILE *f = fopen(path, "w");
-    if (!f)
-        return -1;
-    int ok = fprintf(f, "%ld", v) > 0;
-    if (fclose(f) != 0)
-        ok = 0;
-    return ok ? 0 : -1;
-}
+
 
 
 /* ------------------------------------------------------------- session log
@@ -410,189 +397,59 @@ static void hist_report_lo(int field, const char *unit)
            hist_pct(h, 50), hist_pct(h, 90), h->max, unit, h->n);
 }
 
-static int ink_w(const char *s, int scale)
-{
-    return gfx_text_w(s, scale) - (FONT_ADVANCE - FONT_W) * scale;
-}
-
-static void splash(const char *line)
+/* Composed on the ink, not the cell. The wordmark and the line are centred
+ * as one block: centring the wordmark on the panel and hanging the line off
+ * it puts the visual weight above the middle, which is what "not quite
+ * centred" looked like before anyone measured it.
+ *
+ * The rule under the wordmark is the width of the wordmark rather than of the
+ * panel, so it reads as an underline and not as a divider between two halves
+ * of nothing. */
+static void splash(const char *line, int bright)
 {
     canvas_t c = { framebuffer, PANEL_W, PANEL_H };
     const int mark = 4;
-    const int gap = 10;
-    /* Centre the pair as one block. Centring the wordmark on the panel and
-     * then hanging the line off it puts the visual weight above the middle,
-     * which is what "not quite centred" looked like. */
-    int y = (PANEL_H - (FONT_H * mark + gap + FONT_H)) / 2;
+    const int sub = 2;
+    const int gap = 14;
+    int mw = gfx_ink_w("PID351", mark);
+    int lw = gfx_ink_w(line, sub);
+    int block = FONT_INK_H * mark + gap + 3 + gap + FONT_INK_H * sub;
+    int y = (PANEL_H - block) / 2;
 
-    gfx_rect(&c, 0, 0, PANEL_W, PANEL_H, C_BG);
-    gfx_text(&c, (PANEL_W - ink_w("PID351", mark)) / 2, y,
-             "PID351", mark, C_ACCENT);
-    gfx_text(&c, (PANEL_W - ink_w(line, 1)) / 2, y + FONT_H * mark + gap,
-             line, 1, C_DIM);
+    gfx_rect(&c, 0, 0, PANEL_W, PANEL_H, UI_GROUND);
+    gfx_text(&c, (PANEL_W - mw) / 2, y - FONT_INK_TOP * mark,
+             "PID351", mark, UI_ACCENT);
+    gfx_rect(&c, (PANEL_W - mw) / 2, y + FONT_INK_H * mark + gap, mw, 3,
+             UI_EDGE);
+    gfx_text(&c, (PANEL_W - lw) / 2,
+             y + block - FONT_INK_H * sub - FONT_INK_TOP * sub, line, sub,
+             UI_DIM);
     plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
     /* After the flip, never before: the whole point of starting dark is that
      * the backlight comes up on our first frame and not on whatever was on
      * the panel beforehand. */
-    backlight(BL_ON);
+    ui_bright_apply(bright);
 }
+
+/* How many extra core frames a held R2 runs per panel frame.
+ *
+ * Be clear about what this does and does not buy. The machine emulates about
+ * 115 NES frames a second, so wall clock speed tops out near 1.9x however
+ * many frames are asked for; raising the multiple does not make the game
+ * faster, it spends the whole CPU on emulation and lets the panel fall to
+ * whatever is left. The session report quotes the multiple actually achieved
+ * so the difference is never a guess. */
+#define FAST_EXTRA 5
 
 /* Where ROMs live on the card, relative to the FAT partition's root. A
  * compile-time constant because there is no config file and never will be
  * one; the card layout is as fixed as the hardware. */
-static void backlight(long v)
-{
-    write_long(BL_PATH, v);
-}
-
 #define ROM_DIR "pid351/roms"
 
-/* First file in `dir` that some core claims, by name order so that the same
- * card always boots the same game. scandir sorts for us and allocates, which
- * is fine exactly once at startup and would not be inside the frame loop. */
-static int first_rom(const char *dir, char *out, size_t outsz)
-{
-    struct dirent **ents;
-    int n = scandir(dir, &ents, NULL, alphasort);
-    if (n < 0)
-        return -1;
-
-    int found = -1;
-    for (int i = 0; i < n; i++) {
-        if (found < 0 && ents[i]->d_name[0] != '.'
-            && core_accepts(ents[i]->d_name)) {
-            snprintf(out, outsz, "%s/%s", dir, ents[i]->d_name);
-            found = 0;
-        }
-        free(ents[i]);
-    }
-    free(ents);
-    return found;
-}
-
-/* Fast mode: a fixed four emulated frames per panel frame.
- *
- * An adaptive version came before this one and was removed on purpose. It
- * protected the panel's 60 Hz by giving up emulated frames, which is exactly
- * the wrong trade for what fast mode is for - it made the picture smooth and
- * the game slower, when the whole point is the game being faster.
- *
- * Be clear about what this does and does not buy. The machine emulates about
- * 115 NES frames a second at the capped 1008 MHz OPP, so wall clock speed
- * tops out near 1.9x however many frames are asked for; raising the multiple
- * does not make the game faster, it spends the whole CPU on emulation and
- * lets the panel fall to whatever is left, around 29 fps. That is a choppier
- * picture for a real if smaller speed gain, which is the trade that was
- * asked for. The status line reports the multiple actually achieved so the
- * difference between four and what the silicon does is never a guess. */
-#define FAST_EXTRA 5
-
-/* The status bar down the side of a game.
- *
- * See scale.h for why it is exactly 53 columns wide.
- *
- * Two things at the ends and nothing in between. The battery is the only
- * reading a handheld cannot give you any other way; the name is at the foot
- * of the rail turned on its side, the way it would be printed on the bezel of
- * a machine you could buy. The emptiness between them is the composition, not
- * a gap waiting to be filled - an earlier version put a session timer there
- * purely because the space existed.
- *
- * Widths are chosen odd wherever the element allows it, so (BAR_W - w) / 2
- * lands on whole pixel 26: at this size an element one pixel off centre is
- * visible, and several elements each off by a different amount is what makes
- * a layout look accidental rather than merely imperfect. The cell, its cap
- * and the chevrons are exact. The number and the wordmark are even widths at
- * this scale and sit half a pixel left, which is the closest a 53 column rail
- * can put them and is below what the panel resolves.
- *
- * No wall clock, and no volume. The RTC has never been set - the console
- * writes files onto the card dated 2017 - and volume is a potentiometer in
- * the analog path with nothing for software to read. Showing either would
- * mean showing a number we made up. */
-
-#define BAR_INK   RGB565(214, 220, 228)
-#define BAR_EDGE  RGB565( 72,  78,  88)
-#define BAR_MARK  RGB565( 52,  58,  68)
-#define BAR_WARN  RGB565(240, 176,  64)
-#define BAR_CRIT  RGB565(236,  84,  68)
-#define BAR_CHRG  RGB565( 96, 170, 240)
-
-/* Odd, so it centres exactly. Sized to be read at a glance and no larger:
- * this sits beside the game for hours and is not the subject. */
-#define CELL_W 21
-#define CELL_H 46
-#define CELL_X ((BAR_W - CELL_W) / 2)
-#define CELL_Y 18
-
-static px_t barbuf[BAR_W * PANEL_H];
-
-static void draw_bar(uint32_t held)
-{
-    canvas_t c = { barbuf, BAR_W, PANEL_H };
-    static struct sysinfo_s si;
-    static uint64_t next_read;
-    char buf[8];
-
-    /* Five sysfs files at 60 Hz, to animate a figure that moves once a
-     * minute, is precisely what a battery-first machine should not do. */
-    uint64_t now = plat_now_us();
-    if (now >= next_read) {
-        sysinfo_read(&si);
-        next_read = now + 5000000;
-    }
-
-    int pct = si.capacity < 0 ? -1 : (int)si.capacity;
-    if (pct > 100)
-        pct = 100;
-
-    /* Colour means one thing: something needs attention. A gauge that is
-     * green when nothing is wrong has spent its loudest colour on the most
-     * common case. */
-    px_t ink = pct < 0           ? BAR_EDGE
-             : si.current_ua > 0 ? BAR_CHRG
-             : pct <= 12         ? BAR_CRIT
-             : pct <= 30         ? BAR_WARN
-                                 : BAR_INK;
-
-    gfx_rect(&c, 0, 0, BAR_W, PANEL_H, RGB565(0, 0, 0));
-
-    /* Cap, body, level. Drawn as a battery so that nothing has to say so. */
-    gfx_rect(&c, (BAR_W - 9) / 2, CELL_Y - 4, 9, 4, BAR_EDGE);
-    gfx_frame(&c, CELL_X, CELL_Y, CELL_W, CELL_H, BAR_EDGE);
-    if (pct >= 0) {
-        int iw = CELL_W - 6, ih = CELL_H - 6;
-        int fh = ih * pct / 100;
-        gfx_rect(&c, CELL_X + 3, CELL_Y + 3 + (ih - fh), iw, fh, ink);
-    }
-
-    if (pct >= 0)
-        snprintf(buf, sizeof buf, "%d", pct);
-    else
-        snprintf(buf, sizeof buf, "--");
-    /* gfx_text_w counts the advance after the last glyph; the ink stops one
-     * scale short of that, and centring on the advance is what left the
-     * number sitting visibly left of everything above it. */
-    int tw = gfx_text_w(buf, 2) - 2;
-    gfx_text(&c, (BAR_W - tw) / 2, CELL_Y + CELL_H + 10, buf, 2, ink);
-
-    /* Fast mode is held rather than toggled and makes the picture choppy by
-     * design - unmarked, that reads as the machine struggling rather than as
-     * the button working. Two chevrons, 8 and 8 with 3 between: 19 across,
-     * which is odd and so lands on centre like everything else. */
-    if (held & PAD_R2) {
-        for (int i = 0; i < 2; i++) {
-            int x = (BAR_W - 19) / 2 + i * 11;
-            for (int k = 0; k < 8; k++)
-                gfx_rect(&c, x + k, 150 + k, 1, 15 - 2 * k, BAR_INK);
-        }
-    }
-
-    /* The name, up the foot of the rail. Dim: it is an identity, not a
-     * reading, and it should be the last thing the eye stops on. */
-    gfx_text_rot(&c, (BAR_W - FONT_H * 2) / 2, PANEL_H - 14, "PID351",
-                 2, BAR_MARK);
-}
+/* The host build has no card to mount, so it reads the working directory's
+ * roms/ - the same one tools/install-image.sh stages onto the card. Running
+ * the list on a laptop is the only way to look at it without a reflash. */
+#define ROM_DIR_HOST "roms"
 
 /* Runs one ROM and nothing else: no demo, no sweep, no census.
  *
@@ -605,6 +462,12 @@ static void draw_bar(uint32_t held)
  * session per boot by construction, and the alternative was a fifteen
  * argument function. */
 static unsigned n_save, n_load, n_undo;
+/* Totals for the whole power-on rather than for one game. The report is a
+ * statement about the machine, and a machine that played four games this
+ * evening has one frame distribution, not four - the histograms were always
+ * cumulative and these make the headline numbers agree with them. */
+static unsigned session_frames, session_emu;
+static uint64_t session_start;
 static unsigned fast_panel, fast_emu, late_frames;
 /* Wall clock spent in fast mode. Without it the speed multiple has to assume
  * fast frames are presented at the panel rate, and they are emphatically not:
@@ -647,11 +510,11 @@ static struct sysinfo_s si_start;
  * pass or fail rather than as values to be interpreted. A number invites the
  * reader to decide what it means; the point of writing them down in advance
  * is that the criterion was fixed before the measurement. */
-static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
-                         uint64_t start)
+static void tele_verdict(int games, uint64_t now)
 {
     struct sysinfo_s si;
-    double secs = (double)(plat_now_us() - start) / 1000000.0;
+    unsigned frames = session_frames, emu = session_emu;
+    double secs = (double)(now - session_start) / 1000000.0;
     unsigned normal = frames > fast_panel ? frames - fast_panel : 0;
     double core_hz = (double)core_fps_milli() / 1000.0;
 
@@ -660,8 +523,8 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
         temp_hi = si.temp_mc;
 
     printf("\npid351: ==== session report ====\n");
-    printf("pid351: exit (%s) %.1f s, %u panel frames, %u emulated\n",
-           reason, secs, frames, emu);
+    printf("pid351: powered on %.1f s, %d game(s), %u panel frames, "
+           "%u emulated\n", secs, games, frames, emu);
     printf("pid351: normal frames (%u of %u, budget %u us):\n",
            hist[0][H_EMU].n, frames, (unsigned)FRAME_US);
     hist_report(0, H_EMU,   FRAME_US);
@@ -833,11 +696,18 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
      * verdicts stay the last thing in the log. */
     tele_report();
 
-    /* Thresholds fixed in advance. See the comment above. */
+    /* Thresholds fixed in advance. See the comment above. Skipped entirely
+     * when nothing was played: a power-on that went list, look, off has no
+     * frames to judge, and printing FAIL against an empty measurement is how
+     * a report teaches its reader to stop believing it. */
+    if (!normal) {
+        printf("pid351: verdict: nothing was played, nothing to judge\n");
+        fflush(stdout);
+        return;
+    }
     printf("pid351: verdict:\n");
     printf("pid351:   pacing   %s  (late frames under 0.1%%)\n",
-           normal && (double)late_frames / (double)normal < 0.001
-               ? "PASS" : "FAIL");
+           (double)late_frames / (double)normal < 0.001 ? "PASS" : "FAIL");
     printf("pid351:   audio    %s  (no xrun after the first 5 s)\n",
            aud_xruns() <= 1 ? "PASS" : "FAIL");
     printf("pid351:   ring     %s  (never starved)\n",
@@ -847,70 +717,37 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
     fflush(stdout);
 }
 
-static int run_game(const char *rom, int as_init)
+/* One game, from load to the moment the player asks for the list back.
+ *
+ * It owns the core and nothing else. The display, the codec and the panel
+ * belong to main and outlive it, which is what lets a game be swapped without
+ * the audio path being torn down and rebuilt - and the audio path being torn
+ * down and rebuilt is what the click at boot turned out to be.
+ *
+ * Returns 0 having put the player back where they came from, or -1 if the
+ * core would not take the ROM, which is a fact about that file and not about
+ * the machine: the list is still there and the other six still work. */
+static int run_game(const struct ui_rom *game, struct ui_state *ui)
 {
-    if (plat_init() != 0) {
-        backlight(BL_ON);
-        fprintf(stderr, "%spid351: platform init failed\n",
-            plat_is_init() ? "<3>" : "");
-        plat_boot_save_log("pid351-fail.log");
-        plat_boot_shutdown(1);
-        return 1;
+    if (core_open(game->path) != 0) {
+        printf("pid351: %s would not load\n", game->name);
+        fflush(stdout);
+        return -1;
     }
-    tele_boot("display");
-    uint64_t splashed = plat_now_us();
-    splash("LOADING");
-    tele_boot("splash");
-    if (aud_open() != 0)
-        printf("pid351: WARN continuing without audio\n");
-    tele_boot(aud_rate() > 0 ? "audio" : "no audio");
-    if (core_open(rom) != 0) {
-        /* Returning from main as PID 1 is a kernel panic, and panic=5 turns
-         * that into a reboot loop - so the one failure where a post-mortem
-         * matters most would be the one that never writes one. Power off
-         * rather than restart, for the same reason: a machine sitting dark
-         * with a log on its card can be diagnosed, and one rebooting into the
-         * same failure every five seconds cannot even be read. */
-        plat_shutdown();
-        plat_boot_save_log("pid351-fail.log");
-        plat_boot_shutdown(1);
-        return 1;
+    /* Resume, if there is anything to resume. One slot a game, written on the
+     * way out, so the slot is not a snapshot the player has to remember to
+     * take - it is simply where they were. */
+    if (game->has_state) {
+        printf("pid351: resume %s\n",
+               core_state_load() == 0 ? "ok" : "FAILED");
+        n_load++;
     }
+    fflush(stdout);
 
-    /* Hold the splash. Asked for, and the request is better than it sounds:
-     * loading takes about eight hundred milliseconds, which is long enough to
-     * see something appear and too short to read it, so the machine went from
-     * a bootloader to Mario via a flicker that looked like a fault.
-     *
-     * The wait is at the end rather than the beginning, so the loading
-     * happens inside it and costs nothing extra - only the remainder is spent
-     * waiting. Blocking, not spinning, per the rules.
-     *
-     * Nothing is played through it. Priming the codec with silence here was
-     * tried, to bring the amplifier up behind the wordmark instead of under
-     * the game, and it is gone again: it did not move the pop and it cost a
-     * second xrun every boot - one in every session before it, two in the
-     * session with it. An audible click traded for an inaudible one is a bad
-     * trade even when the theory is sound, and this theory was not.
-     *
-     * The codec is prepared but not started while we sit here, because ALSA's
-     * start threshold is half a buffer and nothing has written a frame yet,
-     * so no underrun accrues. That sentence was written as an assumption and
-     * was false for as long as it stood: aud_open primed the buffer with
-     * exactly the threshold, which started the stream here rather than in the
-     * loop, and it ran dry forty milliseconds later. The priming is gone and
-     * the sentence is now true.
-     *
-     * This is also why the silence-priming experiment failed and why its
-     * conclusion should not be trusted: it was feeding a stream that was
-     * already dead, so it bought a second xrun instead of preventing the
-     * first. If the pop survives this commit, that experiment is worth
-     * running again on a stream that is actually alive. */
-    tele_boot("core");
-    plat_sleep_until(splashed + SPLASH_HOLD_US);
-    tele_boot("hold");
 
     uint64_t start = plat_now_us(), next = start, mark = start;
+    /* Until when the brightness readout is up in the side column. */
+    uint64_t bright_until = 0;
     /* A drain curve rather than two endpoints. Over five minutes the gauge
      * barely moves and the endpoints are all there is; over an hour the shape
      * is the answer - a rate that climbs is the backlight or the governor,
@@ -931,7 +768,6 @@ static int run_game(const char *rom, int as_init)
     /* Battery and temperature at both ends of the session. The exchange rate
      * in docs/hardware.md was measured with synthetic load; this asks the
      * same question of the workload that actually runs. */
-    sysinfo_read(&si_start);
     tele_boot("loop");
 
     for (;;) {
@@ -969,6 +805,22 @@ static int run_game(const char *rom, int as_init)
          * core_state_undo has existed and been unreachable since the day
          * savestates went in, which made an accidental load the one action on
          * this machine that could destroy something and not be taken back. */
+        /* The shoulders, with no modifier. They were read every frame and
+         * did nothing, and the backlight is both the largest power lever on
+         * the machine and the only setting a person actually wants to change
+         * while playing. */
+        if (hit & PAD_L1) {
+            if (ui->bright > 0)
+                ui->bright--;
+            ui_bright_apply(ui->bright);
+            bright_until = plat_now_us() + 1200000u;
+        }
+        if (hit & PAD_R1) {
+            if (ui->bright < UI_BRIGHT_STEPS - 1)
+                ui->bright++;
+            ui_bright_apply(ui->bright);
+            bright_until = plat_now_us() + 1200000u;
+        }
         if (hit & PAD_R3) {
             printf("pid351: undo %s\n", core_state_undo() == 0 ? "ok" : "none");
             n_undo++;
@@ -979,7 +831,7 @@ static int run_game(const char *rom, int as_init)
         if (hit & PAD_R2)
             printf("pid351: fast on, codec %d frames, ring %d\n",
                    aud_level(), core_audio_level());
-        if ((held & PAD_START) && (held & PAD_SELECT)) { reason = "combo"; break; }
+        if ((held & PAD_START) && (held & PAD_SELECT)) { reason = "list";  break; }
         if (plat_should_quit())                        { reason = "quit";  break; }
 
         /* R2 rather than a stick click: no console we target has a second
@@ -1040,6 +892,7 @@ static int run_game(const char *rom, int as_init)
          * had already refilled the buffer, which measures the fill target and
          * not the trough - it reported 34 ms of margin through a session
          * where five saves each drained the buffer to an xrun. */
+        uint64_t now_us = plat_now_us();
         int al = aud_level();
         if (al >= 0 && frames > 300 && al < aud_lo)
             aud_lo = al;
@@ -1054,7 +907,8 @@ static int run_game(const char *rom, int as_init)
         core_audio();
         tf.aud_us = (uint32_t)(plat_now_us() - a0);
         if (fb) {
-            draw_bar(held);
+            ui_bar(barbuf, game->name,
+                   now_us < bright_until ? ui->bright : -1);
             plat_present(fb, w, h, barbuf);
         } else {
             null_frames++;
@@ -1225,22 +1079,164 @@ static int run_game(const char *rom, int as_init)
         plat_sleep_until(next);
     }
 
-    tele_boot("exit");
-    tele_verdict(reason, frames, emu_total, start);
-    fflush(stdout);
-    /* The shutdown is staged for the same reason the boot is: it is the half
-     * of the session nobody watches, it is where the pop and the fbcon flash
-     * both came from, and a stage that hangs here would otherwise be a
-     * machine that simply never powers off. */
+    /* Where they were, written down before the core is torn down. This
+     * overwrites the manual slot, and that is the whole point: there is one
+     * state a game, it means "here", and the machine keeping it up to date is
+     * better than the player remembering to. */
+    printf("pid351: leaving %s after %.1f s, %u frames (%s); state %s\n",
+           game->name, (double)(plat_now_us() - start) / 1000000.0, frames,
+           reason, core_state_save() == 0 ? "written" : "FAILED");
+    n_save++;
+    core_state_sync();
     core_close();
-    tele_boot("core out");
+    tele_boot("game out");
+    fflush(stdout);
+    session_frames += frames;
+    session_emu += emu_total;
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    struct ui_rom roms[UI_MAX_ROMS];
+    struct ui_state ui;
+    const char *boot = NULL;
+    char dir[256];
+    uint64_t splashed;
+    int n = 0, as_init, played = 0;
+    struct ui_rom one;
+
+    /* Before anything else, including the mounts - so the clock every later
+     * stage is measured against starts at the first instruction of userspace
+     * rather than at the first one that had somewhere to print. This line
+     * itself goes nowhere as PID 1, which is the price of the origin being
+     * honest; the stage is still in the timeline at exit. */
+    tele_boot("entry");
+
+    /* First, because everything below assumes /dev, /proc and /sys exist,
+     * and as PID 1 none of them do. No-op when we are not PID 1. */
+    as_init = plat_boot_init();
+    tele_boot(as_init ? "mounts" : "user");
+    if (as_init)
+        printf("pid351: running as PID 1\n");
+    fflush(stdout);
+
+    if (as_init) {
+        boot = plat_boot_mount();
+        tele_boot(boot ? "card" : "no card");
+    }
+    ui_state_load(boot, &ui);
+
+    if (plat_init() != 0) {
+        /* Light the panel anyway. Whatever is on it is not ours, but a dark
+         * screen and a broken one are the same object from the outside. */
+        ui_bright_apply(ui.bright);
+        fprintf(stderr, "%spid351: platform init failed\n",
+                plat_is_init() ? "<3>" : "");
+        plat_boot_save_log("pid351-fail.log");
+        plat_boot_shutdown(1);
+        return 1;
+    }
+    tele_boot("display");
+
+    splashed = plat_now_us();
+    splash("LOADING", ui.bright);
+    tele_boot("splash");
+
+    /* Opened once for the whole power-on and closed once at the end. Not per
+     * game: tearing the codec down and building it back up between games
+     * would run the stream-start path seven times an evening, and the stream
+     * start is exactly what the boot click turned out to be. */
+    if (aud_open() != 0)
+        printf("pid351: WARN continuing without audio\n");
+    tele_boot(aud_rate() > 0 ? "audio" : "no audio");
+
+    /* A ROM on the command line skips the list entirely - the host's way in,
+     * and the only reason argc is looked at at all. */
+    if (argc > 1) {
+        char st[600];
+
+        memset(&one, 0, sizeof one);
+        snprintf(one.path, sizeof one.path, "%s", argv[1]);
+        snprintf(one.name, sizeof one.name, "%s", argv[1]);
+        /* Same rule as the list's, so the two ways in resume the same game at
+         * the same place rather than the command line always starting over. */
+        snprintf(st, sizeof st, "%s.state", one.path);
+        one.has_state = access(st, R_OK) == 0;
+        n = -1;                  /* skip the list loop, go straight to exit */
+    } else {
+        /* With a card the ROMs are under its mount point; without one - the
+         * host build always, the device only when the mount failed - "roms"
+         * beside the binary. Both paths end in the list rather than in an
+         * early exit, because a machine that switches itself off half a
+         * second after you switch it on has told you nothing about why. The
+         * list says there are no ROMs and waits for START+SELECT. */
+        if (boot)
+            snprintf(dir, sizeof dir, "%s/%s", boot, ROM_DIR);
+        else
+            snprintf(dir, sizeof dir, "%s", ROM_DIR_HOST);
+        n = ui_scan(dir, roms, UI_MAX_ROMS);
+        printf("pid351: %d ROM(s) under %s\n", n, dir);
+        fflush(stdout);
+        tele_boot("scan");
+    }
+
+    /* Hold the splash. Asked for, and the request is better than it sounds:
+     * the machine is ready in under a second, which is long enough to see
+     * something appear and too short to read it, so it went from a bootloader
+     * to a game via a flicker that looked like a fault.
+     *
+     * The wait is at the end rather than the beginning, so everything above
+     * happens inside it and costs nothing - only the remainder is spent
+     * waiting, and it is spent blocking rather than spinning.
+     *
+     * Nothing is played through it. Priming the codec with silence here was
+     * tried, to bring the amplifier up behind the wordmark instead of under
+     * the game, and it is gone: it did not move the click and it cost a
+     * second xrun every boot. The click was ours, in aud_open, and the fix
+     * was deleting a call rather than adding one. */
+    plat_sleep_until(splashed + SPLASH_HOLD_US);
+    tele_boot("hold");
+
+    /* The session's clock and its battery reading start here, after the hold
+     * and before the first game, so the drain figure covers the machine doing
+     * what it is for rather than the machine coming up. Both ways in are
+     * below it, which is the reason the hold was hoisted out of them. */
+    session_start = plat_now_us();
+    sysinfo_read(&si_start);
+
+    if (n < 0) {
+        played++;
+        run_game(&one, &ui);
+    }
+
+    /* The console proper. The list owns the machine between games; a game
+     * owns it while it runs and hands it back on START+SELECT. Power off is
+     * the list's decision alone, so quitting a game can never be one press
+     * away from quitting the machine. */
+    while (n >= 0) {
+        int pick = ui_list(framebuffer, roms, n, &ui);
+
+        if (pick < 0)
+            break;
+        tele_boot(played ? "game" : "first game");
+        played++;
+        if (run_game(&roms[pick], &ui) == 0)
+            roms[pick].has_state = 1;
+        ui_state_save(boot, &ui);
+    }
+
+    tele_boot("exit");
+    tele_verdict(played, plat_now_us());
+    fflush(stdout);
+    ui_state_save(boot, &ui);
     aud_close();
     tele_boot("audio out");
     /* Before plat_shutdown, which drops DRM master and lets fbcon restore
      * itself onto the panel. Whatever it restores - and it has been the
      * bootloader's leftovers both times anyone looked - is not something to
      * show on the way out. Dark first, then let go. */
-    backlight(0);
+    ui_bright_off();
     tele_boot("dark");
     plat_shutdown();
     tele_boot("drm out");
@@ -1255,74 +1251,3 @@ static int run_game(const char *rom, int as_init)
     }
     return 0;
 }
-
-int main(int argc, char **argv)
-{
-    /* Before anything else, including the mounts - so the clock every later
-     * stage is measured against starts at the first instruction of userspace
-     * rather than at the first one that had somewhere to print. This line
-     * itself goes nowhere as PID 1, which is the price of the origin being
-     * honest; the stage is still in the timeline at exit. */
-    tele_boot("entry");
-
-    /* First, because everything below assumes /dev, /proc and /sys exist,
-     * and as PID 1 none of them do. No-op when we are not PID 1. */
-    int as_init = plat_boot_init();
-    tele_boot(as_init ? "mounts" : "user");
-
-    if (as_init)
-        printf("pid351: running as PID 1\n");
-    fflush(stdout);
-
-    /* A ROM on the command line skips the demo entirely. */
-    if (argc > 1)
-        return run_game(argv[1], as_init);
-
-    /* As PID 1 there is no command line, so the ROM comes off the card. One
-     * fixed directory and the first file any core claims - not a launcher,
-     * and not pretending to be one: it is the smallest thing that makes the
-     * console play a game, and the launcher replaces it rather than growing
-     * out of it. The demo still runs when the directory is empty or absent,
-     * which is what makes an SD card with no ROMs on it a working image
-     * rather than a black screen. */
-    if (as_init) {
-        const char *boot = plat_boot_mount();
-        char dir[256], rom[512];
-        tele_boot(boot ? "card" : "no card");
-        if (boot) {
-            snprintf(dir, sizeof dir, "%s/%s", boot, ROM_DIR);
-            if (first_rom(dir, rom, sizeof rom) == 0) {
-                tele_boot("rom");
-                printf("pid351: playing %s\n", rom);
-                fflush(stdout);
-            }
-        }
-        /* No card, or a card with nothing on it. Said on the panel rather
-         * than powered off into a black screen: "nothing on the card" and
-         * "never booted at all" look identical from the outside, and telling
-         * those two apart is the single thing this project has spent the most
-         * time being unable to do. */
-        printf("pid351: no ROM under %s\n", ROM_DIR);
-        fflush(stdout);
-        if (plat_init() == 0)
-            splash("NO ROM");
-        else
-            backlight(BL_ON);
-        plat_sleep_until(plat_now_us() + 5000000);
-        backlight(0);
-        plat_shutdown();
-        plat_boot_save_log("pid351-boot.log");
-        plat_boot_shutdown(1);
-        return 1;
-    }
-
-    /* Not PID 1 and no argument: there is nothing to run. The demo that used
-     * to live here - the census, the blit benchmark, the OPP sweep, the pad
-     * and testcard screens - is gone. It existed to bring the platform up
-     * blind, every one of its measurements is written into docs/hardware.md,
-     * and a thousand lines kept for what they once proved is exactly the
-     * weight this project says it will not carry. git has them. */
-    fprintf(stderr, "pid351: usage: pid351 <rom>\n");
-    return 1;
-}
-

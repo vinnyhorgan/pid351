@@ -94,7 +94,10 @@ otherwise.
 - [ ] 2.2 Per-core symbol prefixing so multiple cores can coexist in one binary.
       Every core exports `retro_run`; without this, core #2 will not link.
 - [ ] 2.3 snes9x, a NES core, Genesis Plus GX.
-- [ ] 2.4 Savestates, launcher, per-console scaling policy.
+- [x] 2.4 Savestates and the launcher. One state a game, written on the way
+      out and resumed on the way in, so nobody has to remember to save. The
+      launcher is a list, not a menu - see below. Per-console scaling policy
+      waits for a second console to have a policy about.
 
 ### Controls, settled
 
@@ -108,14 +111,17 @@ Shoulders, by who owns them:
 
 - **L1, R1** belong to the GBA's and SNES's real shoulders, and to a
   six-button Genesis pad's top row - six face buttons against our four. Free
-  on the NES, which has none, and left unbound there rather than invented.
+  on the NES, and they now carry **brightness down and up**, in both the list
+  and the game. The backlight is the largest power lever on the machine and
+  the only setting anyone wants to change without stopping, which is worth
+  more than holding them in reserve for a core that has not landed.
 - **L2, R2** are free on all four consoles: none has a second pair. Unlike
   L3/R3 they are comfortable to hold, which is what makes R2 the fast-mode
-  button. L2 is unassigned.
+  button. L2 saves.
 - **L3, R3** are free for the same reason but awkward to hold, so they carry
-  only single clicks. R3 opens the menu. L3 is unassigned deliberately: the
-  left stick stands in for the d-pad, so L3 gets clicked by accident while
-  moving, and anything reachable that way has to be harmless.
+  only single clicks: L3 loads, R3 undoes the last load. Both are reachable
+  by accident with the left stick standing in for the d-pad, which is exactly
+  why undo exists.
 
 **Fast mode is held R2, four times speed, silent.** Held rather than toggled
 because fast mode costs battery and a toggle can be left running in a pocket.
@@ -123,10 +129,14 @@ Silent rather than chopped because keeping one frame of audio in four sounds
 worse than nothing; the resampler still advances exactly as it would at normal
 speed, so leaving fast mode does not leave its read position stranded.
 
-The menu carries save, load, reset, brightness, volume and exit. Nothing is
-held to reach it. Volume moves to the shell's physical volume keys once
-`event3` is mapped. Rejected: a held modifier for hotkeys, and per-core
-hotkeys.
+**There is no menu.** It was planned and did not survive contact with the
+machine. Everything it would have carried is either a button (brightness on
+L1/R1, save on L2) or automatic (the state is written on the way out, so
+there is nothing to remember to do), and the two things left - reset and
+volume - are a power cycle and a potentiometer on the side of the case.
+START+SELECT leaves a game for the list; held on the list it powers off.
+
+Rejected: a held modifier for hotkeys, and per-core hotkeys.
 
 ## Phase 3 — power
 

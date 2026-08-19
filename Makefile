@@ -17,7 +17,8 @@ CFLAGS   = $(WARN) -O2 -g -Isrc -D_POSIX_C_SOURCE=200809L
 # aud_alsa.c is in COMMON rather than in either backend on purpose: both
 # targets are Linux with ALSA, so the audio path that runs on the laptop is
 # byte for byte the one that runs on the device.
-COMMON   = src/main.c src/aud_alsa.c src/core.c src/scale.c src/tele.c
+COMMON   = src/main.c src/aud_alsa.c src/core.c src/scale.c src/tele.c \
+           src/ui.c
 
 HOST_CFLAGS = $(CFLAGS) $(shell pkg-config --cflags sdl3)
 HOST_LIBS   = $(shell pkg-config --libs sdl3) -lm
