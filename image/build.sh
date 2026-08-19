@@ -33,6 +33,30 @@ if [ ! -d "$KDIR" ]; then
     tar -C "$HERE" -xf "$TAR"
 fi
 
+# The one patch this project carries, and it is worth naming the cost: until
+# now the board file was the only thing to rebase across a kernel update, and
+# that was a deliberate property of the build. It is now two things.
+#
+# What it buys is the pop out of the speaker at every boot. mainline's rk817
+# codec leaves the headphone supplies at the default subseq, so DAPM orders
+# them by register address and switches the output stage on before the charge
+# pump feeding it - see the patch for the detail. On a board that wires the
+# speaker to the headphone pad, which this one does, that is audible.
+#
+# Applied idempotently, because the tree is unpacked once and kept: a patch
+# that reverses cleanly is a patch that is already in.
+echo "==> patching the kernel"
+for P in "$HERE"/*.patch; do
+    [ -f "$P" ] || continue
+    if patch -p1 -R --dry-run -f -s -d "$KDIR" < "$P" >/dev/null 2>&1; then
+        echo "    $(basename "$P") already applied"
+    else
+        patch -p1 -d "$KDIR" < "$P" || {
+            echo "failed to apply $(basename "$P") - refusing to build"; exit 1; }
+        echo "    applied $(basename "$P")"
+    fi
+done
+
 echo "==> building the binary"
 make -C "$HERE/.." device
 
@@ -88,8 +112,11 @@ make -j"$(nproc)" Image
 
 echo "==> building our device tree"
 # Built with cpp and dtc directly rather than by adding a line to the kernel's
-# own Makefile, so the kernel tree stays exactly as it shipped and our one
-# board file is the only thing to carry forward across kernel updates.
+# own Makefile, so the board file stays out of the tree and carries forward
+# across kernel updates on its own. That used to be the whole story - the tree
+# was exactly as it shipped - and since the codec patch above it is no longer
+# true. It is still worth keeping the board file out of it: one patch to
+# rebase is a different thing from two.
 DTSDIR="$KDIR/arch/arm64/boot/dts/rockchip"
 cp "$HERE/pid351-rg351p.dts" "$DTSDIR/"
 ${CROSS_COMPILE}cpp -nostdinc \

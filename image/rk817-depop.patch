@@ -1,0 +1,51 @@
+--- a/sound/soc/codecs/rk817_codec.c
++++ b/sound/soc/codecs/rk817_codec.c
+@@ -109,6 +109,17 @@
+ static const struct snd_kcontrol_new dac_mux =
+ 	SOC_DAPM_ENUM("Playback Mux", dac_enum);
+ 
++/* Let the charge pump come up before anything downstream of it is enabled.
++ * The pump is switched on by the widget below; this runs after that write. */
++static int rk817_hp_cp_event(struct snd_soc_dapm_widget *w,
++			     struct snd_kcontrol *kcontrol, int event)
++{
++	if (event == SND_SOC_DAPM_POST_PMU)
++		msleep(20);
++
++	return 0;
++}
++
+ static const struct snd_soc_dapm_widget rk817_dapm_widgets[] = {
+ 
+ 	/* capture/playback common */
+@@ -160,11 +171,25 @@
+ 	SND_SOC_DAPM_SUPPLY("Class D OCPN 2", RK817_CODEC_ACLASSD_CFG2, 1, 0, NULL, 0),
+ 	SND_SOC_DAPM_SUPPLY("Class D OCPN 3", RK817_CODEC_ACLASSD_CFG2, 0, 0, NULL, 0),
+ 
+-	/* playback path headphones */
+-	SND_SOC_DAPM_SUPPLY("Headphone Charge Pump", RK817_CODEC_AHP_CP, 4, 0, NULL, 0),
+-	SND_SOC_DAPM_SUPPLY("Headphone CP Discharge LDO", RK817_CODEC_AHP_CP, 3, 1, NULL, 0),
+-	SND_SOC_DAPM_SUPPLY("Headphone OStage", RK817_CODEC_AHP_CFG0, 6, 1, NULL, 0),
+-	SND_SOC_DAPM_SUPPLY("Headphone Pre Amp", RK817_CODEC_AHP_CFG0, 5, 1, NULL, 0),
++	/* playback path headphones
++	 *
++	 * Sequenced, because these four are not interchangeable. Widgets of the
++	 * same type are ordered by subseq, then by register, then by shift - so
++	 * left at the default subseq of zero, AHP_CFG0 (0x3d) sorts ahead of
++	 * AHP_CP (0x3f) and the output stage is switched on before the charge
++	 * pump that is meant to be feeding it. An output stage opening onto an
++	 * unpowered pump is a click at the speaker, once per boot, on every
++	 * board that wires the speaker to the headphone pad.
++	 *
++	 * The pump also needs time. Twenty milliseconds is far more than it
++	 * should want and is spent once, inside stream startup, where nothing
++	 * is waiting on it.
++	 */
++	SND_SOC_DAPM_SUPPLY_S("Headphone CP Discharge LDO", 1, RK817_CODEC_AHP_CP, 3, 1, NULL, 0),
++	SND_SOC_DAPM_SUPPLY_S("Headphone Charge Pump", 2, RK817_CODEC_AHP_CP, 4, 0,
++		rk817_hp_cp_event, SND_SOC_DAPM_POST_PMU),
++	SND_SOC_DAPM_SUPPLY_S("Headphone Pre Amp", 3, RK817_CODEC_AHP_CFG0, 5, 1, NULL, 0),
++	SND_SOC_DAPM_SUPPLY_S("Headphone OStage", 4, RK817_CODEC_AHP_CFG0, 6, 1, NULL, 0),
+ 	SND_SOC_DAPM_DAC("DAC L", "Playback", RK817_CODEC_ADAC_CFG1, 1, 1),
+ 	SND_SOC_DAPM_DAC("DAC R", "Playback", RK817_CODEC_ADAC_CFG1, 0, 1),
+ 
