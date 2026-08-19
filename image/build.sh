@@ -56,8 +56,28 @@ LIST
 
 echo "==> configuring"
 cd "$KDIR"
+# Derived from arm64 defconfig plus our fragment every time, never edited in
+# place. The tree is not in the repository, so a .config that was once set up
+# by hand is a fact only this machine has - and the two worst bugs of the
+# project so far were both a symbol arriving through defconfig inheritance
+# without anyone deciding it. merge_config.sh re-runs the merge and warns for
+# every value in the fragment that did not survive, which is the check that
+# would have caught CONFIG_SND_ALOOP taking card 0 before a whole session was
+# spent looking for the missing audio somewhere else.
+./scripts/kconfig/merge_config.sh -Q -m \
+    arch/arm64/configs/defconfig "$HERE/pid351.config"
 ./scripts/config --set-str INITRAMFS_SOURCE "$OUT/initramfs.list"
 make olddefconfig >/dev/null
+
+# merge_config -m only concatenates; olddefconfig is what resolves it, and a
+# symbol can still lose to a dependency it does not state. So check the result
+# rather than the intent, and stop rather than quietly build a kernel whose
+# sound card is a loopback again.
+grep -q '^# CONFIG_SND_DRIVERS is not set' .config || {
+    echo "CONFIG_SND_DRIVERS survived the merge - card 0 would be a loopback"
+    exit 1; }
+grep -q '^CONFIG_PL330_DMA=y' .config || {
+    echo "CONFIG_PL330_DMA lost - the i2s block would have no DMA"; exit 1; }
 
 echo "==> building the kernel"
 make -j"$(nproc)" Image
