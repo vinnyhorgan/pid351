@@ -109,7 +109,7 @@ void plat_present(const px_t *fb, int w, int h)
 
     SDL_UpdateTexture(tex, NULL, fb, w * (int)sizeof(px_t));
 
-    rect_t f = fit_integer(w, h, PANEL_W, PANEL_H);
+    rect_t f = fit_panel(w, h, PANEL_W, PANEL_H);
     SDL_FRect dst = { (float)f.x, (float)f.y, (float)f.w, (float)f.h };
 
     SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
