@@ -1339,3 +1339,59 @@ Unverified, if it is ever picked up: whether a legacy `PAGE_FLIP` preserves a
 scaled plane's source rectangle. If it does not, the fix is atomic
 modesetting, which is a much larger change and cuts the other way on
 minimalism.
+
+## The boot pop was ours, and it was one line — [device]
+
+Fixed in log 29. Worth writing down mostly for how long it survived and why.
+
+`aud_open` ended in `prime()`, and `prime()` writes exactly `buffer / 2`
+frames - which is exactly `start_threshold`. So **opening the PCM started the
+stream**, and open happens under the splash, 1.6 s before the loop writes a
+game frame. 2048 frames is 42.7 ms: the codec ran dry at about 2.02 s and sat
+dead for the rest of the splash, and the loop's first write raised `EPIPE`,
+re-primed and restarted it - at 3.68 s, against a splash that ends at 3.673.
+That restart was the click, and the timeline said so as soon as anything
+recorded both events on one clock.
+
+The fix is deleting the `prime()` call from `aud_open`. Nothing replaces it:
+the loop writes ~799 frames a frame, so the threshold is met on its own after
+three of them, with game audio instead of 42.7 ms of silence, and the
+half-full buffer `prime()` existed to produce arrives 50 ms later anyway.
+
+Log 29: **0 xruns**, codec low water 1711 frames (35.6 ms) against 32 frames
+two sessions earlier, and dvh confirms the click is gone.
+
+### Why three correct-sounding hypotheses all missed
+
+DAC settling, stream-start timing and DAPM supply ordering were each tested on
+hardware and each failed, over about two days. All three assumed the pop was
+the *codec powering up*, because that is what a pop at boot usually is. None
+of them asked what the stream was doing between `aud_open` and the first game
+frame, and nothing measured it: the boot log had `aud_open` and it had the
+first fps line, and 1.6 s of silence in between that nobody had a reason to
+look at.
+
+What found it was not a better hypothesis, it was `tele_boot` putting every
+stage on one clock. The bug had been in two comments the whole time, in two
+different files, saying opposite things - main.c: *"the codec is prepared but
+not started while we sit here"*, `sw_params`: *"start as soon as priming
+finishes"* - and the second one was what the code did.
+
+### Two things this invalidates
+
+**The silence-priming experiment.** It was rejected for costing a second xrun
+per boot without moving the pop. It was feeding a stream that was already
+dead, so its second xrun is explained by this bug rather than by anything it
+did. Its conclusion does not stand. It is also no longer needed.
+
+**`image/rk817-depop.patch` no longer has a justification.** It was written to
+reorder the rk817 headphone supplies with `SND_SOC_DAPM_SUPPLY_S`, it did not
+fix the pop, and the actual cause was in our own process. It may still be a
+real mainline ordering bug - `dapm_seq_compare` sorts by `subseq` before
+`reg`, and mainline leaves all four supplies at the default - but that is now
+an untested benefit against a real cost: it is the reason this project carries
+two things to rebase across a kernel update instead of one.
+
+Not removed yet, because it has been in every kernel since #34 including the
+one that tested clean, so whether it contributes cannot be assumed either way.
+Removing it is a one-boot experiment and nobody has run it.

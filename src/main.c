@@ -1553,6 +1553,7 @@ static unsigned seq_repeat[2], seq_same, seq_jump;
  * count could not answer about itself. */
 #define NSEQ_WHEN 8
 static unsigned seq_when[NSEQ_WHEN], seq_when_n;
+static unsigned late_when[NSEQ_WHEN], late_when_n;
 static unsigned pad_press[16], pad_frames[16];
 static const char *const pad_name[16] = {
     "A", "B", "X", "Y", "up", "down", "left", "right",
@@ -1670,6 +1671,12 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
            normal ? (double)late_frames * 100.0 / (double)normal : 0.0,
            secs > 0 ? (double)frames / secs : 0.0,
            1000000.0 / (double)FRAME_US);
+    if (late_when_n) {
+        printf("pid351: pacing: over budget on frame");
+        for (unsigned i = 0; i < late_when_n; i++)
+            printf(" %u", late_when[i]);
+        printf("%s\n", late_frames > late_when_n ? " ..." : "");
+    }
 
     if (fast_panel && fast_us > 0) {
         double fsec = (double)fast_us / 1000000.0;
@@ -1961,7 +1968,12 @@ static int run_game(const char *rom, int as_init)
         int al = aud_level();
         if (al >= 0 && frames > 300 && al < aud_lo)
             aud_lo = al;
-        if (al >= 0)
+        /* Not on the very first frame. The sample is taken before the
+         * top-up, deliberately, to catch the trough - but on frame zero
+         * nothing has been written to the codec at all, so it reads a
+         * perfectly correct zero that then sits in the report as the
+         * session's minimum and reads exactly like an xrun. */
+        if (al >= 0 && frames > 0)
             hist_add(&hist[0][H_CODEC], (uint32_t)al);
         uint64_t a0 = plat_now_us();
         core_audio();
@@ -1991,8 +2003,15 @@ static int run_game(const char *rom, int as_init)
         tf.fast = (uint32_t)fast;
         if (fast)
             fast_us += tf.work_us;
-        if (!fast && tf.busy_us > FRAME_US)
+        if (!fast && tf.busy_us > FRAME_US) {
+            /* Which frames, for the same reason the panel repeats are
+             * located: one late frame in a short session fails a threshold
+             * written for a long one, and "it was frame 1" and "it was frame
+             * 4000" are not the same fact. */
+            if (late_when_n < NSEQ_WHEN)
+                late_when[late_when_n++] = frames;
             late_frames++;
+        }
         tele_add(&tf);
 
         /* Input latency, measured rather than bounded.
