@@ -79,6 +79,13 @@ int plat_axes(plat_axis_t *out, int max);
  * Any of them may be left 0 by a backend where the quantity does not exist. */
 void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us, uint32_t *scale_us);
 
+/* When the display latched the most recent flip, on the same clock as
+ * plat_now_us. This is the far end of input latency, and it cannot be worked
+ * out from anything else here: a flip is queued somewhere inside a scan and
+ * goes up at the end of it, so the gap is whatever is left of the period and
+ * is not a constant. Returns 0 on a backend that cannot say. */
+uint64_t plat_flip_us(void);
+
 /* Being PID 1. plat_boot_init mounts what an init has to mount and returns
  * non-zero only when we really are PID 1; everything else here is inert
  * otherwise, so the same binary still runs as an ordinary process. On the

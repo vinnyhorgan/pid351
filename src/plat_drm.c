@@ -143,6 +143,10 @@ static struct {
     uint32_t blit_us;        /* see plat_frame_us */
     uint32_t scale_us;
     uint32_t wait_us;
+    /* When the display latched the last flip, from the flip event's own
+     * timestamp. It is the one instant in the pipeline we cannot infer: from
+     * the queue onwards the clock is the panel's, not ours. */
+    uint64_t flip_us;
 
     int      pad_fd;
     uint32_t buttons;
@@ -933,8 +937,37 @@ static void wait_flip(void)
     char buf[128];
     for (;;) {
         ssize_t n = read(g.fd, buf, sizeof buf);
-        if (n >= (ssize_t)sizeof(struct drm_event))
+        if (n >= (ssize_t)sizeof(struct drm_event)) {
+            /* The event has always carried the vblank the flip was latched
+             * at, and it was always being thrown away - which is why input
+             * latency could only ever be quoted as a bound, assuming a whole
+             * panel period between queueing a flip and it going up. The real
+             * gap is whatever is left of the period, and the difference is
+             * most of a frame.
+             *
+             * The kernel documents this stamp as the moment the refresh
+             * cycle's first pixel leaves the display engine, which is exactly
+             * the boundary wanted. memcpy rather than a cast because a read
+             * buffer carries no alignment guarantee and drm_event_vblank has
+             * a __u64 in it. */
+            ssize_t off = 0;
+            while (off + (ssize_t)sizeof(struct drm_event) <= n) {
+                struct drm_event hdr;
+                memcpy(&hdr, buf + off, sizeof hdr);
+                if (hdr.length < sizeof hdr ||
+                    (ssize_t)hdr.length > n - off)
+                    break;
+                if (hdr.type == DRM_EVENT_FLIP_COMPLETE &&
+                    hdr.length >= sizeof(struct drm_event_vblank)) {
+                    struct drm_event_vblank v;
+                    memcpy(&v, buf + off, sizeof v);
+                    g.flip_us = (uint64_t)v.tv_sec * 1000000u
+                              + (uint64_t)v.tv_usec;
+                }
+                off += (ssize_t)hdr.length;
+            }
             break;
+        }
         if (n < 0 && errno != EINTR) {
             fail("read drm event");
             break;
@@ -1245,6 +1278,11 @@ int plat_axes(plat_axis_t *out, int max)
     for (int i = 0; i < n; i++)
         out[i] = g.axis[i];
     return n;
+}
+
+uint64_t plat_flip_us(void)
+{
+    return g.flip_us;
 }
 
 void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us, uint32_t *scale_us)

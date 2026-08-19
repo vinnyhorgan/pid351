@@ -185,6 +185,14 @@ void plat_present(const px_t *fb, int w, int h, const px_t *bar)
     present_us = (uint32_t)(plat_now_us() - t0);
 }
 
+/* SDL hands over a presented frame and does not say when it reached the
+ * glass, so there is nothing honest to return here. main.c falls back to its
+ * bound. */
+uint64_t plat_flip_us(void)
+{
+    return 0;
+}
+
 void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us, uint32_t *scale_us)
 {
     /* The resampler is the one number that does mean the same thing on both

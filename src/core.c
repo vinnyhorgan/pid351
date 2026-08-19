@@ -309,8 +309,22 @@ void core_audio(void)
         unsigned idx  = (unsigned)(rs_pos >> 32);
         uint32_t frac = (uint32_t)(rs_pos & 0xffffffffu);
 
-        if (idx + 1 >= ring_w) {        /* starved: hold the last sample */
-            out[i * 2] = out[i * 2 + 1] = 0;
+        /* Starved. Hold the last sample rather than emit silence: a jump to
+         * zero from wherever the waveform was is a step, and a step is a
+         * click. Holding is inaudible for the frame or two this can last.
+         *
+         * The comment here has said "hold the last sample" since the day it
+         * was written and the code has always written zeros, which is the
+         * kind of disagreement that survives every reading of the file
+         * because the comment is what gets read.
+         *
+         * rs_pos is deliberately not advanced: the samples are not missing,
+         * they have not arrived, and the next call should ask for them
+         * again. */
+        if (idx + 1 >= ring_w) {
+            unsigned last = (ring_w - 1) & RING_MASK;
+            out[i * 2]     = ring[last * 2];
+            out[i * 2 + 1] = ring[last * 2 + 1];
             continue;
         }
 

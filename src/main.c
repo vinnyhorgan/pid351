@@ -876,18 +876,6 @@ struct tele_frame {
      * matter how much or how little is being done inside it, so counting
      * frames where work_us overran would report the panel rather than us. */
     uint32_t busy_us;
-    /* Input to the vblank that latches this frame - all of the latency that
-     * belongs to us rather than to the panel.
-     *
-     * The loop reads the pad, emulates, resamples, blocks until the previous
-     * flip retires, blits and queues the next one, so pad to that vblank is
-     * work_us less the blit. Add one whole panel period because a flip queued
-     * during a scan is latched at the end of it. What the panel does after
-     * that - painting the picture down its own scan - is another period and
-     * is deliberately not folded in: it is not a number any code here can
-     * change, and burying it would make our half look worse than it is and
-     * the total look better than it is. */
-    uint32_t lat_us;
     uint32_t fast;       /* 1 if R2 was held, so this frame ran six */
 };
 
@@ -968,10 +956,11 @@ static uint32_t hist_pct(const hist_t *h, int pct)
  * seventh of its length in fast mode is just "a fast frame", and the p50 has
  * moved to make room for it. Neither number then describes anything that
  * actually happens. */
-enum { H_EMU, H_SCALE, H_BLIT, H_BUSY, H_AUD, H_WAIT, H_LAT, H_FIELDS };
+enum { H_EMU, H_SCALE, H_BLIT, H_BUSY, H_AUD, H_WAIT, H_LAT, H_DEAD,
+       H_FIELDS };
 
 static const char *const hist_name[H_FIELDS] = {
-    "emu", "scale", "blit", "busy", "audio", "vblank", "latency"
+    "emu", "scale", "blit", "busy", "audio", "vblank", "latency", "deadtime"
 };
 
 static hist_t hist[2][H_FIELDS];    /* [fast][field] */
@@ -986,7 +975,6 @@ static void tele_add(const struct tele_frame *f)
     hist_add(&h[H_BUSY],  f->busy_us);
     hist_add(&h[H_AUD],   f->aud_us);
     hist_add(&h[H_WAIT],  f->wait_us);
-    hist_add(&h[H_LAT],   f->lat_us);
 }
 
 /* The median cost of emulating one frame, over the frames that emulated
@@ -1470,6 +1458,7 @@ static uint64_t fast_us;
 static int ring_lo = INT32_MAX, ring_hi;
 static int aud_lo = INT32_MAX;   /* codec buffer low water */
 static long temp_hi = -300000;
+static int lat_bounded;          /* latency came from the bound, not the flip */
 static struct sysinfo_s si_start;
 
 /* The whole session, analysed on the device, at exit.
@@ -1507,19 +1496,27 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
     hist_report(0, H_AUD,   FRAME_US);
     hist_report(0, H_WAIT,  FRAME_US);
     hist_report(0, H_LAT,   FRAME_US);
+    hist_report(0, H_DEAD,  FRAME_US);
     /* Spelled out because a latency figure with an unstated boundary is worth
-     * nothing, and every published one disagrees about where the boundary is.
-     * This one starts at the pad read and ends at the vblank that latches the
-     * frame; the panel's own scan is the line after it. */
-    printf("pid351:   latency is pad read to the latching vblank; the panel "
+     * nothing and every published one draws it somewhere else. This one runs
+     * from the pad read to the vblank that latched the frame, taken from the
+     * flip event's own timestamp; the panel's scan is the line after it.
+     *
+     * deadtime is the part of that spent with the frame finished and queued,
+     * waiting for a vblank - the only part that could be given back, by
+     * starting the frame later rather than by making it faster. */
+    printf("pid351:   latency is pad read to the latching vblank%s; the panel "
            "then paints it over %u us more, none of that at the first pixel "
-           "scanned and all of it at the last\n", (unsigned)FRAME_US);
+           "scanned and all of it at the last\n",
+           lat_bounded ? " (BOUND - no flip timestamp)" : "",
+           (unsigned)FRAME_US);
     if (fast_panel) {
         printf("pid351: fast frames (%u, each runs the core %d times):\n",
                fast_panel, FAST_EXTRA + 1);
         hist_report(1, H_EMU,  FRAME_US);
         hist_report(1, H_BUSY, FRAME_US);
         hist_report(1, H_AUD,  FRAME_US);
+        hist_report(1, H_LAT,  FRAME_US);
     }
 
     printf("pid351: pacing: %u over budget of %u normal frames (%.3f%%), "
@@ -1636,6 +1633,10 @@ static int run_game(const char *rom, int as_init)
      * one that holds flat is the workload, and the difference is invisible
      * from a start and an end. */
     uint64_t batt_mark = start;
+    /* The pad read and the flip queue of the iteration before this one; see
+     * where they are used for why latency needs both. */
+    uint64_t prev_f0 = 0, prev_queue = 0, prev_latch = 0;
+    int prev_fast = 0;
     unsigned frames = 0, win = 0, emu = 0;
     unsigned emu_total = 0;
     uint32_t blit_hi = 0, scale_hi = 0;
@@ -1738,14 +1739,47 @@ static int run_game(const char *rom, int as_init)
          * this machine actually has to do, and only that can be late. */
         uint32_t idle = tf.wait_us + tf.aud_us;
         tf.busy_us  = tf.work_us > idle ? tf.work_us - idle : 0;
-        tf.lat_us   = (tf.work_us > tf.blit_us ? tf.work_us - tf.blit_us : 0)
-                    + FRAME_US;
         tf.fast = (uint32_t)fast;
         if (fast)
             fast_us += tf.work_us;
         if (!fast && tf.busy_us > FRAME_US)
             late_frames++;
         tele_add(&tf);
+
+        /* Input latency, measured rather than bounded.
+         *
+         * The flip queued at the end of this iteration is not latched until
+         * the next vblank, and the loop learns when that was from the flip
+         * event the following iteration reads - so the pad press it answers
+         * is one iteration back, and the pair is carried across rather than
+         * guessed at. The first version assumed a whole panel period between
+         * queueing and latching and reported the bound as though it were the
+         * measurement, which overstated latency by however much of the period
+         * was already gone.
+         *
+         * Attributed to the frame the pad was read on, so a fast frame's
+         * latency does not land in the normal distribution. */
+        uint64_t latch = plat_flip_us();
+        if (latch && latch != prev_latch) {
+            prev_latch = latch;
+            if (prev_f0 && latch > prev_f0 && latch - prev_f0 < 500000) {
+                hist_add(&hist[prev_fast][H_LAT],
+                         (uint32_t)(latch - prev_f0));
+                if (latch > prev_queue)
+                    hist_add(&hist[prev_fast][H_DEAD],
+                             (uint32_t)(latch - prev_queue));
+            }
+        } else if (!latch) {
+            /* No timestamp from this backend: fall back to the bound, and
+             * say so in the report rather than let the two be confused. */
+            lat_bounded = 1;
+            hist_add(&hist[fast][H_LAT],
+                     (tf.work_us > tf.blit_us ? tf.work_us - tf.blit_us : 0)
+                     + FRAME_US);
+        }
+        prev_f0    = f0;
+        prev_queue = plat_now_us();
+        prev_fast  = fast;
 
         int rl = core_audio_level();
         if (rl >= 0) {
