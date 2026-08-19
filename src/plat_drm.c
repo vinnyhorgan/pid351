@@ -613,6 +613,14 @@ static void pump_input(void)
 static int map_row[PHYS_W];
 static int map_col[PHYS_H];
 
+/* How many landscape columns the picture gets. The rest is status bar, and is
+ * written after the blit rather than inside it: a destination scanline is a
+ * column of the landscape image, so the bar occupies a contiguous run of
+ * whole scanlines and the variants need no per-pixel test. That trades one
+ * extra pass over 53x320 - about a tenth of the blit - against a branch in
+ * the inner loop of an in-order core, which is the right way round. */
+static int game_w = PANEL_W;
+
 static void build_maps(int w, int h)
 {
     for (int px = 0; px < PHYS_W; px++) {
@@ -629,7 +637,37 @@ static void build_maps(int w, int h)
 #else
         int lx = PANEL_W - 1 - py;
 #endif
-        map_col[py] = lx * w / PANEL_W;
+        /* Columns past the picture are the bar's, and are overwritten
+         * below; mapping them to source column 0 keeps the blit branchless
+         * and costs one wasted write per bar pixel. */
+        map_col[py] = lx < game_w ? lx * w / game_w : 0;
+    }
+}
+
+/* The bar, straight into the scanout buffer, in the same rotation the blit
+ * uses. `bar` is BAR_W by PANEL_H in landscape order. */
+static void blit_bar(struct dumb_buf *b, const px_t *bar)
+{
+    int stride = (int)(b->pitch / sizeof(px_t));
+    int bw = PANEL_W - game_w;
+
+    for (int py = 0; py < PHYS_H; py++) {
+#if ROTATE_CW
+        int lx = py;
+#else
+        int lx = PANEL_W - 1 - py;
+#endif
+        if (lx < game_w)
+            continue;
+        px_t *dst = b->px + (size_t)py * (size_t)stride;
+        for (int px = 0; px < PHYS_W; px++) {
+#if ROTATE_CW
+            int ly = PANEL_H - 1 - px;
+#else
+            int ly = px;
+#endif
+            dst[px] = bar[(size_t)ly * (size_t)bw + (size_t)(lx - game_w)];
+        }
     }
 }
 
@@ -1108,10 +1146,12 @@ void plat_boot_shutdown(int power_off)
         pause();
 }
 
-void plat_present(const px_t *fb, int w, int h)
+void plat_present(const px_t *fb, int w, int h, const px_t *bar)
 {
     if (g.fd < 0)
         return;
+
+    game_w = bar ? fit_panel(w, h, PANEL_W, PANEL_H).w : PANEL_W;
 
     /* Bracketing with two clock reads costs a fraction of a microsecond
      * against a blit measured in hundreds, and main.c prints the calibration
@@ -1126,6 +1166,8 @@ void plat_present(const px_t *fb, int w, int h)
                     BLIT_ROW_ROWS);
     else
         run_variant(&g.buf[back], fb, w, h, PLAT_BLIT_STAGED, BLIT_TILE);
+    if (bar && game_w < PANEL_W)
+        blit_bar(&g.buf[back], bar);
     uint64_t t2 = plat_now_us();
 
     g.wait_us = (uint32_t)(t1 - t0);

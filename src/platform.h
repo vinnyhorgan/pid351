@@ -22,8 +22,12 @@ void plat_shutdown(void);
 uint32_t plat_input(void);
 
 /* Hand over one frame at the core's native resolution. The platform scales,
- * rotates and blits it to the panel however is cheapest for that platform. */
-void plat_present(const px_t *fb, int w, int h);
+ * rotates and blits it to the panel however is cheapest for that platform.
+ *
+ * `bar`, when not NULL, is a BAR_W by PANEL_H image occupying the columns the
+ * picture gives up - see scale.h for why those columns exist. NULL means the
+ * frame gets the whole panel, which is what the demo and the splash want. */
+void plat_present(const px_t *fb, int w, int h, const px_t *bar);
 
 /* Monotonic microseconds. Never wall clock; this drives frame pacing. */
 uint64_t plat_now_us(void);

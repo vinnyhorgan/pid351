@@ -106,9 +106,11 @@ uint32_t plat_input(void)
     return held;
 }
 
+static SDL_Texture *bartex;
+
 static uint32_t present_us;
 
-void plat_present(const px_t *fb, int w, int h)
+void plat_present(const px_t *fb, int w, int h, const px_t *bar)
 {
     if (!tex || w != tex_w || h != tex_h) {
         if (tex) SDL_DestroyTexture(tex);
@@ -125,12 +127,30 @@ void plat_present(const px_t *fb, int w, int h)
 
     SDL_UpdateTexture(tex, NULL, fb, w * (int)sizeof(px_t));
 
-    rect_t f = fit_panel(w, h, PANEL_W, PANEL_H);
+    rect_t f = bar ? fit_panel(w, h, PANEL_W, PANEL_H)
+                   : (rect_t){ 0, 0, PANEL_W, PANEL_H };
     SDL_FRect dst = { (float)f.x, (float)f.y, (float)f.w, (float)f.h };
 
     SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
     SDL_RenderClear(ren);
     SDL_RenderTexture(ren, tex, NULL, &dst);
+
+    if (bar && f.w < PANEL_W) {
+        if (!bartex) {
+            bartex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB565,
+                                       SDL_TEXTUREACCESS_STREAMING,
+                                       PANEL_W - f.w, PANEL_H);
+            if (bartex)
+                SDL_SetTextureScaleMode(bartex, SDL_SCALEMODE_NEAREST);
+        }
+        if (bartex) {
+            SDL_UpdateTexture(bartex, NULL, bar,
+                              (PANEL_W - f.w) * (int)sizeof(px_t));
+            SDL_FRect bd = { (float)f.w, 0.0f,
+                             (float)(PANEL_W - f.w), (float)PANEL_H };
+            SDL_RenderTexture(ren, bartex, NULL, &bd);
+        }
+    }
 
     uint64_t t0 = plat_now_us();
     SDL_RenderPresent(ren);

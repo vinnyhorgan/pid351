@@ -1018,7 +1018,7 @@ static void power_phase(canvas_t *c, const char *name, const char *gov,
             gfx_text(c, 8, 140, "START+SELECT ABORTS", 1, C_DIM);
         }
 
-        plat_present(framebuffer, PANEL_W, PANEL_H);
+        plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
 
         uint32_t b_us = 0, w_us = 0;
         plat_frame_us(&b_us, &w_us);
@@ -1116,7 +1116,7 @@ static void splash(const char *line)
     gfx_rect(&c, 0, 17, PANEL_W, 1, C_ACCENT);
     gfx_text(&c, 6, 2, "PID351", 2, C_ACCENT);
     gfx_text(&c, 6, 26, line, 1, C_DIM);
-    plat_present(framebuffer, PANEL_W, PANEL_H);
+    plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
 }
 
 /* Where ROMs live on the card, relative to the FAT partition's root. A
@@ -1163,6 +1163,96 @@ static int first_rom(const char *dir, char *out, size_t outsz)
  * asked for. The status line reports the multiple actually achieved so the
  * difference between four and what the silicon does is never a guess. */
 #define FAST_EXTRA 3
+
+/* The status bar down the side of a game.
+ *
+ * See scale.h for why it is exactly 53 columns. Those are the columns the
+ * 4:3 consoles were spending on a 12.5% horizontal stretch, so this does not
+ * take space from the picture - it hands the picture back its aspect ratio
+ * and furnishes what falls out.
+ *
+ * No wall clock, deliberately. The rk817 has an RTC and the kernel reads it,
+ * but nothing has ever set it: the console writes files onto the card dated
+ * 2017. A clock that is confidently wrong is worse than no clock. Session
+ * time is shown instead - it is correct without anything having to be set,
+ * and on a handheld it answers the question actually being asked, which is
+ * how long this has been going on rather than what time it is. */
+static px_t barbuf[BAR_W * PANEL_H];
+
+static void draw_bar(uint32_t held, uint64_t elapsed_us)
+{
+    canvas_t c = { barbuf, BAR_W, PANEL_H };
+    static struct sysinfo_s si;
+    static uint64_t next_read;
+    char buf[24];
+
+    /* Five sysfs files at 60 Hz, to animate a number that moves once a
+     * minute, is precisely what a battery-first machine should not do. */
+    uint64_t now = plat_now_us();
+    if (now >= next_read) {
+        sysinfo_read(&si);
+        next_read = now + 5000000;
+    }
+
+    gfx_rect(&c, 0, 0, BAR_W, PANEL_H, C_BG);
+    gfx_rect(&c, 0, 0, BAR_W, 15, C_PANEL);
+    gfx_text(&c, 4, 4, "PID351", 1, C_ACCENT);
+    gfx_rect(&c, 0, 15, BAR_W, 1, C_ACCENT);
+
+    /* Battery. A gauge rather than only a number, because the number is what
+     * you read when you look and the gauge is what you catch when you do
+     * not. */
+    int y = 26;
+    gfx_text(&c, 4, y, "BATT", 1, C_DIM);
+    y += 11;
+
+    int pct = si.capacity < 0 ? -1 : (int)si.capacity;
+    px_t col = pct < 0 ? C_DIM : pct <= 15 ? C_WARN
+                               : pct <= 35 ? C_LIT : C_ACCENT;
+
+    gfx_rect(&c, 4, y, 45, 12, C_PANEL);
+    gfx_rect(&c, 4, y, 45, 1, C_EDGE);
+    gfx_rect(&c, 4, y + 11, 45, 1, C_EDGE);
+    if (pct >= 0)
+        gfx_rect(&c, 5, y + 1, 43 * pct / 100, 10, col);
+    y += 16;
+
+    if (pct >= 0)
+        snprintf(buf, sizeof buf, "%d%%", pct);
+    else
+        snprintf(buf, sizeof buf, "--");
+    gfx_text(&c, 4, y, buf, 1, col);
+    y += 20;
+
+    /* Current, when the driver gives it. Negative is discharge; the sign is
+     * dropped because the arrow is the interesting part and the column is 53
+     * pixels wide. */
+    if (si.current_ua != -1) {
+        long ma = si.current_ua / 1000;
+        snprintf(buf, sizeof buf, "%s%ldmA", ma < 0 ? "-" : "+",
+                 ma < 0 ? -ma : ma);
+        gfx_text(&c, 4, y, buf, 1, C_DIM);
+    }
+
+    /* Session time, from the frame loop's own start. */
+    y = PANEL_H - 78;
+    gfx_rect(&c, 0, y - 8, BAR_W, 1, C_EDGE);
+    gfx_text(&c, 4, y, "PLAY", 1, C_DIM);
+    unsigned secs = (unsigned)(elapsed_us / 1000000);
+    if (secs >= 3600)
+        snprintf(buf, sizeof buf, "%u:%02u", secs / 3600, (secs / 60) % 60);
+    else
+        snprintf(buf, sizeof buf, "%u:%02u", secs / 60, secs % 60);
+    gfx_text(&c, 4, y + 11, buf, 1, C_TEXT);
+
+    /* Fast mode, because it is held rather than toggled and the picture goes
+     * choppy when it is on - which without this reads as the machine
+     * struggling rather than as the button doing its job. */
+    if (held & PAD_R2) {
+        gfx_rect(&c, 0, PANEL_H - 34, BAR_W, 18, C_LIT);
+        gfx_text(&c, 4, PANEL_H - 29, "FAST", 1, C_BG);
+    }
+}
 
 /* Runs one ROM and nothing else: no demo, no sweep, no census.
  *
@@ -1234,8 +1324,10 @@ static int run_game(const char *rom, int as_init)
          * during it, and before the present, because the present blocks on
          * vblank and the codec should not be waiting through that. */
         core_audio();
-        if (fb)
-            plat_present(fb, w, h);
+        if (fb) {
+            draw_bar(held, plat_now_us() - start);
+            plat_present(fb, w, h, barbuf);
+        }
 
         frames++;
         win++;
@@ -1336,7 +1428,7 @@ int main(int argc, char **argv)
     gfx_rect(&c, 0, 17, PANEL_W, 1, C_ACCENT);
     gfx_text(&c, 6, 2, "PID351", 2, C_ACCENT);
     gfx_text(&c, 6, 26, "STARTING", 1, C_DIM);
-    plat_present(framebuffer, PANEL_W, PANEL_H);
+    plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
 
     struct sysinfo_s si;
     memset(&si, 0, sizeof si);
@@ -1560,7 +1652,7 @@ int main(int argc, char **argv)
             canvas_t tc = { framebuffer, src[src_i].w, src[src_i].h };
             draw_testcard(&tc, src[src_i].name, frames);
             uint32_t d_us = (uint32_t)(plat_now_us() - draw_t0);
-            plat_present(framebuffer, src[src_i].w, src[src_i].h);
+            plat_present(framebuffer, src[src_i].w, src[src_i].h, NULL);
 
             uint32_t bb = 0, ww = 0;
             plat_frame_us(&bb, &ww);
@@ -1597,7 +1689,7 @@ int main(int argc, char **argv)
 
         uint32_t draw_us = (uint32_t)(plat_now_us() - draw_t0);
 
-        plat_present(framebuffer, PANEL_W, PANEL_H);
+        plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
 
         uint32_t b_us = 0, w_us = 0;
         plat_frame_us(&b_us, &w_us);
