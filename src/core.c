@@ -633,10 +633,18 @@ int core_open(const char *rom_path)
         cur->run();
     vnew = 0;
 
-    printf("pid351: core %s, %dx%d, %d.%03d fps, %d Hz -> %d Hz "
+    /* aspect_ratio is the core's own statement of how wide its pixels are,
+     * and it is the only opinion on the matter that comes from the emulator
+     * rather than from a convention someone repeated. scale.h picks the
+     * panel geometry from it, so print it where it can be checked. */
+    printf("pid351: core %s, %dx%d, par %.4f, %d.%03d fps, %d Hz -> %d Hz "
            "(stretch %+.3f%%)\n",
            cur->name, (int)av.geometry.base_width,
-           (int)av.geometry.base_height, core_fps / 1000, core_fps % 1000,
+           (int)av.geometry.base_height,
+           (double)av.geometry.aspect_ratio
+               * (double)av.geometry.base_height
+               / (double)av.geometry.base_width,
+           core_fps / 1000, core_fps % 1000,
            core_rate, arate,
            ((double)PANEL_PIXEL_HZ / (double)PANEL_FRAME_PX)
                / ((double)core_fps / 1000.0) * 100.0 - 100.0);

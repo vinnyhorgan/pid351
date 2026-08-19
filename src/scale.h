@@ -11,14 +11,13 @@
  * far as its own aspect wants:
  *
  *   GBA      240x160 -> 480x320   exactly 2x, pixel perfect, no bar
- *   NES/SNES 256x224 -> 427x320   plus a 53 wide status bar
- *   Genesis  320x224 -> 427x320   plus a 53 wide status bar
+ *   NES/SNES 256x224 -> 417x320   plus a 63 wide status bar
  *
- * Filling all 480 columns instead would stretch the three 4:3 consoles
- * horizontally by 9/8 - 12.5% - because the panel is 3:2 and they are not.
- * Correcting that costs 53 columns, and pillarboxing 53 columns of dead
- * black on a 3.5 inch screen is worse than the stretch was; so the bar is
- * what occupies them. See BAR_W below for why it is exactly 53.
+ * Filling all 480 columns instead would stretch the picture horizontally by
+ * 9/8 - 12.5% - because the panel is 3:2 and the NES is not. Correcting that
+ * costs 63 columns, and pillarboxing 63 columns of dead black on a 3.5 inch
+ * screen is worse than the stretch was; so the bar is what occupies them.
+ * See GAME_W below for where 417 comes from.
  *
  * GBA is the reason the panel choice was easy: 240x160 is exactly half of
  * 480x320, so the console that matters most for battery life is also the one
@@ -35,28 +34,40 @@
 
 typedef struct { int x, y, w, h; } rect_t;
 
-/* The status bar, and why it is exactly this wide.
+/* How wide the picture is, and why the bar gets what is left rather than the
+ * other way round: the width is a property of the console and the bar is a
+ * decision about the leftovers.
  *
- * The 12.5% stretch above and the panel's spare width are the same fact seen
- * twice: 320 rows shown at 4:3 want 426.67 columns, and the panel has 480. So
- * the columns that were being spent stretching the picture are precisely the
- * columns a bar can occupy for free.
+ * The NES's pixel aspect ratio is 8:7. That is not a convention repeated from
+ * somewhere - it is the ratio of the PPU's 5.369318 MHz pixel clock to NTSC's
+ * 12.272727 MHz square-pixel rate, and fceumm states exactly 1.1429 through
+ * retro_get_system_av_info, which core.c prints at load so it stays checked.
  *
- *   bar   game     pixel aspect   error against 4:3
- *     0   480x320       1.3125        +12.50%
- *    48   432x320       1.1812         +1.25%
- *    53   427x320       1.1676         +0.08%
- *    64   416x320       1.1375         -2.50%
+ * 256 pixels at 8:7 across 224 rows is 1.30612 wide, so 320 rows want 417.96
+ * columns:
  *
- * 53 is not a round number and is the right one: it lands within 0.08% of
- * correct, which is closer than the panel can resolve. Rounding it to 48 or
- * 64 would reintroduce an error to buy a tidier constant, and the constant is
- * never read by a person twice.
+ *   game   bar        pixel aspect   error against 8:7
+ *    480     0 even        1.3125        +14.84%
+ *    427    53 odd         1.1676         +2.16%
+ *    419    61 odd         1.1457         +0.25%
+ *    418    62 even        1.1430         +0.01%
+ *    417    63 odd         1.1402         -0.23%
  *
- * This applies to the 4:3 consoles. GBA is 3:2 already and wants the whole
- * panel, which is the one exception fit_panel was left as a function for. */
-#define BAR_W  53
-#define GAME_W (PANEL_W - BAR_W)
+ * 418 is nearest and 417 is chosen anyway, because a bar of even width cannot
+ * centre an odd-width figure and every figure in it is odd on purpose. 0.23%
+ * is about one column across the whole picture and nothing can see it; half a
+ * pixel of lean on the battery is the kind of thing that gets noticed
+ * immediately, and was.
+ *
+ * The old 427 came from assuming the NES filled a 4:3 television. It mostly
+ * did, because overscan hid the borders, but the signal says 8:7 and the
+ * emulator says 8:7, so that is what this follows.
+ *
+ * GBA is 3:2 already, wants the whole panel, and is the one exception
+ * fit_panel was left as a function for. Genesis is not wired up; when it is
+ * it needs its own width, because 320x224 is not this ratio. */
+#define GAME_W 417
+#define BAR_W  (PANEL_W - GAME_W)
 
 /* Where a source frame lands on the panel. Kept as a function rather than
  * inlined at the call site so the exception above has somewhere to live. */
@@ -65,7 +76,7 @@ static inline rect_t fit_panel(int src_w, int src_h, int dst_w, int dst_h)
     (void)src_h;
     /* 240 wide is GBA, which is exactly half the panel and needs no bar to
      * look right - and would lose its pixel-perfect 2x if it got one. */
-    int w = src_w == 240 ? dst_w : dst_w - BAR_W;
+    int w = src_w == 240 ? dst_w : GAME_W;
     rect_t r = { 0, 0, w, dst_h };
     return r;
 }
