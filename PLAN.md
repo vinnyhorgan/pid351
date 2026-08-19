@@ -16,17 +16,24 @@ what it buys is that nothing in the scaling policy has to bend for them. Priorit
 These are not incidental — they invert the normal embedded workflow, so they
 are written down first.
 
-- **One microSD card**, currently running ArkOS. No spare, so no rescue media.
+- **One microSD card**, now running pid351's own image. No spare, so no rescue
+  media. ROCKNIX stays bootable behind a single file rename, and its boot
+  partition is copied to the laptop.
 - **No USB-UART adapter**, and none coming. Bring-up of any custom kernel is
   blind: a boot failure is a black screen with no diagnostics.
 - **No purchases.** Every step must work with what is on the desk.
-- Only accessory available is a USB-C ethernet dongle.
+- Only accessory available is a Kensington UH1400P dock.
 
-**Consequence: userspace first, on ArkOS's kernel. Our own kernel and boot
+**Consequence: userspace first, on a borrowed kernel. Our own kernel and boot
 chain come last.** Every embedded instinct says start at the bootloader. With
 no serial console that instinct is wrong here — it would mean debugging a
-display driver through a device that cannot tell us anything. So ArkOS stays,
-resented but useful, until pid351 can stand up on its own.
+display driver through a device that cannot tell us anything.
+
+**Done, and the order paid off.** pid351 now boots its own mainline 6.12.103
+kernel and runs as PID 1; the vendor system is a rollback, not a host. The
+detour was not free but it was cheaper than the alternative, and building our
+own kernel immediately exposed two operating points ROCKNIX's device tree had
+been deleting.
 
 ## The three loops
 
@@ -34,16 +41,16 @@ resented but useful, until pid351 can stand up on its own.
 |---|---|---|
 | A — laptop, SDL3 | ~2s | frontend, menu, savestates, core integration. ~90% of the work. |
 | B — device over ssh | ~20s | KMS, RGA, evdev, ALSA, power measurement. |
-| C — reflash card | ~3min | kernel, DTB, init. Deferred to phase 4, then made cheap by U-Boot `ums`. |
+| C — reflash card | ~3min | kernel, DTB, init. Now the only loop the device has: with the vendor userspace gone there is no ssh, so B is closed and everything device-side arrives through the boot log. `ums` would make C cheap and is still unbuilt. |
 
 ## Phase 0 — ground truth
 
 Goal: know exactly what this unit exposes. **No modifications to the SD card.**
 
-- [ ] 0.1 Network link to ArkOS — dongle in host mode, else `g_ether` gadget. ssh in.
-- [ ] 0.2 Cross toolchain on the laptop.
-- [ ] 0.3 `make push`, run the recon binary.
-- [ ] 0.4 Write `docs/hardware.md`: kernel version, `/proc/config.gz`, live DTB,
+- [x] 0.1 Network link to ArkOS — dongle in host mode, else `g_ether` gadget. ssh in.
+- [x] 0.2 Cross toolchain on the laptop.
+- [x] 0.3 `make push`, run the recon binary.
+- [x] 0.4 Write `docs/hardware.md`: kernel version, `/proc/config.gz`, live DTB,
       DRM connectors + modes, evdev nodes and which is the gamepad, ALSA card,
       backlight range, battery sysfs, cpufreq table, RGA node.
 
@@ -59,16 +66,26 @@ event node, and whether rotation is already handled for us.
 
 ## Phase 1 — the binary runs on the device
 
-- [ ] 1.1 DRM/KMS dumb buffers, double buffered, page flip on vblank — which is
+- [x] 1.1 DRM/KMS dumb buffers, double buffered, page flip on vblank — which is
       also the frame clock, so the main loop blocks rather than spins.
-- [ ] 1.2 evdev input.
-- [ ] 1.3 CPU 2x blit and rotation. GBA needs nothing more than this.
-- [ ] 1.4 RGA-accelerated scale/rotate, behind the fallback from 1.3.
-- [ ] 1.5 ALSA out, large buffers, few wakeups.
-- [ ] 1.6 Battery telemetry and benchmark mode.
+- [x] 1.2 evdev input.
+- [x] 1.3 CPU 2x blit and rotation. GBA needs nothing more than this.
+- [x] 1.4 ~~RGA-accelerated scale/rotate~~. **Rejected, twice over.** No RGA
+      node exists in the device tree, and no plane carries a rotation
+      property, so neither the RGA nor the VOP can do this - it was never a
+      fallback, it is the only mechanism. Moot anyway: the staged blit is
+      under 5% of a frame.
+- [x] 1.5 ALSA out. Raw ioctls, no alsa-lib, one implementation shared by
+      both targets. Resampled to the panel in exact integer arithmetic.
+      Measured on the laptop only; **not yet run on the device.** Note the
+      "large buffers, few wakeups" premise lost on measurement - see
+      `docs/hardware.md`.
+- [x] 1.6 Battery telemetry and benchmark mode.
 
 **Exit criteria:** the test pattern is on the panel, right way up, all four
-border edges visible, d-pad moves the box, paced at 59.727Hz and measured.
+border edges visible, d-pad moves the box, paced at 60.0186 Hz and measured.
+The 59.727 Hz above was wrong - the mode's own timing is exact and says
+otherwise.
 
 ## Phase 2 — it plays games
 
@@ -85,7 +102,11 @@ Driven by the harness from 1.6, never by folklore. Each change gets a measured
 before and after, ranked by actual milliwatts. Mostly done, and the ranking
 came out nothing like the folklore - see `docs/hardware.md`. Settled:
 
-- [x] OPP cap. 1296 -> 1008 MHz is 21.5 mA and costs no frames. The kernel's
+- [x] OPP cap. 1296 -> 1008 MHz is **54 mA** and costs no frames. (The 21.5 mA
+      once quoted here came from selecting an OPP through the governor with no
+      check that the core held it. Pinned and re-measured, 816 MHz is 75 mA and
+      600 MHz is 89 mA - neither existed on ROCKNIX, whose DT deletes them.)
+      The kernel's
       own energy model agrees: `EM: OPP:1296000 is inefficient`, because 1296
       and 1416 share the 1.35 V rail. Use 1008, or 1416. Never 1296.
 - [x] Backlight. Full range is 42.0 mA, 10.8% - real, but not the dominant
