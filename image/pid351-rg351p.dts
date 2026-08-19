@@ -26,6 +26,34 @@
  */
 #include "rk3326-anbernic-rg351m.dts"
 
+/*
+ * The backlight starts dark, and pid351 raises it once there is something to
+ * look at.
+ *
+ * pwm-backlight with no brightness-levels invents its own table from the PWM
+ * period and lights the panel at half of it the moment it probes, around 0.4
+ * seconds in - and what the display controller is scanning out at that point
+ * is still U-Boot's framebuffer, because nothing has set a mode yet. That is
+ * the white flash: a second of the bootloader's own screen, at full
+ * brightness, with its text in the corner, ending only when fbcon takes over
+ * at 1.09 s and clears to black.
+ *
+ * The levels here reproduce the invented table exactly - 1667 entries, 0 to
+ * 1666, one per step, so 833 is still half brightness and every number
+ * already written down about this panel still means what it did. The only
+ * thing that changes is where it starts.
+ *
+ * The risk this takes is real and is handled in main.c: a machine whose
+ * screen is dark until userspace says otherwise cannot show a failure that
+ * happens first, so every path that gives up raises the backlight before it
+ * says why.
+ */
+&backlight {
+	brightness-levels = <0 1666>;
+	num-interpolated-steps = <1666>;
+	default-brightness-level = <0>;
+};
+
 / {
 	model = "Anbernic RG351P (pid351)";
 

@@ -40,6 +40,11 @@
  * rather than the reverse, because the panel cannot be retuned. */
 #define FRAME_US 16661          /* 60.0186 Hz, the panel */
 
+/* How long the wordmark stays up before the game does. Two seconds because
+ * that is what was asked for, and the reasoning stands on its own: a splash
+ * that lasts less than half a second is not a splash, it is a glitch. */
+#define SPLASH_HOLD_US 2000000u
+
 #define C_BG     RGB565(  8, 10, 14)
 #define C_PANEL  RGB565( 20, 24, 32)
 #define C_EDGE   RGB565( 46, 56, 72)
@@ -407,6 +412,23 @@ static void sysinfo_read(struct sysinfo_s *s)
 
 #define GOV_PATH "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
 #define BL_PATH  "/sys/class/backlight/backlight/brightness"
+
+/* Half of the panel's 1666 steps, which is what the kernel used to pick for
+ * itself before the device tree told it to start dark. Every measurement in
+ * docs/ was taken here, so it is not a preference - changing it invalidates
+ * the drain figures. A brightness control belongs in the menu, on top of this
+ * as the value it starts from. */
+#define BL_ON 833
+
+/* The panel is dark from reset until this is called, so that the second of
+ * U-Boot's leftover screen between the backlight probing and anything setting
+ * a mode is never lit. Called from splash(), which is the first thing every
+ * path presents, and from every path that fails before getting there - a dark
+ * screen and a broken one look identical, and only one of them can be
+ * diagnosed by looking at it.
+ *
+ * Fails silently off the device, where there is no such file. */
+static void backlight(long v);
 
 static int write_long(const char *path, long v)
 {
@@ -1298,11 +1320,20 @@ static void splash(const char *line)
     gfx_text(&c, (PANEL_W - gfx_text_w(line, 1)) / 2,
              PANEL_H / 2 + FONT_H, line, 1, C_DIM);
     plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
+    /* After the flip, never before: the whole point of starting dark is that
+     * the backlight comes up on our first frame and not on whatever was on
+     * the panel beforehand. */
+    backlight(BL_ON);
 }
 
 /* Where ROMs live on the card, relative to the FAT partition's root. A
  * compile-time constant because there is no config file and never will be
  * one; the card layout is as fixed as the hardware. */
+static void backlight(long v)
+{
+    write_long(BL_PATH, v);
+}
+
 #define ROM_DIR "pid351/roms"
 
 /* First file in `dir` that some core claims, by name order so that the same
@@ -1620,12 +1651,14 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
 static int run_game(const char *rom, int as_init)
 {
     if (plat_init() != 0) {
+        backlight(BL_ON);
         fprintf(stderr, "%spid351: platform init failed\n",
             plat_is_init() ? "<3>" : "");
         plat_boot_save_log("pid351-fail.log");
         plat_boot_shutdown(1);
         return 1;
     }
+    uint64_t splashed = plat_now_us();
     splash("LOADING");
     if (aud_open() != 0)
         printf("pid351: WARN continuing without audio\n");
@@ -1641,6 +1674,18 @@ static int run_game(const char *rom, int as_init)
         plat_boot_shutdown(1);
         return 1;
     }
+
+    /* Hold the splash. Asked for, and the request is better than it sounds:
+     * loading takes about eight hundred milliseconds, which is long enough to
+     * see something appear and too short to read it, so the machine went from
+     * a bootloader to Mario via a flicker that looked like a fault.
+     *
+     * The wait is at the end rather than the beginning, so the loading
+     * happens inside it and costs nothing extra - only the remainder is spent
+     * waiting. Blocking, not spinning, per the rules. The codec is prepared
+     * but not started (ALSA's start threshold is half a buffer and nothing
+     * has written a frame yet), so no underrun accrues while we sit here. */
+    plat_sleep_until(splashed + SPLASH_HOLD_US);
 
     uint64_t start = plat_now_us(), next = start, mark = start;
     /* A drain curve rather than two endpoints. Over five minutes the gauge
@@ -1854,6 +1899,11 @@ static int run_game(const char *rom, int as_init)
     fflush(stdout);
     core_close();
     aud_close();
+    /* Before plat_shutdown, which drops DRM master and lets fbcon restore
+     * itself onto the panel. Whatever it restores - and it has been the
+     * bootloader's leftovers both times anyone looked - is not something to
+     * show on the way out. Dark first, then let go. */
+    backlight(0);
     plat_shutdown();
     if (as_init) {
         plat_boot_save_log("pid351-boot.log");
@@ -1899,6 +1949,7 @@ int main(int argc, char **argv)
     }
 
     if (plat_init() != 0) {
+        backlight(BL_ON);
         fprintf(stderr, "%spid351: platform init failed\n",
             plat_is_init() ? "<3>" : "");
         /* A failed display bring-up is exactly the case where the screen
@@ -2210,6 +2261,7 @@ int main(int argc, char **argv)
            reason, frames, fps);
     fflush(stdout);
     aud_close();
+    backlight(0);
     plat_shutdown();
 
     /* Does not return when we are PID 1 - reaching the end of main as PID 1
