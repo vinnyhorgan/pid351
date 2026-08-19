@@ -19,6 +19,8 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -834,6 +836,91 @@ static void draw_testcard(canvas_t *c, const char *label, unsigned frame)
     gfx_text(c, 3, c->h - 10, "L1/R1 SOURCE", 1, C_DIM);
 }
 
+
+/* ------------------------------------------------------------- session log
+ *
+ * Enough measurement, taken during real play, to settle whether this machine
+ * is doing the job - without needing a second session to answer the question
+ * the first one raised. That has happened repeatedly here: a run showed fast
+ * mode was slow but not why, showed the audio ring falling but not whether it
+ * converged, showed a blit spike but not what else was happening in that
+ * frame. All three were answerable from data the loop already had and threw
+ * away.
+ *
+ * So every frame is kept, not just a rolling window, and the analysis happens
+ * on the device at exit. A distribution beats an average and a percentile
+ * beats a maximum: one late frame in a session is noise, one in fifty is a
+ * defect, and min/med/max cannot tell those apart.
+ *
+ * 32768 frames is about nine minutes at 60 Hz and 640 KB, which on a machine
+ * with a gigabyte and one process is not worth a smaller number. Sessions
+ * past that keep the first nine minutes and say so rather than wrapping,
+ * because a wrapped buffer silently reports the end of a session as though
+ * it were the whole of it. */
+#define TELE_MAX 32768
+
+struct tele_frame {
+    uint32_t emu_us;     /* core_run plus any core_skip in this iteration */
+    uint32_t scale_us;   /* the resampler */
+    uint32_t blit_us;    /* rotate into scanout, plus the bar */
+    uint32_t wait_us;    /* blocked on vblank - idle, not work */
+    uint32_t work_us;    /* whole iteration bar the sleep */
+    /* work minus the vblank wait: the CPU time the frame actually cost, and
+     * the only one of these that answers whether the machine keeps up. Once
+     * the loop is vblank locked, work_us is pinned to the panel period no
+     * matter how much or how little is being done inside it, so counting
+     * frames where work_us overran would report the panel rather than us. */
+    uint32_t busy_us;
+};
+
+static struct tele_frame tele[TELE_MAX];
+static int tele_n;
+static int tele_lost;            /* frames past the buffer, counted not kept */
+
+static void tele_add(const struct tele_frame *f)
+{
+    if (tele_n < TELE_MAX)
+        tele[tele_n++] = *f;
+    else
+        tele_lost++;
+}
+
+/* Exact percentiles over the whole session rather than a sampled estimate.
+ * Sorting 32768 uint32 at exit costs a few milliseconds on a machine that is
+ * about to power off, which is the cheapest measurement in the project. */
+static uint32_t tele_pct(uint32_t *sorted, int n, int pct)
+{
+    int i;
+
+    if (n <= 0)
+        return 0;
+    i = (int)(((long)n * pct) / 100);
+    if (i >= n)
+        i = n - 1;
+    return sorted[i];
+}
+
+/* One field of every recorded frame, sorted, as p50/p90/p99/max. The name is
+ * padded here rather than at the call site so the columns line up in a log
+ * that will be read in a terminal at 80 columns. */
+static void tele_report_field(const char *name, size_t off, uint32_t budget)
+{
+    static uint32_t tmp[TELE_MAX];
+    int i;
+
+    if (tele_n <= 0)
+        return;
+    for (i = 0; i < tele_n; i++)
+        tmp[i] = *(const uint32_t *)((const char *)&tele[i] + off);
+    sort_u32(tmp, tele_n);
+
+    printf("pid351:   %-8s p50 %6u  p90 %6u  p99 %6u  max %6u us  %5.1f%% "
+           "of frame\n",
+           name, tele_pct(tmp, tele_n, 50), tele_pct(tmp, tele_n, 90),
+           tele_pct(tmp, tele_n, 99), tmp[tele_n - 1],
+           (double)tele_pct(tmp, tele_n, 50) * 100.0 / (double)budget);
+}
+
 /* ------------------------------------------------------------ power slope */
 
 /* The question this answers is the one the whole project turns on, and it has
@@ -1162,7 +1249,7 @@ static int first_rom(const char *dir, char *out, size_t outsz)
  * picture for a real if smaller speed gain, which is the trade that was
  * asked for. The status line reports the multiple actually achieved so the
  * difference between four and what the silicon does is never a guess. */
-#define FAST_EXTRA 3
+#define FAST_EXTRA 5
 
 /* The status bar down the side of a game.
  *
@@ -1277,6 +1364,105 @@ static void draw_bar(uint32_t held)
  * core can be proven end to end before there is any menu to reach it
  * through, which is the same order the display and the pad were brought up
  * in. The frontend replaces the ROM argument, not this loop. */
+
+/* Session counters. File scope rather than parameters because there is one
+ * session per boot by construction, and the alternative was a fifteen
+ * argument function. */
+static unsigned n_save, n_load, n_undo;
+static unsigned fast_panel, fast_emu, late_frames;
+static int ring_lo = INT32_MAX, ring_hi;
+static long temp_hi = -300000;
+static struct sysinfo_s si_start;
+
+/* The whole session, analysed on the device, at exit.
+ *
+ * On the device because the alternative is a log of numbers and a laptop to
+ * turn them into an answer, and every time that has happened here the answer
+ * arrived a session late. The machine has the data and nothing else to do
+ * with the last twenty milliseconds before it powers off.
+ *
+ * The verdict lines at the end are deliberately stated as thresholds that
+ * pass or fail rather than as values to be interpreted. A number invites the
+ * reader to decide what it means; the point of writing them down in advance
+ * is that the criterion was fixed before the measurement. */
+static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
+                         uint64_t start)
+{
+    struct sysinfo_s si;
+    double secs = (double)(plat_now_us() - start) / 1000000.0;
+    unsigned normal = frames > fast_panel ? frames - fast_panel : 0;
+    double core_hz = (double)core_fps_milli() / 1000.0;
+
+    sysinfo_read(&si);
+    if (si.temp_mc > temp_hi)
+        temp_hi = si.temp_mc;
+
+    printf("\npid351: ==== session report ====\n");
+    printf("pid351: exit (%s) %.1f s, %u panel frames, %u emulated\n",
+           reason, secs, frames, emu);
+    if (tele_lost)
+        printf("pid351: NOTE %d frames past the buffer were not kept\n",
+               tele_lost);
+
+    printf("pid351: per frame, over %d frames (budget %u us):\n",
+           tele_n, (unsigned)FRAME_US);
+    tele_report_field("emu",   offsetof(struct tele_frame, emu_us),   FRAME_US);
+    tele_report_field("scale", offsetof(struct tele_frame, scale_us), FRAME_US);
+    tele_report_field("blit",  offsetof(struct tele_frame, blit_us),  FRAME_US);
+    tele_report_field("busy",  offsetof(struct tele_frame, busy_us),  FRAME_US);
+    tele_report_field("work",  offsetof(struct tele_frame, work_us),  FRAME_US);
+    tele_report_field("vblank", offsetof(struct tele_frame, wait_us), FRAME_US);
+
+    printf("pid351: pacing: %u over budget of %u normal frames (%.3f%%), "
+           "%.4f fps against %.4f panel\n",
+           late_frames, normal,
+           normal ? (double)late_frames * 100.0 / (double)normal : 0.0,
+           secs > 0 ? (double)frames / secs : 0.0,
+           1000000.0 / (double)FRAME_US);
+
+    if (fast_panel)
+        printf("pid351: fast mode: %u panel frames, %u emulated, %.2fx per "
+               "frame, %.2fx wall clock\n",
+               fast_panel, fast_emu,
+               (double)(fast_emu + fast_panel) / (double)fast_panel,
+               core_hz > 0 ? (double)(fast_emu + fast_panel)
+                             / (double)fast_panel
+                             * (1000000.0 / (double)FRAME_US) / core_hz : 0.0);
+    else
+        printf("pid351: fast mode: never used\n");
+
+    printf("pid351: audio: %d xruns, core ring %d..%d, codec level %d\n",
+           aud_xruns(), ring_lo == INT32_MAX ? 0 : ring_lo, ring_hi,
+           aud_level());
+    printf("pid351: state: %u saved, %u loaded, %u undone\n",
+           n_save, n_load, n_undo);
+    printf("pid351: power: %ld%% -> %ld%%, %ld -> %ld uA, %ld MHz, "
+           "temp %ld.%01ld -> %ld.%01ld peak %ld.%01ld C\n",
+           si_start.capacity, si.capacity, si_start.current_ua, si.current_ua,
+           si.cpu_khz / 1000,
+           si_start.temp_mc / 1000, (si_start.temp_mc % 1000) / 100,
+           si.temp_mc / 1000, (si.temp_mc % 1000) / 100,
+           temp_hi / 1000, (temp_hi % 1000) / 100);
+    if (si_start.charge_uah > 0 && si.charge_uah > 0 && secs > 30.0)
+        printf("pid351: drain: %ld uAh over %.1f s = %.0f mA average\n",
+               si_start.charge_uah - si.charge_uah, secs,
+               (double)(si_start.charge_uah - si.charge_uah) / secs
+                   * 3600.0 / 1000.0);
+
+    /* Thresholds fixed in advance. See the comment above. */
+    printf("pid351: verdict:\n");
+    printf("pid351:   pacing   %s  (late frames under 0.1%%)\n",
+           normal && (double)late_frames / (double)normal < 0.001
+               ? "PASS" : "FAIL");
+    printf("pid351:   audio    %s  (no xrun after the first 5 s)\n",
+           aud_xruns() <= 1 ? "PASS" : "FAIL");
+    printf("pid351:   ring     %s  (never starved)\n",
+           ring_lo != INT32_MAX && ring_lo > 0 ? "PASS" : "FAIL");
+    printf("pid351:   thermal  %s  (peak under 70 C)\n",
+           temp_hi < 70000 ? "PASS" : "FAIL");
+    fflush(stdout);
+}
+
 static int run_game(const char *rom, int as_init)
 {
     if (plat_init() != 0) {
@@ -1303,9 +1489,14 @@ static int run_game(const char *rom, int as_init)
 
     uint64_t start = plat_now_us(), next = start, mark = start;
     unsigned frames = 0, win = 0, emu = 0;
+    unsigned emu_total = 0;
     uint32_t blit_hi = 0, scale_hi = 0;
     const char *reason = "?";
     uint32_t was = 0;
+    /* Battery and temperature at both ends of the session. The exchange rate
+     * in docs/hardware.md was measured with synthetic load; this asks the
+     * same question of the workload that actually runs. */
+    sysinfo_read(&si_start);
 
 
     for (;;) {
@@ -1315,10 +1506,24 @@ static int run_game(const char *rom, int as_init)
         uint32_t hit = held & ~was;
         was = held;
 
-        if (hit & PAD_L2)
+        if (hit & PAD_L2) {
             printf("pid351: save %s\n", core_state_save() == 0 ? "ok" : "FAILED");
-        if (hit & PAD_L3)
+            n_save++;
+        }
+        if (hit & PAD_L3) {
             printf("pid351: load %s\n", core_state_load() == 0 ? "ok" : "none");
+            n_load++;
+        }
+        /* Undo, on the one control left that no console can ever want. It
+         * restores whatever was running immediately before the last load,
+         * which is the only way back from pressing load by accident - and
+         * core_state_undo has existed and been unreachable since the day
+         * savestates went in, which made an accidental load the one action on
+         * this machine that could destroy something and not be taken back. */
+        if (hit & PAD_R3) {
+            printf("pid351: undo %s\n", core_state_undo() == 0 ? "ok" : "none");
+            n_undo++;
+        }
         if ((held & PAD_START) && (held & PAD_SELECT)) { reason = "combo"; break; }
         if (plat_should_quit())                        { reason = "quit";  break; }
 
@@ -1329,15 +1534,28 @@ static int run_game(const char *rom, int as_init)
          * Elapsed rather than a deadline, so that a loop already running late
          * still gets its extra frames instead of silently doing nothing at
          * exactly the moment speed was asked for. */
-        if (held & PAD_R2) {
+        struct tele_frame tf;
+        memset(&tf, 0, sizeof tf);
+        uint64_t f0 = plat_now_us();
+        int fast = (held & PAD_R2) != 0;
+
+        if (fast) {
             for (int i = 0; i < FAST_EXTRA; i++) {
                 core_skip(held);
                 emu++;
+                emu_total++;
+                fast_emu++;
             }
+            fast_panel++;
         }
 
         int w = 0, h = 0;
         const px_t *fb = core_run(held, &w, &h);
+        /* Emulation is the largest single cost in the frame and was the only
+         * one never measured - every statement about it so far was solved for
+         * from the others, which is how it came to be quoted as 8.7 ms when
+         * it is nearer 7.5. */
+        tf.emu_us = (uint32_t)(plat_now_us() - f0);
         /* After the run, because the core produces this frame's samples
          * during it, and before the present, because the present blocks on
          * vblank and the codec should not be waiting through that. */
@@ -1350,18 +1568,41 @@ static int run_game(const char *rom, int as_init)
         /* Worst case over the window, not the mean: the question this
          * answers is whether presenting a frame ever fails to fit in the
          * panel period, and an average cannot say. */
-        uint32_t pb = 0, ps = 0;
-        plat_frame_us(&pb, NULL, &ps);
+        uint32_t pb = 0, ps = 0, pw = 0;
+        plat_frame_us(&pb, &pw, &ps);
         if (pb > blit_hi)  blit_hi  = pb;
         if (ps > scale_hi) scale_hi = ps;
+        tf.scale_us = ps;
+        tf.blit_us  = pb;
+        tf.wait_us  = pw;
+        tf.work_us  = (uint32_t)(plat_now_us() - f0);
+        tf.busy_us  = tf.work_us > tf.wait_us ? tf.work_us - tf.wait_us : 0;
+        if (!fast && tf.busy_us > FRAME_US)
+            late_frames++;
+        tele_add(&tf);
+
+        int rl = core_audio_level();
+        if (rl >= 0) {
+            if (rl < ring_lo) ring_lo = rl;
+            if (rl > ring_hi) ring_hi = rl;
+        }
 
         frames++;
         win++;
         emu++;
+        emu_total++;
         uint64_t now = plat_now_us();
 
         if (now - mark >= 5000000) {
             double secs = (double)(now - mark) / 1000000.0;
+            /* Once per window, alongside a print that already costs more.
+             * The peak matters more than either endpoint: thermal throttling
+             * would show up as late frames long after the temperature that
+             * caused it had fallen back. */
+            struct sysinfo_s sw;
+            sysinfo_read(&sw);
+            if (sw.temp_mc > temp_hi)
+                temp_hi = sw.temp_mc;
             /* Emulated frames as well as panel frames: in fast mode they
              * differ, and the ratio is the only honest answer to how fast
              * fast mode actually is on this machine. */
@@ -1383,7 +1624,7 @@ static int run_game(const char *rom, int as_init)
         plat_sleep_until(next);
     }
 
-    printf("pid351: exit (%s) after %u frames\n", reason, frames);
+    tele_verdict(reason, frames, emu_total, start);
     fflush(stdout);
     core_close();
     aud_close();

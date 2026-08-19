@@ -53,6 +53,27 @@ done
 # be a thing that can eat one.
 if [ -d "$HERE/../roms" ]; then
     mkdir -p "$CARD/pid351/roms"
+
+    # Mirror, not merge. The launcher takes the alphabetically first ROM a
+    # core will accept, so a ROM left behind from a previous install silently
+    # keeps winning - "smb.nes" sorts before "smb3.nes" and the card boots the
+    # game you thought you had replaced.
+    #
+    # Only files with a ROM extension are removed. Savestates live in this
+    # same directory and are the only record this machine keeps of a game;
+    # an installer that can eat one is a worse bug than any it could fix.
+    for f in "$CARD/pid351/roms"/*; do
+        [ -f "$f" ] || continue
+        b=$(basename "$f")
+        case "$b" in
+            *.nes|*.sfc|*.smc|*.gba|*.md|*.gen|*.bin) ;;
+            *) continue ;;
+        esac
+        [ -f "$HERE/../roms/$b" ] && continue
+        rm -f "$f"
+        echo "    removed stale $b"
+    done
+
     n=0
     for f in "$HERE/../roms"/*; do
         [ -f "$f" ] || continue

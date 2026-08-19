@@ -77,4 +77,9 @@ int core_fps_mhz(void);      /* the core's own refresh, millihertz */
  * a rate conversion that is slightly wrong shows up first. */
 int core_audio_level(void);
 
+/* The core's own frame rate in millihertz - 60100 for NTSC NES. The panel is
+ * 60018, and the difference is why anything reporting a speed multiple has to
+ * divide by this rather than by 60. */
+int core_fps_milli(void);
+
 #endif /* CORE_H */

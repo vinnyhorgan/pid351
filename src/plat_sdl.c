@@ -5,6 +5,7 @@
  * without the handheld being involved at all. It is not shipped to the device
  * and never will be.
  */
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -22,10 +23,22 @@ static SDL_Window   *win;
 static SDL_Renderer *ren;
 static SDL_Texture  *tex;
 static int tex_w, tex_h;
-static int quit_requested;
+/* volatile sig_atomic_t because a signal handler writes it. Ctrl-C and
+ * SIGTERM are the laptop's equivalent of Start+Select: without them the host
+ * build dies before it can print its session report, which made the one
+ * backend where a report is easy to read the one that never produced one. */
+static volatile sig_atomic_t quit_requested;
+
+static void on_signal(int sig)
+{
+    (void)sig;
+    quit_requested = 1;
+}
 
 int plat_init(void)
 {
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "pid351: SDL_Init: %s\n", SDL_GetError());
         return 1;

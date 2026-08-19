@@ -566,10 +566,22 @@ lever we actually control.
 ### Panel timing
 
 `clock=17000 kHz htotal=584 vtotal=485` gives **60.019 Hz** by arithmetic and
-**60.109 Hz** measured over 300 flips. We pace to a hardcoded 59.727, so the
-panel is 0.64% faster than we present and a frame is shown twice about every
-2.6 seconds. For GBA at 59.7275 Hz the fix is the pixel clock: 59.727 x 584 x
-485 = **16917 kHz**. Adjusting vtotal instead only reaches 59.78 Hz.
+**60.109 Hz** measured over 300 flips.
+
+**[fixed]** We used to pace to a hardcoded 59.727, which made the panel 0.64%
+faster than we presented and showed a frame twice about every 2.6 seconds.
+`FRAME_US` is now 16661 - 60.0204 Hz, the panel - and a 597 frame session
+measured 60.0200 fps against it, so every emulated frame is presented exactly
+once and nothing is duplicated or dropped.
+
+What remains is not a pacing error but a rate difference: fceumm declares
+60.100 fps and we present at 60.019, so an NES game runs **0.133% slow**.
+core.c prints that stretch at load. It is 4.8 seconds in an hour and about
+0.02 of a semitone, and correcting it would mean duplicating a frame every
+12 seconds - which is the artefact, not the cure. Left alone deliberately.
+
+For GBA at 59.7275 Hz the fix would be the pixel clock: 59.727 x 584 x 485 =
+**16917 kHz**. Adjusting vtotal instead only reaches 59.78 Hz.
 
 ## Extracted from the card, no run required
 

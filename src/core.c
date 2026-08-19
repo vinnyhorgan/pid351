@@ -340,6 +340,11 @@ int core_audio_level(void)
     return cur ? (int)ring_level() : -1;
 }
 
+int core_fps_milli(void)
+{
+    return core_fps;
+}
+
 /* ------------------------------------------------------------- input */
 
 static void cb_input_poll(void) { }
