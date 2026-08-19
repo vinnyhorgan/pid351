@@ -181,10 +181,10 @@ static int fmt_agreed;
 static px_t vbuf[PANEL_W * PANEL_H];
 static int vw, vh, vnew;
 
-/* Fast mode. `fast_extra` is how many additional emulated frames to run per
- * panel frame, and `discard` marks a run whose picture and samples are thrown
- * away rather than shown and heard. */
-static int fast_extra, discard;
+/* Fast mode. `discard` marks a run whose picture and samples are thrown away
+ * rather than shown and heard; `fast_frame` records that this panel frame had
+ * any, which is what core_audio silences on. */
+static int discard, fast_frame;
 
 static void cb_video(const void *data, unsigned width, unsigned height,
                      size_t pitch)
@@ -324,8 +324,9 @@ void core_audio(void)
      * fast mode with its read position somewhere the ring has never been.
      * Silence rather than the chopped one-in-four audio that keeping the
      * samples would give, which is worse to listen to than nothing. */
-    if (fast_extra > 0)
+    if (fast_frame)
         memset(out, 0, (size_t)n * 2 * sizeof out[0]);
+    fast_frame = 0;
 
     aud_write(out, n);
 }
@@ -662,23 +663,24 @@ const px_t *core_run(uint32_t held, int *w, int *h)
         return NULL;
     pad_held = held;
     vnew = 0;
-    /* The skipped frames run first so that the one we keep is the newest,
-     * which is what makes fast mode feel like fast motion rather than like
-     * dropped frames. */
-    for (int i = 0; i < fast_extra; i++) {
-        discard = 1;
-        cur->run();
-    }
-    discard = 0;
     cur->run();
     if (w) *w = vw;
     if (h) *h = vh;
     return vw && vh ? vbuf : NULL;
 }
 
-void core_fast(int extra)
+void core_skip(uint32_t held)
 {
-    fast_extra = extra < 0 ? 0 : extra;
+    if (!cur)
+        return;
+    /* Skipped frames run before the kept one so that what reaches the panel
+     * is the newest, which is what makes fast mode read as fast motion rather
+     * than as dropped frames. */
+    pad_held = held;
+    discard = 1;
+    cur->run();
+    discard = 0;
+    fast_frame = 1;
 }
 
 const char *core_name(void)   { return cur ? cur->name : "none"; }

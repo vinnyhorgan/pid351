@@ -1147,10 +1147,20 @@ static int first_rom(const char *dir, char *out, size_t outsz)
     return found;
 }
 
-/* Four times speed. Enough to be worth reaching for and low enough that the
- * A35 still lands every panel frame; past this the frame loop starts running
- * late, which reads as stutter rather than as speed. */
-#define FAST_EXTRA 3
+/* Fast mode spends whatever is left of the panel frame on extra emulated
+ * frames, rather than a fixed multiplier.
+ *
+ * A constant would have to be chosen for the slowest thing we ever run at the
+ * capped 1008 MHz OPP, and would then leave a faster core crawling; chosen
+ * for the fastest, it misses the vblank and reads as stutter rather than as
+ * speed. Neither is knowable from here, and both are wrong on some ROM.
+ *
+ * FAST_BUDGET_US is what the skipped frames may take. The rest of the 16.6 ms
+ * belongs to the frame we keep and to the rotate-and-blit onto the panel,
+ * which is the expensive part on an in-order A35 writing to write-combined
+ * scanout. FAST_MAX is only a runaway stop. */
+#define FAST_BUDGET_US 9000
+#define FAST_MAX       15
 
 /* Runs one ROM and nothing else: no demo, no sweep, no census.
  *
@@ -1183,7 +1193,7 @@ static int run_game(const char *rom, int as_init)
     }
 
     uint64_t start = plat_now_us(), next = start, mark = start;
-    unsigned frames = 0, win = 0;
+    unsigned frames = 0, win = 0, emu = 0;
     const char *reason = "?";
     uint32_t was = 0;
 
@@ -1203,8 +1213,19 @@ static int run_game(const char *rom, int as_init)
 
         /* R2 rather than a stick click: no console we target has a second
          * pair of shoulders, so R2 is as safe as L3/R3 and, unlike a stick
-         * click, comfortable to hold down while still playing. */
-        core_fast((held & PAD_R2) ? FAST_EXTRA : 0);
+         * click, comfortable to hold down while still playing.
+         *
+         * Elapsed rather than a deadline, so that a loop already running late
+         * still gets its extra frames instead of silently doing nothing at
+         * exactly the moment speed was asked for. */
+        if (held & PAD_R2) {
+            uint64_t t0 = plat_now_us();
+            for (int i = 0; i < FAST_MAX
+                 && plat_now_us() - t0 < FAST_BUDGET_US; i++) {
+                core_skip(held);
+                emu++;
+            }
+        }
 
         int w = 0, h = 0;
         const px_t *fb = core_run(held, &w, &h);
@@ -1217,13 +1238,21 @@ static int run_game(const char *rom, int as_init)
 
         frames++;
         win++;
+        emu++;
         uint64_t now = plat_now_us();
         if (now - mark >= 5000000) {
-            printf("pid351: %s %.2f fps  frames=%u  ring=%d  aud=%d x%d\n",
-                   core_name(), (double)win * 1000000.0 / (double)(now - mark),
+            double secs = (double)(now - mark) / 1000000.0;
+            /* Emulated frames as well as panel frames: in fast mode they
+             * differ, and the ratio is the only honest answer to how fast
+             * fast mode actually is on this machine. */
+            printf("pid351: %s %.2f fps  emu %.2f (%.2fx)  frames=%u  "
+                   "ring=%d  aud=%d x%d\n",
+                   core_name(), (double)win / secs, (double)emu / secs,
+                   (double)emu / (double)win,
                    frames, core_audio_level(), aud_level(), aud_xruns());
             fflush(stdout);
             win = 0;
+            emu = 0;
             mark = now;
         }
 

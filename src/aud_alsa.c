@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -63,6 +64,127 @@ static int wait_for_card(void)
         }
     }
     return -1;
+}
+
+/* ---- the mixer, which nothing else sets up -----------------------------
+ *
+ * On the laptop a sound server has already configured the codec before we get
+ * near it. As PID 1 there is no such thing, and the rk817 does not come up in
+ * a state that makes noise:
+ *
+ * - `"Playback Mux"` is a SOC_ENUM_SINGLE_VIRT_DECL, so it has no backing
+ *   register and no reset value - it starts at index 0, `"HP"`. The driver
+ *   says why it exists: the speaker output and the left headphone pin are
+ *   internally the same pad, so the mux makes them mutually exclusive. Left
+ *   alone it routes every sample to a headphone jack with nothing in it.
+ * - `"Master Playback Volume"` has no reg_defaults entry, so its level is
+ *   whatever the chip powers up with rather than anything anyone chose.
+ *
+ * Both are ordinary kcontrols, so they go through the same ioctl interface as
+ * the PCM and alsa-lib stays out of the build. Device only: the laptop's
+ * controls have different names, and a stray write to a control that happens
+ * to share one would change the volume of whatever else is playing. */
+#define AUD_CTL_NODE "/dev/snd/controlC0"
+
+/* 0 dB. The control counts backwards - the driver declares it with xinvert,
+ * so 255 is no attenuation and 0 is -95 dB - and this is the only playback
+ * gain the rk817 has. Attenuating here would throw away DAC resolution to
+ * solve a problem the menu's volume control is for. */
+#define AUD_VOLUME 255
+
+/* "HP" is 0 and "SPK" is 1, in the driver's dac_mux_text order. Fixed to the
+ * speaker: headphone detect is a switch on /dev/input/event1 that nothing
+ * reads yet, so choosing by jack is a change to make when something does. */
+#define AUD_MUX_SPK 1
+
+static int ctl_open(void)
+{
+    int cfd = open(AUD_CTL_NODE, O_RDWR | O_CLOEXEC);
+    if (cfd < 0)
+        printf("pid351: audio mixer %s: %s\n", AUD_CTL_NODE, strerror(errno));
+    return cfd;
+}
+
+/* numid stays zero so the kernel resolves by interface and name, which is
+ * what keeps this readable against a driver we can only read and not run. */
+static void ctl_id(struct snd_ctl_elem_value *v, const char *name)
+{
+    memset(v, 0, sizeof *v);
+    v->id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
+    snprintf((char *)v->id.name, sizeof v->id.name, "%s", name);
+}
+
+static int ctl_set_int(int cfd, const char *name, long a, long b)
+{
+    struct snd_ctl_elem_value v;
+
+    ctl_id(&v, name);
+    v.value.integer.value[0] = a;
+    v.value.integer.value[1] = b;
+    if (ioctl(cfd, SNDRV_CTL_IOCTL_ELEM_WRITE, &v) < 0) {
+        printf("pid351: audio \"%s\" = %ld: %s\n", name, a, strerror(errno));
+        return -1;
+    }
+    printf("pid351: audio \"%s\" = %ld\n", name, a);
+    return 0;
+}
+
+/* Separate from ctl_set_int because the value union's enumerated member is
+ * unsigned int against integer's long. They overlap and little endian would
+ * forgive the confusion, which is exactly why it is not worth relying on. */
+static int ctl_set_enum(int cfd, const char *name, unsigned item)
+{
+    struct snd_ctl_elem_value v;
+
+    ctl_id(&v, name);
+    v.value.enumerated.item[0] = item;
+    if (ioctl(cfd, SNDRV_CTL_IOCTL_ELEM_WRITE, &v) < 0) {
+        printf("pid351: audio \"%s\" = %u: %s\n", name, item, strerror(errno));
+        return -1;
+    }
+    printf("pid351: audio \"%s\" = %u\n", name, item);
+    return 0;
+}
+
+/* Both names are read out of the driver rather than remembered, but a name
+ * that does not resolve fails silently as far as the speaker is concerned -
+ * and a device round trip costs a reflash and a reboot. So when one misses,
+ * print what the card does have, the same way list_snd does for the PCM. One
+ * boot log then settles it instead of three. */
+static void ctl_list(int cfd)
+{
+    struct snd_ctl_elem_list list;
+
+    memset(&list, 0, sizeof list);
+    if (ioctl(cfd, SNDRV_CTL_IOCTL_ELEM_LIST, &list) < 0)
+        return;
+    list.space = list.count;
+    list.pids  = calloc(list.count, sizeof *list.pids);
+    if (!list.pids)
+        return;
+    if (ioctl(cfd, SNDRV_CTL_IOCTL_ELEM_LIST, &list) == 0) {
+        printf("pid351: audio card has %u controls:\n", list.used);
+        for (unsigned i = 0; i < list.used; i++)
+            printf("pid351:   iface %u \"%s\"\n",
+                   list.pids[i].iface, list.pids[i].name);
+    }
+    free(list.pids);
+}
+
+static void mixer_setup(void)
+{
+    if (!plat_is_init())
+        return;
+
+    int cfd = ctl_open();
+    if (cfd < 0)
+        return;
+    int bad = ctl_set_enum(cfd, "Playback Mux", AUD_MUX_SPK) != 0;
+    bad |= ctl_set_int(cfd, "Master Playback Volume",
+                       AUD_VOLUME, AUD_VOLUME) != 0;
+    if (bad)
+        ctl_list(cfd);
+    close(cfd);
 }
 
 static int fd = -1;
@@ -192,6 +314,11 @@ int aud_open(void)
 {
     if (wait_for_card() != 0)
         printf("pid351: audio node %s never appeared\n", AUD_NODE);
+
+    /* Before the PCM opens, so that DAPM powers up the route we actually
+     * want rather than powering up the headphone path and then being asked
+     * to tear it down again. */
+    mixer_setup();
 
     /* O_NONBLOCK on the open only. A PCM node another process already holds
      * makes open() *wait* rather than fail, with no timeout - and a silent

@@ -41,15 +41,14 @@ const px_t *core_run(uint32_t held, int *w, int *h);
  * the amount we owe the codec is decided by the panel, not by the core. */
 void core_audio(void);
 
-/* Fast mode: run this many extra emulated frames per panel frame, throwing
- * their picture and their samples away, and output silence while it is on.
- * Set it every frame - there is no state to unwind, and a mode that has to be
- * turned off is a mode that gets left on.
+/* Runs one emulated frame and throws away its picture and its samples, and
+ * silences this panel frame's audio. Fast mode is a run of these before the
+ * frame that is kept.
  *
- * Held rather than toggled for the same reason. Fast mode costs battery, and
- * battery is the first priority on this machine; a toggle can be left running
- * in a pocket, a held button cannot. */
-void core_fast(int extra);
+ * How many to run is the caller's business, because only the caller knows how
+ * much of the frame is left - a fixed multiplier is either below what the
+ * machine can do or above it, and above it is stutter rather than speed. */
+void core_skip(uint32_t held);
 
 /* Savestates, which are the whole of pid351's save system: cartridge battery
  * RAM is inside the state, so there is nothing a .srm file would add.
