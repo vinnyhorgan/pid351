@@ -900,6 +900,24 @@ static uint32_t tele_pct(uint32_t *sorted, int n, int pct)
     return sorted[i];
 }
 
+/* The median cost of emulating one frame, taken over the frames that
+ * emulated exactly one. A fast frame's emu_us holds six of them, so including
+ * those would put the median wherever the fast/normal ratio happened to fall
+ * and call it the cost of a frame. */
+static uint32_t tele_emu_p50(void)
+{
+    static uint32_t tmp[TELE_MAX];
+    int i, n = 0;
+
+    for (i = 0; i < tele_n; i++)
+        if (tele[i].emu_us < FRAME_US)
+            tmp[n++] = tele[i].emu_us;
+    if (n <= 0)
+        return 1;
+    sort_u32(tmp, n);
+    return tmp[n / 2] ? tmp[n / 2] : 1;
+}
+
 /* One field of every recorded frame, sorted, as p50/p90/p99/max. The name is
  * padded here rather than at the call site so the columns line up in a log
  * that will be read in a terminal at 80 columns. */
@@ -1370,6 +1388,12 @@ static void draw_bar(uint32_t held)
  * argument function. */
 static unsigned n_save, n_load, n_undo;
 static unsigned fast_panel, fast_emu, late_frames;
+/* Wall clock spent in fast mode. Without it the speed multiple has to assume
+ * fast frames are presented at the panel rate, and they are emphatically not:
+ * a 6x frame runs the core six times and takes 54 ms, so the panel drops to
+ * about 19 fps while it is held. The first version of this report made that
+ * assumption and printed 5.99x for something delivering 1.97x. */
+static uint64_t fast_us;
 static int ring_lo = INT32_MAX, ring_hi;
 static long temp_hi = -300000;
 static struct sysinfo_s si_start;
@@ -1420,16 +1444,28 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
            secs > 0 ? (double)frames / secs : 0.0,
            1000000.0 / (double)FRAME_US);
 
-    if (fast_panel)
-        printf("pid351: fast mode: %u panel frames, %u emulated, %.2fx per "
-               "frame, %.2fx wall clock\n",
-               fast_panel, fast_emu,
+    if (fast_panel && fast_us > 0) {
+        double fsec = (double)fast_us / 1000000.0;
+        double efps = (double)(fast_emu + fast_panel) / fsec;
+
+        /* Two different numbers that both deserve to be called the multiple.
+         * Per frame is what was asked for and is exact by construction. Wall
+         * clock is how much faster the game actually gets, and is the only
+         * one that answers "is fast mode fast enough" - they differ by 3x
+         * here because the machine is emulation bound. */
+        printf("pid351: fast mode: %.1f s, %u panel frames, %u emulated, "
+               "%.2fx per frame, %.1f emu fps = %.2fx wall clock\n",
+               fsec, fast_panel, fast_emu + fast_panel,
                (double)(fast_emu + fast_panel) / (double)fast_panel,
-               core_hz > 0 ? (double)(fast_emu + fast_panel)
-                             / (double)fast_panel
-                             * (1000000.0 / (double)FRAME_US) / core_hz : 0.0);
-    else
+               efps, core_hz > 0 ? efps / core_hz : 0.0);
+        printf("pid351:   ceiling is %.2fx - emulation alone is %u us/frame "
+               "at p50, so nothing above that is reachable\n",
+               core_hz > 0 && tele_n ? 1000000.0
+                   / (double)tele_emu_p50() / core_hz : 0.0,
+               tele_emu_p50());
+    } else {
         printf("pid351: fast mode: never used\n");
+    }
 
     printf("pid351: audio: %d xruns, core ring %d..%d, codec level %d\n",
            aud_xruns(), ring_lo == INT32_MAX ? 0 : ring_lo, ring_hi,
@@ -1577,6 +1613,8 @@ static int run_game(const char *rom, int as_init)
         tf.wait_us  = pw;
         tf.work_us  = (uint32_t)(plat_now_us() - f0);
         tf.busy_us  = tf.work_us > tf.wait_us ? tf.work_us - tf.wait_us : 0;
+        if (fast)
+            fast_us += tf.work_us;
         if (!fast && tf.busy_us > FRAME_US)
             late_frames++;
         tele_add(&tf);
