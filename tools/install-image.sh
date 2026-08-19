@@ -54,10 +54,9 @@ done
 if [ -d "$HERE/../roms" ]; then
     mkdir -p "$CARD/pid351/roms"
 
-    # Mirror, not merge. The launcher takes the alphabetically first ROM a
-    # core will accept, so a ROM left behind from a previous install silently
-    # keeps winning - "smb.nes" sorts before "smb3.nes" and the card boots the
-    # game you thought you had replaced.
+    # Mirror, not merge. A ROM left behind from a previous install shows up
+    # in the list as a game the tree no longer has, and the savestate beside
+    # it keeps a dot next to a title nobody meant to keep.
     #
     # Only files with a ROM extension are removed. Savestates live in this
     # same directory and are the only record this machine keeps of a game;
@@ -74,9 +73,18 @@ if [ -d "$HERE/../roms" ]; then
         echo "    removed stale $b"
     done
 
+    # ROMs only, in this direction too. Host test runs leave .state files in
+    # the tree's roms/ next to the ROMs they were made from, and copying one
+    # of those onto the card would overwrite where the player actually was
+    # with where a laptop got to. The card's states are the real ones and
+    # nothing here writes to them.
     n=0
     for f in "$HERE/../roms"/*; do
         [ -f "$f" ] || continue
+        case "$(basename "$f")" in
+            *.nes|*.sfc|*.smc|*.gba|*.md|*.gen|*.bin) ;;
+            *) continue ;;
+        esac
         cp "$f" "$CARD/pid351/roms/"
         n=$((n + 1))
     done
