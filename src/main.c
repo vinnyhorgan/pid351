@@ -870,6 +870,12 @@ struct tele_frame {
     uint32_t scale_us;   /* the resampler */
     uint32_t blit_us;    /* rotate into scanout, plus the bar */
     uint32_t wait_us;    /* blocked on vblank - idle, not work */
+    /* Time inside core_audio, which is mostly time inside aud_write. ALSA
+     * blocks that call when the codec buffer is full, so this is a second
+     * place the loop waits rather than works - and it was being counted as
+     * work. Fast mode leaves the buffer nearly full by design, so every
+     * release of R2 is followed by frames that block here until it drains. */
+    uint32_t aud_us;
     uint32_t work_us;    /* whole iteration bar the sleep */
     /* work minus the vblank wait: the CPU time the frame actually cost, and
      * the only one of these that answers whether the machine keeps up. Once
@@ -1450,12 +1456,14 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
     tele_report_field("scale", offsetof(struct tele_frame, scale_us), FRAME_US, 0);
     tele_report_field("blit",  offsetof(struct tele_frame, blit_us),  FRAME_US, 0);
     tele_report_field("busy",  offsetof(struct tele_frame, busy_us),  FRAME_US, 0);
+    tele_report_field("audio",  offsetof(struct tele_frame, aud_us),  FRAME_US, 0);
     tele_report_field("vblank", offsetof(struct tele_frame, wait_us), FRAME_US, 0);
     if (fast_panel) {
         printf("pid351: fast frames (%u, each runs the core %d times):\n",
                fast_panel, FAST_EXTRA + 1);
         tele_report_field("emu",  offsetof(struct tele_frame, emu_us),  FRAME_US, 1);
         tele_report_field("busy", offsetof(struct tele_frame, busy_us), FRAME_US, 1);
+        tele_report_field("audio", offsetof(struct tele_frame, aud_us), FRAME_US, 1);
     }
 
     printf("pid351: pacing: %u over budget of %u normal frames (%.3f%%), "
@@ -1645,7 +1653,9 @@ static int run_game(const char *rom, int as_init)
         int al = aud_level();
         if (al >= 0 && frames > 300 && al < aud_lo)
             aud_lo = al;
+        uint64_t a0 = plat_now_us();
         core_audio();
+        tf.aud_us = (uint32_t)(plat_now_us() - a0);
         if (fb) {
             draw_bar(held);
             plat_present(fb, w, h, barbuf);
@@ -1662,7 +1672,10 @@ static int run_game(const char *rom, int as_init)
         tf.blit_us  = pb;
         tf.wait_us  = pw;
         tf.work_us  = (uint32_t)(plat_now_us() - f0);
-        tf.busy_us  = tf.work_us > tf.wait_us ? tf.work_us - tf.wait_us : 0;
+        /* Both places the loop blocks come off. Whatever is left is work
+         * this machine actually has to do, and only that can be late. */
+        uint32_t idle = tf.wait_us + tf.aud_us;
+        tf.busy_us  = tf.work_us > idle ? tf.work_us - idle : 0;
         tf.fast = (uint32_t)fast;
         if (fast)
             fast_us += tf.work_us;
