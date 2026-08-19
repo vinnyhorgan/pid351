@@ -559,9 +559,12 @@ void ui_bar(px_t *bar, const char *name, int bright_shown)
     last_name = name;
 
     gfx_rect(&c, 0, 0, BAR_W, PANEL_H, UI_LETTERBOX);
-    /* A single hairline against the picture, so the pillarbox reads as an
-     * edge of the machine rather than as the game failing to fill the screen. */
-    gfx_rect(&c, BAR_W - 1, 0, 1, PANEL_H, UI_PANEL);
+    /* A single hairline against the picture, so the pillarbox reads as an edge
+     * of the machine rather than as the game failing to fill the screen. It
+     * belongs on the seam, which is column zero: the bar is blitted to the
+     * right of the picture, so BAR_W - 1 put it down the outside edge of the
+     * panel instead - a frame on one side of the screen. */
+    gfx_rect(&c, 0, 0, 1, PANEL_H, UI_PANEL);
 
     draw_battery(&c, (BAR_W - BATT_W - 3) / 2, 14, pct, ua);
     if (pct >= 0) {

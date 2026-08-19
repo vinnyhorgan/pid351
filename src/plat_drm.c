@@ -118,10 +118,10 @@ struct dumb_buf {
     px_t    *px;
 };
 
-/* Separate from g.quit because a handler may only touch this type, and
- * because SIGTERM is how first-light.sh ends the run - without this the most
- * informative run would exit through _exit() with its report unwritten and
- * the cpu governor left wherever the measurement put it. */
+/* sig_atomic_t because a signal handler may only touch this type. SIGTERM is
+ * how first-light.sh ends the run - without this the most informative run
+ * would exit through _exit() with its report unwritten and the cpu governor
+ * left wherever the measurement put it. */
 static volatile sig_atomic_t sig_quit;
 
 static void on_signal(int sig)
@@ -155,7 +155,6 @@ static struct {
 
     int      pad_fd;
     uint32_t buttons;
-    int      quit;
 
     plat_axis_t axis[PLAT_AXIS_MAX];
     uint16_t    axis_code[PLAT_AXIS_MAX];
@@ -605,11 +604,6 @@ static void pump_input(void)
             }
         }
     }
-
-    /* No window to close and no keyboard, so the pad has to carry the exit.
-     * START+SELECT together is unreachable by accident. */
-    if ((g.buttons & (PAD_START | PAD_SELECT)) == (PAD_START | PAD_SELECT))
-        g.quit = 1;
 }
 
 /* ----------------------------------------------------------- rotate+scale */
@@ -1284,9 +1278,19 @@ void plat_sleep_until(uint64_t deadline_us)
         ;
 }
 
+/* The signal only. This used to also latch on START+SELECT, from the weeks
+ * when the pad meant nothing else and there had to be some way out of a test
+ * pattern - and it latched permanently, so once the combo had been seen the
+ * backend answered yes to every caller forever after.
+ *
+ * That outlived its purpose the moment START+SELECT became the way out of a
+ * game. Leaving a game set the flag, the list asked this on its first frame,
+ * and the machine powered off; no amount of edge detection above it could
+ * help, because the answer had already been latched a layer down. The pad is
+ * the caller's to interpret and this reports nothing about it. */
 int plat_should_quit(void)
 {
-    return g.quit || sig_quit;
+    return sig_quit;
 }
 
 int plat_axes(plat_axis_t *out, int max)
