@@ -7,26 +7,26 @@
  * of the work happens, every judgement made there was made against a picture
  * the handheld would never show.
  *
- * The policy is fill, with no bars anywhere:
+ * The policy is fill the height, and give the width to the picture only as
+ * far as its own aspect wants:
  *
- *   GBA      240x160 -> 480x320   exactly 2x, pixel perfect
- *   NES/SNES 256x224 -> 480x320   15/8 across, 10/7 down
- *   Genesis  320x224 -> 480x320   3/2  across, 10/7 down
+ *   GBA      240x160 -> 480x320   exactly 2x, pixel perfect, no bar
+ *   NES/SNES 256x224 -> 427x320   plus a 53 wide status bar
+ *   Genesis  320x224 -> 427x320   plus a 53 wide status bar
  *
- * The three 4:3 consoles are stretched horizontally by 9/8 - 12.5% - because
- * the panel is 3:2 and they are not. That was chosen over pillarboxing by
- * looking at it on the real panel: 12.5% is not perceptible on a 3.5 inch
- * screen, and 112 columns of dead black on a display this small is.
+ * Filling all 480 columns instead would stretch the three 4:3 consoles
+ * horizontally by 9/8 - 12.5% - because the panel is 3:2 and they are not.
+ * Correcting that costs 53 columns, and pillarboxing 53 columns of dead
+ * black on a 3.5 inch screen is worse than the stretch was; so the bar is
+ * what occupies them. See BAR_W below for why it is exactly 53.
  *
  * GBA is the reason the panel choice was easy: 240x160 is exactly half of
  * 480x320, so the console that matters most for battery life is also the one
- * that needs no stretch at all.
+ * that needs neither a stretch nor a bar nor the resampler.
  *
- * The device does not call fit_panel. Its blit has to build per-row and
- * per-column source tables anyway - it is rotating and scaling in one pass
- * over write-combined memory - so it computes the same mapping inline as
- * `ly * h / PANEL_H` and `lx * w / PANEL_W`. That is this policy; if either
- * changes, both change.
+ * Neither backend scales any more. Both hand the frame to scale_frame() and
+ * then place the result, which is the only arrangement under which they
+ * cannot disagree about it again - and they did, for a while, invisibly.
  */
 #ifndef SCALE_H
 #define SCALE_H
@@ -69,5 +69,17 @@ static inline rect_t fit_panel(int src_w, int src_h, int dst_w, int dst_h)
     rect_t r = { 0, 0, w, dst_h };
     return r;
 }
+
+/* One destination sample: two source indices and the weight toward the
+ * second, 0..32. Public only because both backends want to see that the
+ * thing between the core and the panel is two taps and nothing more. */
+typedef struct { int16_t i0, i1; uint8_t w; } tap_t;
+
+/* Resample `src` to dst_w x PANEL_H, sharp bilinear. The returned buffer is
+ * static and valid until the next call - there is one frame in flight and
+ * there will never be two. Returns NULL when the scale is already integer on
+ * both axes, meaning the caller should draw `src` directly; that is not a
+ * failure and is the fast path for GBA. */
+const px_t *scale_frame(const px_t *src, int src_w, int src_h, int dst_w);
 
 #endif /* SCALE_H */

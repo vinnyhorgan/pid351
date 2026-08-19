@@ -71,8 +71,13 @@ int plat_axes(plat_axis_t *out, int max);
  * honest estimate of what the blit actually costs and the spread above it is
  * a measure of how much the rest of the system is interfering.
  *
- * Either may be left 0 by a backend where the quantity does not exist. */
-void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us);
+ * scale_us is the resampler alone, split out of blit_us rather than folded
+ * into it because the two are optimised differently: the resampler could be
+ * fused into the blit to save a pass over the frame, and only a measurement
+ * that separates them says whether that is worth the duplication.
+ *
+ * Any of them may be left 0 by a backend where the quantity does not exist. */
+void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us, uint32_t *scale_us);
 
 /* Being PID 1. plat_boot_init mounts what an init has to mount and returns
  * non-zero only when we really are PID 1; everything else here is inert

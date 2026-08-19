@@ -109,9 +109,26 @@ uint32_t plat_input(void)
 static SDL_Texture *bartex;
 
 static uint32_t present_us;
+static uint32_t scale_us_last;
 
 void plat_present(const px_t *fb, int w, int h, const px_t *bar)
 {
+    rect_t f = bar ? fit_panel(w, h, PANEL_W, PANEL_H)
+                   : (rect_t){ 0, 0, PANEL_W, PANEL_H };
+
+    /* Same call as the device makes, on the same frame, so what is judged
+     * here is what the panel will show. SDL's own scaler is not an option
+     * even though it is free: NEAREST reproduces the artefact this exists to
+     * remove, and LINEAR is the mush it exists to avoid. */
+    uint64_t s0 = plat_now_us();
+    const px_t *img = scale_frame(fb, w, h, f.w);
+    scale_us_last = (uint32_t)(plat_now_us() - s0);
+    if (img) {
+        fb = img;
+        w  = f.w;
+        h  = PANEL_H;
+    }
+
     if (!tex || w != tex_w || h != tex_h) {
         if (tex) SDL_DestroyTexture(tex);
         tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB565,
@@ -127,8 +144,6 @@ void plat_present(const px_t *fb, int w, int h, const px_t *bar)
 
     SDL_UpdateTexture(tex, NULL, fb, w * (int)sizeof(px_t));
 
-    rect_t f = bar ? fit_panel(w, h, PANEL_W, PANEL_H)
-                   : (rect_t){ 0, 0, PANEL_W, PANEL_H };
     SDL_FRect dst = { (float)f.x, (float)f.y, (float)f.w, (float)f.h };
 
     SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
@@ -157,8 +172,11 @@ void plat_present(const px_t *fb, int w, int h, const px_t *bar)
     present_us = (uint32_t)(plat_now_us() - t0);
 }
 
-void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us)
+void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us, uint32_t *scale_us)
 {
+    /* The resampler is the one number that does mean the same thing on both
+     * backends: it is plain C over plain memory, no panel and no GPU in it. */
+    if (scale_us) *scale_us = scale_us_last;
     /* There is no rotate blit on this backend at all - the panel here is the
      * right way up and the GPU does the scale - so reporting anything but
      * zero would invite comparing a laptop number against the device's. */

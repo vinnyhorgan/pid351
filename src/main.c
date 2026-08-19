@@ -1021,7 +1021,7 @@ static void power_phase(canvas_t *c, const char *name, const char *gov,
         plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
 
         uint32_t b_us = 0, w_us = 0;
-        plat_frame_us(&b_us, &w_us);
+        plat_frame_us(&b_us, &w_us, NULL);
         blit_ring[ring_i] = b_us;
         ring_i = (ring_i + 1) % TIME_RING;
         if (ring_n < TIME_RING)
@@ -1303,6 +1303,7 @@ static int run_game(const char *rom, int as_init)
 
     uint64_t start = plat_now_us(), next = start, mark = start;
     unsigned frames = 0, win = 0, emu = 0;
+    uint32_t blit_hi = 0, scale_hi = 0;
     const char *reason = "?";
     uint32_t was = 0;
 
@@ -1346,6 +1347,14 @@ static int run_game(const char *rom, int as_init)
             plat_present(fb, w, h, barbuf);
         }
 
+        /* Worst case over the window, not the mean: the question this
+         * answers is whether presenting a frame ever fails to fit in the
+         * panel period, and an average cannot say. */
+        uint32_t pb = 0, ps = 0;
+        plat_frame_us(&pb, NULL, &ps);
+        if (pb > blit_hi)  blit_hi  = pb;
+        if (ps > scale_hi) scale_hi = ps;
+
         frames++;
         win++;
         emu++;
@@ -1357,14 +1366,17 @@ static int run_game(const char *rom, int as_init)
              * differ, and the ratio is the only honest answer to how fast
              * fast mode actually is on this machine. */
             printf("pid351: %s %.2f fps  emu %.2f (%.2fx)  frames=%u  "
-                   "ring=%d  aud=%d x%d\n",
+                   "ring=%d  aud=%d x%d  scale=%u blit=%u us\n",
                    core_name(), (double)win / secs, (double)emu / secs,
                    (double)emu / (double)win,
-                   frames, core_audio_level(), aud_level(), aud_xruns());
+                   frames, core_audio_level(), aud_level(), aud_xruns(),
+                   scale_hi, blit_hi);
             fflush(stdout);
             win = 0;
             emu = 0;
             mark = now;
+            blit_hi = 0;
+            scale_hi = 0;
         }
 
         next += FRAME_US;
@@ -1672,7 +1684,7 @@ int main(int argc, char **argv)
             plat_present(framebuffer, src[src_i].w, src[src_i].h, NULL);
 
             uint32_t bb = 0, ww = 0;
-            plat_frame_us(&bb, &ww);
+            plat_frame_us(&bb, &ww, NULL);
             blit_ring[ring_i] = bb;
             wait_ring[ring_i] = ww;
             draw_ring[ring_i] = d_us;
@@ -1709,7 +1721,7 @@ int main(int argc, char **argv)
         plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
 
         uint32_t b_us = 0, w_us = 0;
-        plat_frame_us(&b_us, &w_us);
+        plat_frame_us(&b_us, &w_us, NULL);
         blit_ring[ring_i] = b_us;
         wait_ring[ring_i] = w_us;
         draw_ring[ring_i] = draw_us;

@@ -10,9 +10,11 @@
  * every frame has to be rotated 90 degrees. Every property on every plane was
  * dumped on the device and there is no rotation property anywhere on the
  * pipeline, so the CPU doing it is not a fallback - it is the only mechanism
- * that exists. The rotate and the scale happen in one pass with contiguous
- * writes into write-combined memory, which is what the whole design is bent
- * around. See docs/hardware.md.
+ * that exists. It happens with contiguous writes into write-combined memory,
+ * which is what the whole design is bent around. Scaling used to ride along
+ * in the same pass and no longer does: scale.c resamples first and hands this
+ * file something already at panel size, so the blit here is a pure rotation.
+ * See docs/hardware.md.
  *
  * This file also contains what it takes to be PID 1, because mounting /dev is
  * as much a property of this machine as opening card0 is.
@@ -139,6 +141,7 @@ static struct {
     int      had_master;
 
     uint32_t blit_us;        /* see plat_frame_us */
+    uint32_t scale_us;
     uint32_t wait_us;
 
     int      pad_fd;
@@ -589,17 +592,18 @@ static void pump_input(void)
 
 /* ----------------------------------------------------------- rotate+scale */
 
-/* Policy: the source always fills the panel. No black bars on anything, which
- * is a decision about how it looks rather than about code - but it has a cost
- * worth stating, because it deletes the cheap cases. The 4:3 consoles used to
- * be half black bar being memset; now every console lands on the same 153600
- * pixel blit, so there is exactly one blit configuration in the system and it
- * is the expensive one.
+/* Policy: the source always fills the panel, minus the status bar's columns.
+ * No black bars on anything, which is a decision about how it looks rather
+ * than about code - but it has a cost worth stating, because it deletes the
+ * cheap cases. The 4:3 consoles used to be half black bar being memset; now
+ * every console lands on the same 153600 pixel blit, so there is exactly one
+ * blit configuration in the system and it is the expensive one.
  *
- * Scaling is therefore non-integer everywhere except GBA, whose 240x160 is
- * exactly half the panel. That costs nothing here: both directions resolve
- * through a table built once per frame, and an arbitrary ratio is the same
- * lookup as an integer one.
+ * These tables are the identity on both axes for anything scale.c has
+ * already resampled, and remain a real scale only for the sources it passes
+ * through untouched - GBA. Left as tables rather than special-cased: an
+ * arbitrary ratio is the same lookup as an integer one, and a branch here
+ * would buy nothing while making two paths to test instead of one.
  *
  * The measurement that shaped the rest: at full screen the strided blit takes
  * 2487 us against 695 us for the same writes with a sequential source. Nearly
@@ -1153,6 +1157,23 @@ void plat_present(const px_t *fb, int w, int h, const px_t *bar)
 
     game_w = bar ? fit_panel(w, h, PANEL_W, PANEL_H).w : PANEL_W;
 
+    /* Resampling before the blit rather than inside it. Fusing them would
+     * save writing and re-reading 273 KB, but it would also put the filter in
+     * four blit variants and in the SDL backend separately, which is exactly
+     * the split that let the two backends disagree about scaling for weeks.
+     * One implementation, measured, and optimised only if the number says so.
+     *
+     * After this the blit has nothing left to scale: build_maps reduces to
+     * the identity on both axes and the blit is a pure rotation. */
+    uint64_t s0 = plat_now_us();
+    const px_t *img = scale_frame(fb, w, h, game_w);
+    if (img) {
+        fb = img;
+        w  = game_w;
+        h  = PANEL_H;
+    }
+    g.scale_us = (uint32_t)(plat_now_us() - s0);
+
     /* Bracketing with two clock reads costs a fraction of a microsecond
      * against a blit measured in hundreds, and main.c prints the calibration
      * so that claim is checked rather than asserted. */
@@ -1226,8 +1247,9 @@ int plat_axes(plat_axis_t *out, int max)
     return n;
 }
 
-void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us)
+void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us, uint32_t *scale_us)
 {
+    if (scale_us) *scale_us = g.scale_us;
     if (blit_us) *blit_us = g.blit_us;
     if (wait_us) *wait_us = g.wait_us;
 }
