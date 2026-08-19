@@ -151,6 +151,37 @@ static inline void gfx_text(canvas_t *c, int x, int y, const char *s,
     }
 }
 
+/* The same glyphs turned a quarter turn anticlockwise, so a line runs up a
+ * narrow column instead of across it. (x, y) is the bottom left of the first
+ * character and the string advances upward; it occupies FONT_H * scale across
+ * the column, which is odd for odd scales and so centres exactly.
+ *
+ * The font is stored column major, so this is the same loop with the two axes
+ * exchanged rather than a second copy of anything. */
+static inline void gfx_char_rot(canvas_t *c, int x, int y, char ch, int s,
+                                px_t col)
+{
+    if (ch >= 'a' && ch <= 'z')
+        ch = (char)(ch - 'a' + 'A');
+    if (ch < 32 || ch > 95)
+        ch = '?';
+
+    const unsigned char *g = font5x7[(unsigned char)ch - 32];
+    for (int col_i = 0; col_i < FONT_W; col_i++)
+        for (int row = 0; row < FONT_H; row++)
+            if (g[col_i] & (1u << row))
+                gfx_rect(c, x + row * s, y - col_i * s, s, s, col);
+}
+
+static inline void gfx_text_rot(canvas_t *c, int x, int y, const char *s,
+                                int scale, px_t col)
+{
+    for (const char *p = s; *p; p++) {
+        gfx_char_rot(c, x, y, *p, scale, col);
+        y -= FONT_ADVANCE * scale;
+    }
+}
+
 static inline int gfx_text_w(const char *s, int scale)
 {
     int n = 0;

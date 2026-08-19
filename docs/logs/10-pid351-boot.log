@@ -1,0 +1,421 @@
+<6>[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd042]
+<5>[    0.000000] Linux version 6.12.103 (dvh@hp) (aarch64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #14 SMP PREEMPT Wed Aug 19 14:54:05 CEST 2026
+<4>[    0.000000] KASLR disabled due to lack of seed
+<6>[    0.000000] Machine model: Anbernic RG351P (pid351)
+<6>[    0.000000] efi: UEFI not found.
+<6>[    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+<6>[    0.000000] NUMA: Faking a node at [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000] NODE_DATA(0) allocated [mem 0x3fdc4300-0x3fdc693f]
+<6>[    0.000000] Zone ranges:
+<6>[    0.000000]   DMA      [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000]   DMA32    empty
+<6>[    0.000000]   Normal   empty
+<6>[    0.000000] Movable zone start for each node
+<6>[    0.000000] Early memory node ranges
+<6>[    0.000000]   node   0: [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000] Initmem setup node 0 [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000] On node 0, zone DMA: 512 pages in unavailable ranges
+<6>[    0.000000] cma: Reserved 16 MiB at 0x000000003dc00000 on node -1
+<6>[    0.000000] psci: probing for conduit method from DT.
+<6>[    0.000000] psci: PSCIv1.1 detected in firmware.
+<6>[    0.000000] psci: Using standard PSCI v0.2 function IDs
+<6>[    0.000000] psci: MIGRATE_INFO_TYPE not supported.
+<6>[    0.000000] psci: SMC Calling Convention v1.2
+<6>[    0.000000] percpu: Embedded 22 pages/cpu s57504 r0 d32608 u90112
+<7>[    0.000000] pcpu-alloc: s57504 r0 d32608 u90112 alloc=22*4096
+<7>[    0.000000] pcpu-alloc: [0] 0 [0] 1 [0] 2 [0] 3 
+<6>[    0.000000] Detected VIPT I-cache on CPU0
+<6>[    0.000000] alternatives: applying boot alternatives
+<5>[    0.000000] Kernel command line: console=ttyS2,1500000 console=tty0 panic=5 cma=16M printk.devkmsg=on
+<6>[    0.000000] Dentry cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+<6>[    0.000000] Inode-cache hash table entries: 65536 (order: 7, 524288 bytes, linear)
+<6>[    0.000000] Fallback order for Node 0: 0 
+<6>[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 261632
+<6>[    0.000000] Policy zone: DMA
+<6>[    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+<6>[    0.000000] software IO TLB: SWIOTLB bounce buffer size adjusted to 0MB
+<6>[    0.000000] software IO TLB: area num 4.
+<6>[    0.000000] software IO TLB: mapped [mem 0x000000003da80000-0x000000003db80000] (1MB)
+<6>[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+<6>[    0.000000] rcu: Preemptible hierarchical RCU implementation.
+<6>[    0.000000] rcu: 	RCU event tracing is enabled.
+<6>[    0.000000] rcu: 	RCU restricting CPUs from NR_CPUS=512 to nr_cpu_ids=4.
+<6>[    0.000000] 	Trampoline variant of Tasks RCU enabled.
+<6>[    0.000000] 	Tracing variant of Tasks RCU enabled.
+<6>[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 25 jiffies.
+<6>[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+<6>[    0.000000] RCU Tasks: Setting shift to 2 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=4.
+<6>[    0.000000] RCU Tasks Trace: Setting shift to 2 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=4.
+<6>[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+<6>[    0.000000] Root IRQ handler: gic_handle_irq
+<6>[    0.000000] GIC: Using split EOI/Deactivate mode
+<6>[    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.
+<6>[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+<6>[    0.000000] arch_timer: cp15 timer(s) running at 24.00MHz (phys).
+<6>[    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+<6>[    0.000002] sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+<6>[    0.001826] Console: colour dummy device 80x25
+<6>[    0.001865] printk: legacy console [tty0] enabled
+<6>[    0.003116] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+<6>[    0.003182] pid_max: default: 32768 minimum: 301
+<6>[    0.003364] LSM: initializing lsm=capability
+<6>[    0.003632] Mount-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+<6>[    0.003693] Mountpoint-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+<4>[    0.005810] cacheinfo: Unable to detect cache hierarchy for CPU 0
+<6>[    0.008783] rcu: Hierarchical SRCU implementation.
+<6>[    0.008855] rcu: 	Max phase no-delay instances is 1000.
+<6>[    0.009476] Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+<6>[    0.010546] EFI services will not be available.
+<6>[    0.011273] smp: Bringing up secondary CPUs ...
+<6>[    0.012661] Detected VIPT I-cache on CPU1
+<6>[    0.012853] CPU1: Booted secondary processor 0x0000000001 [0x410fd042]
+<6>[    0.014447] Detected VIPT I-cache on CPU2
+<6>[    0.014627] CPU2: Booted secondary processor 0x0000000002 [0x410fd042]
+<6>[    0.016357] Detected VIPT I-cache on CPU3
+<6>[    0.016547] CPU3: Booted secondary processor 0x0000000003 [0x410fd042]
+<6>[    0.016896] smp: Brought up 1 node, 4 CPUs
+<6>[    0.017070] SMP: Total of 4 processors activated.
+<6>[    0.017100] CPU: All CPU(s) started at EL2
+<6>[    0.017184] CPU features: detected: 32-bit EL0 Support
+<6>[    0.017215] CPU features: detected: 32-bit EL1 Support
+<6>[    0.017250] CPU features: detected: CRC32 instructions
+<6>[    0.017367] alternatives: applying system-wide alternatives
+<6>[    0.020023] Memory: 971716K/1046528K available (16192K kernel code, 3170K rwdata, 8236K rodata, 3264K init, 1035K bss, 53852K reserved, 16384K cma-reserved)
+<6>[    0.021681] devtmpfs: initialized
+<6>[    0.040564] futex hash table entries: 1024 (order: 4, 65536 bytes, linear)
+<6>[    0.042636] 24736 pages in range for non-PLT usage
+<6>[    0.042670] 516256 pages in range for PLT usage
+<6>[    0.043196] pinctrl core: initialized pinctrl subsystem
+<6>[    0.044691] DMI not present or invalid.
+<6>[    0.047019] DMA: preallocated 128 KiB GFP_KERNEL pool for atomic allocations
+<6>[    0.047414] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations
+<6>[    0.047808] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations
+<6>[    0.051565] thermal_sys: Registered thermal governor 'step_wise'
+<6>[    0.051597] thermal_sys: Registered thermal governor 'power_allocator'
+<6>[    0.051805] cpuidle: using governor menu
+<6>[    0.052429] hw-breakpoint: found 6 breakpoint and 4 watchpoint registers.
+<6>[    0.052677] ASID allocator initialised with 65536 entries
+<6>[    0.053242] Serial: AMBA PL011 UART driver
+<6>[    0.075663] /dsi@ff450000: Fixed dependency cycle(s) with /dsi@ff450000/panel@0
+<6>[    0.076012] /dsi@ff450000/panel@0: Fixed dependency cycle(s) with /dsi@ff450000
+<6>[    0.076814] /dsi@ff450000: Fixed dependency cycle(s) with /vop@ff460000
+<6>[    0.077016] /vop@ff460000: Fixed dependency cycle(s) with /dsi@ff450000
+<4>[    0.097527] gpio gpiochip0: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.098367] rockchip-gpio ff040000.gpio: probed /pinctrl/gpio@ff040000
+<4>[    0.099197] gpio gpiochip1: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.099717] rockchip-gpio ff250000.gpio: probed /pinctrl/gpio@ff250000
+<4>[    0.100496] gpio gpiochip2: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.101037] rockchip-gpio ff260000.gpio: probed /pinctrl/gpio@ff260000
+<4>[    0.101970] gpio gpiochip3: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.102468] rockchip-gpio ff270000.gpio: probed /pinctrl/gpio@ff270000
+<6>[    0.108790] HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages
+<6>[    0.108866] HugeTLB: 0 KiB vmemmap can be freed for a 1.00 GiB page
+<6>[    0.108962] HugeTLB: registered 32.0 MiB page size, pre-allocated 0 pages
+<6>[    0.109000] HugeTLB: 0 KiB vmemmap can be freed for a 32.0 MiB page
+<6>[    0.109038] HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages
+<6>[    0.109071] HugeTLB: 0 KiB vmemmap can be freed for a 2.00 MiB page
+<6>[    0.109108] HugeTLB: registered 64.0 KiB page size, pre-allocated 0 pages
+<6>[    0.109141] HugeTLB: 0 KiB vmemmap can be freed for a 64.0 KiB page
+<6>[    0.113934] ACPI: Interpreter disabled.
+<6>[    0.115555] iommu: Default domain type: Translated
+<6>[    0.115628] iommu: DMA domain TLB invalidation policy: strict mode
+<5>[    0.116768] SCSI subsystem initialized
+<7>[    0.117321] libata version 3.00 loaded.
+<6>[    0.117658] usbcore: registered new interface driver usbfs
+<6>[    0.117764] usbcore: registered new interface driver hub
+<6>[    0.117869] usbcore: registered new device driver usb
+<6>[    0.119115] pps_core: LinuxPPS API ver. 1 registered
+<6>[    0.119158] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+<6>[    0.120068] EDAC MC: Ver: 3.0.0
+<6>[    0.120855] scmi_core: SCMI protocol bus registered
+<6>[    0.122049] FPGA manager framework
+<6>[    0.122723] Advanced Linux Sound Architecture Driver Initialized.
+<6>[    0.123646] vgaarb: loaded
+<6>[    0.124503] clocksource: Switched to clocksource arch_sys_counter
+<5>[    0.125151] VFS: Disk quotas dquot_6.6.0
+<6>[    0.125261] VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+<6>[    0.126093] pnp: PnP ACPI: disabled
+<6>[    0.143623] PCI: CLS 0 bytes, default 64
+<6>[    0.157878] kvm [1]: nv: 554 coarse grained trap handlers
+<6>[    0.159074] kvm [1]: IPA Size Limit: 40 bits
+<6>[    0.163718] kvm [1]: vgic interrupt IRQ9
+<6>[    0.163850] kvm [1]: Hyp nVHE mode initialized successfully
+<5>[    0.167502] Initialise system trusted keyrings
+<6>[    0.168130] workingset: timestamp_bits=42 max_order=18 bucket_order=0
+<6>[    0.169042] squashfs: version 4.0 (2009/01/31) Phillip Lougher
+<6>[    0.169622] fuse: init (API version 7.41)
+<5>[    0.330997] Key type asymmetric registered
+<5>[    0.331083] Asymmetric key parser 'x509' registered
+<6>[    0.331349] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 243)
+<6>[    0.331399] io scheduler mq-deadline registered
+<6>[    0.331431] io scheduler kyber registered
+<6>[    0.331544] io scheduler bfq registered
+<6>[    0.348539] ledtrig-cpu: registered to indicate activity on CPUs
+<6>[    0.360963] dma-pl330 ff240000.dma-controller: Loaded driver for PL330 DMAC-241330
+<6>[    0.361055] dma-pl330 ff240000.dma-controller: 	DBUFF-128x8bytes Num_Chans-8 Num_Peri-32 Num_Events-16
+<6>[    0.374891] Serial: 8250/16550 driver, 4 ports, IRQ sharing enabled
+<6>[    0.380057] printk: legacy console [ttyS2] disabled
+<6>[    0.381042] ff160000.serial: ttyS2 at MMIO 0xff160000 (irq = 22, base_baud = 1500000) is a 16550A
+<6>[    0.381301] printk: legacy console [ttyS2] enabled
+<6>[    0.472824] rockchip-vop ff460000.vop: Adding to iommu group 0
+<6>[    0.477628] /dsi@ff450000: Fixed dependency cycle(s) with /dsi@ff450000/panel@0
+<6>[    0.478494] /dsi@ff450000/panel@0: Fixed dependency cycle(s) with /dsi@ff450000
+<6>[    0.513008] loop: module loaded
+<6>[    0.515940] megasas: 07.727.03.00-rc1
+<6>[    0.516575] mpt3sas version 48.100.00.00 loaded
+<6>[    0.537563] VFIO - User Level meta-driver version: 0.3
+<4>[    0.540163] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+<4>[    0.541042] dwc2 ff300000.usb: supply vusb_d not found, using dummy regulator
+<4>[    0.542002] dwc2 ff300000.usb: supply vusb_a not found, using dummy regulator
+<4>[    0.542891] dwc2 ff300000.usb: Configuration mismatch. dr_mode forced to host
+<4>[    0.554190] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+<4>[    0.554943] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+<6>[    0.555663] dwc2 ff300000.usb: DWC OTG Controller
+<6>[    0.556147] dwc2 ff300000.usb: new USB bus registered, assigned bus number 1
+<6>[    0.556917] dwc2 ff300000.usb: irq 27, io mem 0xff300000
+<6>[    0.559001] hub 1-0:1.0: USB hub found
+<6>[    0.559448] hub 1-0:1.0: 1 port detected
+<6>[    0.563961] usbcore: registered new interface driver cdc_acm
+<6>[    0.564644] cdc_acm: USB Abstract Control Model driver for USB modems and ISDN adapters
+<6>[    0.565490] usbcore: registered new interface driver usb-storage
+<6>[    0.566253] usbcore: registered new interface driver cp210x
+<6>[    0.566826] usbserial: USB Serial support registered for cp210x
+<6>[    0.567438] usbcore: registered new interface driver ftdi_sio
+<6>[    0.568019] usbserial: USB Serial support registered for FTDI USB Serial Device
+<6>[    0.568848] usbcore: registered new interface driver option
+<6>[    0.569417] usbserial: USB Serial support registered for GSM modem (1-port)
+<6>[    0.570726] usbcore: registered new device driver onboard-usb-dev
+<4>[    0.578153] pwm-vibrator vibrator: supply vcc not found, using dummy regulator
+<6>[    0.579562] input: pwm-vibrator as /devices/platform/vibrator/input/input0
+<6>[    0.583701] i2c_dev: i2c /dev entries driver
+<6>[    0.621497] vcc_bl: Bringing 2800000uV into 3300000-3300000uV
+<6>[    0.623908] vcc_lcd: Bringing 1800000uV into 2800000-2800000uV
+<6>[    0.627623] usb_midu: Bringing 4700000uV into 5000000-5000000uV
+<6>[    0.633513] input: rk805 pwrkey as /devices/platform/ff180000.i2c/i2c-0/0-0020/rk805-pwrkey.2.auto/input/input1
+<6>[    0.640139] rk808-rtc rk808-rtc.3.auto: registered as rtc0
+<6>[    0.641613] rk808-rtc rk808-rtc.3.auto: setting system clock to 2017-08-07T07:51:25 UTC (1502092285)
+<4>[    0.661679] rockchip-thermal ff280000.tsadc: Missing tshut mode property, using default (cru)
+<4>[    0.662523] rockchip-thermal ff280000.tsadc: Missing tshut-polarity property, using default (low)
+<6>[    0.667896] device-mapper: ioctl: 4.48.0-ioctl (2023-03-01) initialised: dm-devel@lists.linux.dev
+<6>[    0.671630] cpu cpu0: EM: created perf domain
+<6>[    0.676340] sdhci: Secure Digital Host Controller Interface driver
+<6>[    0.677016] sdhci: Copyright(c) Pierre Ossman
+<6>[    0.678194] Synopsys Designware Multimedia Card Interface Driver
+<6>[    0.679631] sdhci-pltfm: SDHCI platform and OF driver helper
+<6>[    0.680915] dwmmc_rockchip ff370000.mmc: IDMAC supports 32-bit address mode.
+<6>[    0.681654] dwmmc_rockchip ff370000.mmc: Using internal DMA controller.
+<6>[    0.682270] dwmmc_rockchip ff370000.mmc: Version ID is 270a
+<6>[    0.682556] SMCCC: SOC_ID: ARCH_SOC_ID not implemented, skipping ....
+<6>[    0.682865] dwmmc_rockchip ff370000.mmc: DW MMC controller at irq 55,32 bit host data width,256 deep fifo
+<6>[    0.684630] usbcore: registered new interface driver usbhid
+<6>[    0.685178] usbhid: USB HID core driver
+<6>[    0.685418] dwmmc_rockchip ff370000.mmc: Got CD GPIO
+<4>[    0.692285] SPI driver st-magn-spi has no spi_device_id for st,lis3mdl-magn
+<4>[    0.693018] SPI driver st-magn-spi has no spi_device_id for st,lsm303agr-magn
+<4>[    0.693672] SPI driver st-magn-spi has no spi_device_id for st,lsm9ds1-magn
+<4>[    0.694297] SPI driver st-magn-spi has no spi_device_id for st,lsm303c-magn
+<6>[    0.697694] hw perfevents: enabled with armv8_cortex_a35 PMU driver, 7 (0,8000003f) counters available
+<6>[    0.701259] mmc_host mmc0: Bus speed (slot 0) = 400000Hz (slot req 400000Hz, actual 400000HZ div = 0)
+<6>[    0.701406]  cs_system_cfg: CoreSight Configuration manager initialised
+<6>[    0.706087] gnss: GNSS driver registered with major 235
+<5>[    0.735677] Loading compiled-in X.509 certificates
+<6>[    0.745164] Demotion targets for Node 0: null
+<6>[    0.765881] mmc_host mmc0: Bus speed (slot 0) = 50000000Hz (slot req 50000000Hz, actual 50000000HZ div = 0)
+<6>[    0.767448] mmc0: new high speed SDHC card at address 0001
+<6>[    0.769784] mmcblk0: mmc0:0001 00000 29.2 GiB
+<6>[    0.773935]  mmcblk0: p1 p2
+<6>[    0.778880] rockchip-drm display-subsystem: bound ff460000.vop (ops vop_component_ops)
+<6>[    0.780064] rockchip-drm display-subsystem: bound ff450000.dsi (ops dw_mipi_dsi_rockchip_ops)
+<6>[    0.782169] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+<6>[    0.844624] usb 1-1: new high-speed USB device number 2 using dwc2
+<6>[    1.042431] hub 1-1:1.0: USB hub found
+<6>[    1.042897] hub 1-1:1.0: 4 ports detected
+<6>[    1.228450] Console: switching to colour frame buffer device 40x30
+<6>[    1.273113] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+<6>[    1.300106] input: rk817_int Headphones as /devices/platform/rk817-sound/sound/card0/input2
+<6>[    1.307715] clk: Disabling unused clocks
+<6>[    1.311226] PM: genpd: Disabling unused power domains
+<6>[    1.314076] ALSA device list:
+<6>[    1.315550]   #0: rk817_int
+<6>[    1.319498] Freeing unused kernel memory: 3264K
+<6>[    1.322379] Run /init as init process
+<7>[    1.323878]   with arguments:
+<7>[    1.323894]     /init
+<7>[    1.323902]   with environment:
+<7>[    1.323908]     HOME=/
+<7>[    1.323915]     TERM=linux
+<12>[    1.329009] pid351: running as PID 1
+<4>[    1.336364] FAT-fs (mmcblk0p1): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.
+<12>[    1.352328] pid351: playing /boot/pid351/roms/smb.nes
+<12>[    1.357719] pid351: connector 40, crtc 36, mode 320x480@60
+<6>[    1.560691] usb 1-1.2: new full-speed USB device number 3 using dwc2
+<6>[    1.662496] input: OpenSimHardware OSH PB Controller Keyboard as /devices/platform/ff300000.usb/usb1/1-1/1-1.2/1-1.2:1.0/0003:1209:3100.0001/input/input3
+<6>[    1.725787] input: OpenSimHardware OSH PB Controller Mouse as /devices/platform/ff300000.usb/usb1/1-1/1-1.2/1-1.2:1.0/0003:1209:3100.0001/input/input4
+<6>[    1.737349] input: OpenSimHardware OSH PB Controller as /devices/platform/ff300000.usb/usb1/1-1/1-1.2/1-1.2:1.0/0003:1209:3100.0001/input/input5
+<6>[    1.748069] hid-generic 0003:1209:3100.0001: input: USB HID v1.11 Keyboard [OpenSimHardware OSH PB Controller] on usb-ff300000.usb-1.2/input0
+<12>[    1.801289] pid351: pad on /dev/input/event5 (OpenSimHardware OSH PB Controller)
+<12>[    1.808354] pid351: pad appeared after 60 ms
+<12>[    1.814264] pid351: display up, rotating counter-clockwise
+<12>[    1.826022] pid351: audio card 0 is "rk817int" driver "simple-card" (rk817_int)
+<12>[    1.832464] pid351: audio "Playback Mux" = 0
+<12>[    1.839865] pid351: audio "Master Playback Volume" = 255
+<12>[    1.940911] pid351: audio jack /dev/input/event2 "rk817_int Headphones" reports headphones INSERTED
+<12>[    2.113391] pid351: audio accepts channels     2 .. 8
+<12>[    2.119471] pid351: audio accepts rate         8000 .. 96000
+<12>[    2.125114] pid351: audio accepts period_size  4 .. 65536
+<12>[    2.131282] pid351: audio accepts periods      2 .. 32768
+<12>[    2.136988] pid351: audio accepts buffer_size  8 .. 131072
+<12>[    2.153942] pid351: audio /dev/snd/pcmC0D0p: 48000 Hz, period 512, buffer 4096 (85.3 ms), 799 frames/video frame
+<12>[    2.198800] pid351: first frame 256x224 pitch=512 (2.0 bytes/pixel)
+<12>[    2.210432] pid351: core fceumm, 256x224, 60.100 fps, 48000 Hz -> 48000 Hz (stretch -0.133%)
+<5>[    3.092730] random: crng init done
+<12>[    7.226907] pid351: fceumm 60.07 fps  emu 60.07 (1.00x)  frames=301  ring=1532  aud=2592 x1
+<12>[   12.240818] pid351: fceumm 60.03 fps  emu 60.03 (1.00x)  frames=602  ring=1478  aud=2649 x1
+<12>[   17.255757] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=903  ring=1423  aud=2650 x1
+<12>[   22.270677] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=1204  ring=1370  aud=2658 x1
+<12>[   27.285857] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=1505  ring=1315  aud=2651 x1
+<6>[   31.712939] vcc_wifi: disabling
+<12>[   32.300895] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=1806  ring=1262  aud=2652 x1
+<12>[   37.317333] pid351: fceumm 48.24 fps  emu 82.93 (1.72x)  frames=2048  ring=1230  aud=2976 x1
+<12>[   42.344715] pid351: fceumm 32.62 fps  emu 122.73 (3.76x)  frames=2212  ring=1227  aud=2976 x1
+<12>[   47.347400] pid351: fceumm 36.58 fps  emu 110.94 (3.03x)  frames=2395  ring=1217  aud=2976 x1
+<12>[   52.361044] pid351: fceumm 54.65 fps  emu 70.81 (1.30x)  frames=2669  ring=1175  aud=3002 x1
+<12>[   52.965163] pid351: load ok
+<12>[   55.243853] pid351: load ok
+<12>[   56.759835] pid351: load ok
+<12>[   57.375975] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=2970  ring=1126  aud=3003 x1
+<12>[   62.390862] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=3271  ring=1081  aud=3011 x1
+<12>[   65.090802] pid351: load ok
+<12>[   67.122897] pid351: load ok
+<12>[   67.406210] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=3572  ring=1038  aud=2996 x1
+<12>[   72.421127] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=3873  ring=997  aud=2997 x1
+<12>[   77.465231] pid351: save ok
+<12>[   77.490127] pid351: fceumm 58.59 fps  emu 58.59 (1.00x)  frames=4170  ring=960  aud=2663 x2
+<12>[   78.033520] pid351: save ok
+<12>[   78.401209] pid351: save ok
+<12>[   78.635268] pid351: save ok
+<12>[   78.749566] pid351: save ok
+<12>[   79.219095] pid351: load ok
+<12>[   82.513352] pid351: fceumm 44.99 fps  emu 76.64 (1.70x)  frames=4396  ring=938  aud=2976 x6
+<12>[   87.516131] pid351: fceumm 46.57 fps  emu 96.35 (2.07x)  frames=4629  ring=921  aud=2869 x6
+<12>[   92.531030] pid351: fceumm 53.64 fps  emu 77.57 (1.45x)  frames=4898  ring=893  aud=3428 x6
+<12>[   97.546440] pid351: fceumm 56.83 fps  emu 66.40 (1.17x)  frames=5183  ring=865  aud=3139 x6
+<12>[  102.570978] pid351: fceumm 34.03 fps  emu 113.44 (3.33x)  frames=5354  ring=861  aud=2976 x6
+<12>[  107.575968] pid351: fceumm 33.37 fps  emu 111.89 (3.35x)  frames=5521  ring=857  aud=3231 x6
+<12>[  112.591196] pid351: fceumm 51.44 fps  emu 81.35 (1.58x)  frames=5779  ring=836  aud=3614 x6
+<12>[  117.606498] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=6080  ring=807  aud=3598 x6
+<12>[  122.621336] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=6381  ring=780  aud=3607 x6
+<12>[  127.636189] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=6682  ring=754  aud=3616 x6
+<12>[  132.651282] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=6983  ring=729  aud=3608 x6
+<12>[  137.666385] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=7284  ring=705  aud=3609 x6
+<12>[  142.681151] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=7585  ring=683  aud=3618 x6
+<12>[  147.696168] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=7886  ring=662  aud=3619 x6
+<12>[  152.711180] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=8187  ring=642  aud=3619 x6
+<12>[  157.742440] pid351: fceumm 36.57 fps  emu 105.74 (2.89x)  frames=8371  ring=638  aud=2976 x6
+<12>[  162.765668] pid351: fceumm 32.45 fps  emu 124.42 (3.83x)  frames=8534  ring=636  aud=2976 x6
+<12>[  167.773240] pid351: fceumm 54.92 fps  emu 72.29 (1.32x)  frames=8809  ring=621  aud=3159 x6
+<12>[  172.787971] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=9110  ring=604  aud=3168 x6
+<12>[  177.802907] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=9411  ring=588  aud=3176 x6
+<12>[  182.818389] pid351: fceumm 60.01 fps  emu 60.01 (1.00x)  frames=9712  ring=572  aud=3153 x6
+<12>[  187.833079] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=10013  ring=557  aud=3170 x6
+<12>[  192.847968] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=10314  ring=544  aud=3170 x6
+<12>[  197.862991] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=10615  ring=530  aud=3171 x6
+<12>[  202.872031] pid351: fceumm 58.09 fps  emu 63.49 (1.09x)  frames=10906  ring=518  aud=2984 x6
+<12>[  207.888328] pid351: fceumm 31.70 fps  emu 126.19 (3.98x)  frames=11065  ring=518  aud=2976 x6
+<12>[  212.891436] pid351: fceumm 52.97 fps  emu 79.35 (1.50x)  frames=11330  ring=510  aud=3191 x6
+<12>[  217.906797] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=11631  ring=498  aud=3176 x6
+<12>[  222.921501] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=11932  ring=487  aud=3193 x6
+<12>[  227.936313] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=12233  ring=478  aud=3201 x6
+<12>[  232.951433] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=12534  ring=469  aud=3194 x6
+<12>[  237.969556] pid351: fceumm 37.86 fps  emu 103.03 (2.72x)  frames=12724  ring=466  aud=2976 x6
+<12>[  242.977477] pid351: fceumm 31.55 fps  emu 126.20 (4.00x)  frames=12882  ring=466  aud=2976 x6
+<12>[  247.979800] pid351: fceumm 53.98 fps  emu 74.37 (1.38x)  frames=13152  ring=459  aud=2882 x6
+<12>[  252.994912] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=13453  ring=451  aud=2882 x6
+<12>[  258.009946] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=13754  ring=443  aud=2875 x6
+<12>[  263.024960] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=14055  ring=435  aud=2876 x6
+<12>[  268.040109] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=14356  ring=429  aud=2868 x6
+<12>[  273.054799] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=14657  ring=422  aud=2885 x6
+<12>[  278.069984] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=14958  ring=415  aud=2878 x6
+<12>[  283.085010] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=15259  ring=410  aud=2878 x6
+<12>[  286.420823] pid351: save ok
+<12>[  288.099975] pid351: fceumm 41.87 fps  emu 102.29 (2.44x)  frames=15469  ring=407  aud=2525 x6
+<12>[  289.149949] pid351: load ok
+<12>[  293.114897] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=15770  ring=402  aud=2533 x6
+<12>[  298.130145] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=16071  ring=396  aud=2518 x6
+<12>[  303.145424] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=16372  ring=392  aud=2511 x6
+<12>[  308.159910] pid351: fceumm 60.03 fps  emu 60.03 (1.00x)  frames=16673  ring=388  aud=2535 x6
+<12>[  313.175040] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=16974  ring=383  aud=2528 x6
+<12>[  318.190086] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=17275  ring=378  aud=2529 x6
+<12>[  323.205144] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=17576  ring=375  aud=2521 x6
+<12>[  328.220037] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=17877  ring=371  aud=2530 x6
+<12>[  333.235159] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=18178  ring=367  aud=2523 x6
+<12>[  338.250297] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=18479  ring=364  aud=2515 x6
+<12>[  343.265306] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=18780  ring=362  aud=2516 x6
+<12>[  348.280152] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=19081  ring=358  aud=2525 x6
+<12>[  353.295284] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=19382  ring=356  aud=2517 x6
+<12>[  358.310234] pid351: fceumm 50.85 fps  emu 78.37 (1.54x)  frames=19637  ring=354  aud=3041 x6
+<12>[  363.325396] pid351: fceumm 49.05 fps  emu 87.93 (1.79x)  frames=19883  ring=352  aud=3572 x6
+<12>[  368.334572] pid351: fceumm 51.11 fps  emu 76.86 (1.50x)  frames=20139  ring=351  aud=2984 x6
+<12>[  373.340896] pid351: fceumm 31.56 fps  emu 122.05 (3.87x)  frames=20297  ring=350  aud=2976 x6
+<12>[  378.353608] pid351: fceumm 38.30 fps  emu 114.91 (3.00x)  frames=20489  ring=349  aud=3256 x6
+<12>[  383.371048] pid351: fceumm 44.64 fps  emu 94.87 (2.12x)  frames=20713  ring=348  aud=2984 x6
+<12>[  388.383620] pid351: fceumm 46.68 fps  emu 86.18 (1.85x)  frames=20947  ring=347  aud=3254 x6
+<12>[  393.412107] pid351: fceumm 36.39 fps  emu 106.19 (2.92x)  frames=21130  ring=348  aud=2976 x6
+<12>[  398.413323] pid351: fceumm 34.79 fps  emu 108.57 (3.12x)  frames=21304  ring=346  aud=2976 x6
+<12>[  403.433030] pid351: fceumm 38.25 fps  emu 109.97 (2.88x)  frames=21496  ring=345  aud=2976 x6
+<12>[  408.438105] pid351: fceumm 34.37 fps  emu 109.89 (3.20x)  frames=21668  ring=345  aud=2968 x6
+<12>[  413.462269] pid351: fceumm 33.64 fps  emu 111.86 (3.33x)  frames=21837  ring=346  aud=2968 x6
+<12>[  418.489021] pid351: fceumm 59.68 fps  emu 60.87 (1.02x)  frames=22137  ring=344  aud=2976 x6
+<12>[  423.505388] pid351: fceumm 59.80 fps  emu 60.40 (1.01x)  frames=22437  ring=343  aud=2961 x6
+<12>[  428.520355] pid351: fceumm 40.28 fps  emu 102.49 (2.54x)  frames=22639  ring=342  aud=3015 x6
+<12>[  433.535743] pid351: fceumm 50.84 fps  emu 86.73 (1.71x)  frames=22894  ring=340  aud=3158 x6
+<12>[  435.650459] pid351: save ok
+<12>[  436.344570] pid351: save ok
+<12>[  436.575773] pid351: save ok
+<12>[  436.762181] pid351: save ok
+<12>[  438.550340] pid351: fceumm 59.43 fps  emu 59.43 (1.00x)  frames=23192  ring=338  aud=3105 x7
+<12>[  439.067023] pid351: load ok
+<12>[  443.565603] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=23493  ring=337  aud=3089 x7
+<12>[  448.580609] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=23794  ring=335  aud=3090 x7
+<12>[  453.595556] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=24095  ring=333  aud=3091 x7
+<12>[  458.610575] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=24396  ring=332  aud=3091 x7
+<12>[  463.625537] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=24697  ring=330  aud=3092 x7
+<12>[  468.640705] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=24998  ring=330  aud=3093 x7
+<12>[  471.223174] pid351: load ok
+<12>[  473.655492] pid351: fceumm 59.42 fps  emu 61.22 (1.03x)  frames=25296  ring=329  aud=3168 x7
+<12>[  478.671031] pid351: fceumm 55.43 fps  emu 69.19 (1.25x)  frames=25574  ring=327  aud=3262 x7
+<12>[  483.685805] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=25875  ring=327  aud=3270 x7
+<12>[  486.023828] pid351: save ok
+<12>[  486.280308] pid351: save ok
+<12>[  487.534675] pid351: load ok
+<12>[  488.700799] pid351: fceumm 59.82 fps  emu 59.82 (1.00x)  frames=26175  ring=326  aud=2471 x7
+<12>[  491.604363] pid351: save ok
+<12>[  492.899507] pid351: load ok
+<12>[  493.715579] pid351: fceumm 59.82 fps  emu 59.82 (1.00x)  frames=26475  ring=325  aud=1680 x7
+<12>[  496.472591] pid351: save ok
+<12>[  497.748065] pid351: load ok
+<12>[  498.730728] pid351: fceumm 59.82 fps  emu 59.82 (1.00x)  frames=26775  ring=324  aud=3196 x8
+<12>[  503.745598] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=27076  ring=323  aud=3197 x8
+<12>[  504.299480] pid351: save ok
+<12>[  505.062378] pid351: load ok
+<12>[  508.764711] pid351: fceumm 57.98 fps  emu 63.36 (1.09x)  frames=27367  ring=322  aud=2976 x8
+<12>[  513.766537] pid351: fceumm 29.99 fps  emu 119.96 (4.00x)  frames=27517  ring=322  aud=2976 x8
+<12>[  518.774241] pid351: fceumm 33.35 fps  emu 122.01 (3.66x)  frames=27684  ring=322  aud=2891 x8
+<12>[  523.789010] pid351: fceumm 49.85 fps  emu 81.56 (1.64x)  frames=27934  ring=320  aud=3030 x8
+<12>[  528.804217] pid351: fceumm 50.25 fps  emu 80.16 (1.60x)  frames=28186  ring=320  aud=3195 x8
+<12>[  533.808241] pid351: fceumm 45.16 fps  emu 90.73 (2.01x)  frames=28412  ring=320  aud=2984 x8
+<12>[  538.817669] pid351: fceumm 47.71 fps  emu 85.44 (1.79x)  frames=28651  ring=319  aud=2974 x8
+<12>[  543.831473] pid351: fceumm 43.88 fps  emu 93.54 (2.13x)  frames=28871  ring=319  aud=2976 x8
+<12>[  548.847478] pid351: fceumm 36.88 fps  emu 108.65 (2.95x)  frames=29056  ring=317  aud=2870 x8
+<12>[  553.862634] pid351: fceumm 56.43 fps  emu 67.79 (1.20x)  frames=29339  ring=317  aud=3509 x8
+<12>[  558.877460] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=29640  ring=317  aud=3517 x8
+<12>[  563.892275] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=29941  ring=316  aud=3526 x8
+<12>[  568.907629] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=30242  ring=315  aud=3511 x8
+<12>[  573.922852] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=30543  ring=315  aud=3503 x8
+<12>[  574.939516] pid351: load ok
+<12>[  578.937552] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=30844  ring=315  aud=3520 x8
+<12>[  583.955808] pid351: fceumm 34.08 fps  emu 110.60 (3.25x)  frames=31015  ring=315  aud=2976 x8
+<12>[  588.983756] pid351: fceumm 32.82 fps  emu 125.90 (3.84x)  frames=31180  ring=315  aud=2984 x8
+<12>[  593.999152] pid351: fceumm 56.83 fps  emu 66.40 (1.17x)  frames=31465  ring=316  aud=3361 x8
+<12>[  599.014221] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=31766  ring=315  aud=3362 x8
+<12>[  603.895820] pid351: exit (combo) after 32059 frames

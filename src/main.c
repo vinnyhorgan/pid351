@@ -1168,34 +1168,41 @@ static int first_rom(const char *dir, char *out, size_t outsz)
  *
  * See scale.h for why it is exactly 53 columns wide.
  *
- * Almost nothing is drawn here on purpose. It sits a centimetre from Mario
- * for hours at a time, so anything in it is either worth that or is noise -
- * and the first version of this had a wordmark, a session timer and a
- * current reading, none of which anyone would ever look at. Battery is the
- * one thing a handheld cannot tell you any other way.
+ * Two things at the ends and nothing in between. The battery is the only
+ * reading a handheld cannot give you any other way; the name is at the foot
+ * of the rail turned on its side, the way it would be printed on the bezel of
+ * a machine you could buy. The emptiness between them is the composition, not
+ * a gap waiting to be filled - an earlier version put a session timer there
+ * purely because the space existed.
  *
- * No text labels either. A 53 pixel column at a 5x7 font is eight cramped
- * characters, and a battery drawn as a battery needs no word next to it. The
- * only glyphs are the number, which has to stay upright to be read.
+ * Widths are chosen odd wherever the element allows it, so (BAR_W - w) / 2
+ * lands on whole pixel 26: at this size an element one pixel off centre is
+ * visible, and several elements each off by a different amount is what makes
+ * a layout look accidental rather than merely imperfect. The cell, its cap
+ * and the chevrons are exact. The number and the wordmark are even widths at
+ * this scale and sit half a pixel left, which is the closest a 53 column rail
+ * can put them and is below what the panel resolves.
  *
- * No wall clock. The rk817 has an RTC and the kernel reads it, but nothing
- * has ever set it - the console writes files onto the card dated 2017 - and
- * a clock that is confidently wrong is worse than no clock at all. */
+ * No wall clock, and no volume. The RTC has never been set - the console
+ * writes files onto the card dated 2017 - and volume is a potentiometer in
+ * the analog path with nothing for software to read. Showing either would
+ * mean showing a number we made up. */
 
 #define BAR_INK   RGB565(214, 220, 228)
 #define BAR_EDGE  RGB565( 72,  78,  88)
+#define BAR_MARK  RGB565( 52,  58,  68)
 #define BAR_WARN  RGB565(240, 176,  64)
 #define BAR_CRIT  RGB565(236,  84,  68)
 #define BAR_CHRG  RGB565( 96, 170, 240)
 
-static px_t barbuf[BAR_W * PANEL_H];
-
-/* The battery, drawn as one. Cap at the top, level rising from the bottom,
- * the shape doing the work a label would otherwise have to. */
-#define CELL_X 13
+/* Odd, so it centres exactly. Sized to be read at a glance and no larger:
+ * this sits beside the game for hours and is not the subject. */
+#define CELL_W 21
+#define CELL_H 46
+#define CELL_X ((BAR_W - CELL_W) / 2)
 #define CELL_Y 18
-#define CELL_W 27
-#define CELL_H 200
+
+static px_t barbuf[BAR_W * PANEL_H];
 
 static void draw_bar(uint32_t held)
 {
@@ -1216,22 +1223,22 @@ static void draw_bar(uint32_t held)
     if (pct > 100)
         pct = 100;
 
-    /* Colour carries one meaning only: something needs attention. A gauge
-     * that is green when nothing is wrong has spent the loudest thing it has
-     * on the most common case. */
-    px_t ink = pct < 0            ? BAR_EDGE
-             : si.current_ua > 0  ? BAR_CHRG
-             : pct <= 12          ? BAR_CRIT
-             : pct <= 30          ? BAR_WARN
-                                  : BAR_INK;
+    /* Colour means one thing: something needs attention. A gauge that is
+     * green when nothing is wrong has spent its loudest colour on the most
+     * common case. */
+    px_t ink = pct < 0           ? BAR_EDGE
+             : si.current_ua > 0 ? BAR_CHRG
+             : pct <= 12         ? BAR_CRIT
+             : pct <= 30         ? BAR_WARN
+                                 : BAR_INK;
 
     gfx_rect(&c, 0, 0, BAR_W, PANEL_H, RGB565(0, 0, 0));
 
-    gfx_rect(&c, CELL_X + 8, CELL_Y - 6, CELL_W - 16, 6, BAR_EDGE);
+    /* Cap, body, level. Drawn as a battery so that nothing has to say so. */
+    gfx_rect(&c, (BAR_W - 9) / 2, CELL_Y - 4, 9, 4, BAR_EDGE);
     gfx_frame(&c, CELL_X, CELL_Y, CELL_W, CELL_H, BAR_EDGE);
-
     if (pct >= 0) {
-        int ih = CELL_H - 6, iw = CELL_W - 6;
+        int iw = CELL_W - 6, ih = CELL_H - 6;
         int fh = ih * pct / 100;
         gfx_rect(&c, CELL_X + 3, CELL_Y + 3 + (ih - fh), iw, fh, ink);
     }
@@ -1240,23 +1247,28 @@ static void draw_bar(uint32_t held)
         snprintf(buf, sizeof buf, "%d", pct);
     else
         snprintf(buf, sizeof buf, "--");
-    /* gfx_text_w counts the advance after the last glyph; the ink is one
-     * scale narrower than that, and centring on the advance leaves the
-     * number visibly off to the left at this width. */
+    /* gfx_text_w counts the advance after the last glyph; the ink stops one
+     * scale short of that, and centring on the advance is what left the
+     * number sitting visibly left of everything above it. */
     int tw = gfx_text_w(buf, 2) - 2;
-    gfx_text(&c, (BAR_W - tw) / 2, CELL_Y + CELL_H + 14, buf, 2, ink);
+    gfx_text(&c, (BAR_W - tw) / 2, CELL_Y + CELL_H + 10, buf, 2, ink);
 
-    /* Fast mode is held rather than toggled, and it makes the picture choppy
-     * by design - without something saying so, that reads as the machine
-     * struggling rather than as the button working. */
+    /* Fast mode is held rather than toggled and makes the picture choppy by
+     * design - unmarked, that reads as the machine struggling rather than as
+     * the button working. Two chevrons, 8 and 8 with 3 between: 19 across,
+     * which is odd and so lands on centre like everything else. */
     if (held & PAD_R2) {
-        int y = PANEL_H - 40;
         for (int i = 0; i < 2; i++) {
-            int x = 14 + i * 14;
+            int x = (BAR_W - 19) / 2 + i * 11;
             for (int k = 0; k < 8; k++)
-                gfx_rect(&c, x + k, y + k, 1, 17 - 2 * k, BAR_INK);
+                gfx_rect(&c, x + k, 150 + k, 1, 15 - 2 * k, BAR_INK);
         }
     }
+
+    /* The name, up the foot of the rail. Dim: it is an identity, not a
+     * reading, and it should be the last thing the eye stops on. */
+    gfx_text_rot(&c, (BAR_W - FONT_H * 2) / 2, PANEL_H - 14, "PID351",
+                 2, BAR_MARK);
 }
 
 /* Runs one ROM and nothing else: no demo, no sweep, no census.
