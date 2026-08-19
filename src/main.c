@@ -45,6 +45,11 @@
  * that lasts less than half a second is not a splash, it is a glitch. */
 #define SPLASH_HOLD_US 2000000u
 
+/* How much of the hold is spent letting the primed silence drain rather than
+ * topping it up. See the hold itself for why handing the game a full codec
+ * buffer is not the same as handing it a healthy one. */
+#define SILENCE_DRAIN_US 50000u
+
 #define C_BG     RGB565(  8, 10, 14)
 #define C_PANEL  RGB565( 20, 24, 32)
 #define C_EDGE   RGB565( 46, 56, 72)
@@ -1309,16 +1314,30 @@ static void power_phase(canvas_t *c, const char *name, const char *gov,
  * this a hang before the first frame looks exactly like a machine that never
  * reached us. A frozen wordmark says the display came up and something after
  * it did not. */
+/* Ink, not advance. gfx_text_w counts a trailing gap after the last glyph
+ * that nothing is drawn in, so centring on it leans every line left - and by
+ * a different amount at each scale, which is why the wordmark and the word
+ * under it agreed with neither the panel nor each other. */
+static int ink_w(const char *s, int scale)
+{
+    return gfx_text_w(s, scale) - (FONT_ADVANCE - FONT_W) * scale;
+}
+
 static void splash(const char *line)
 {
     canvas_t c = { framebuffer, PANEL_W, PANEL_H };
-    int mark = 4;
+    const int mark = 4;
+    const int gap = 10;
+    /* Centre the pair as one block. Centring the wordmark on the panel and
+     * then hanging the line off it puts the visual weight above the middle,
+     * which is what "not quite centred" looked like. */
+    int y = (PANEL_H - (FONT_H * mark + gap + FONT_H)) / 2;
 
     gfx_rect(&c, 0, 0, PANEL_W, PANEL_H, C_BG);
-    gfx_text(&c, (PANEL_W - gfx_text_w("PID351", mark)) / 2,
-             PANEL_H / 2 - FONT_H * mark, "PID351", mark, C_ACCENT);
-    gfx_text(&c, (PANEL_W - gfx_text_w(line, 1)) / 2,
-             PANEL_H / 2 + FONT_H, line, 1, C_DIM);
+    gfx_text(&c, (PANEL_W - ink_w("PID351", mark)) / 2, y,
+             "PID351", mark, C_ACCENT);
+    gfx_text(&c, (PANEL_W - ink_w(line, 1)) / 2, y + FONT_H * mark + gap,
+             line, 1, C_DIM);
     plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
     /* After the flip, never before: the whole point of starting dark is that
      * the backlight comes up on our first frame and not on whatever was on
@@ -1595,6 +1614,15 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
         printf("pid351: fast mode: never used\n");
     }
 
+    /* Said plainly, because the alternative reads as health. A session where
+     * the device never opened prints zero xruns, a codec low water of zero
+     * and a core ring pinned at its cap, and every one of those numbers is
+     * the absence of audio rather than a measurement of it - which cost
+     * twenty minutes of chasing a regression that was PipeWire holding the
+     * card on the laptop. */
+    if (aud_lo == INT32_MAX)
+        printf("pid351: audio: NEVER OPENED - the ring figure below is the "
+               "core talking to nothing\n");
     printf("pid351: audio: %d xruns, core ring %d..%d, codec low water %d "
            "frames (%.1f ms)\n",
            aud_xruns(), ring_lo == INT32_MAX ? 0 : ring_lo, ring_hi,
@@ -1682,9 +1710,32 @@ static int run_game(const char *rom, int as_init)
      *
      * The wait is at the end rather than the beginning, so the loading
      * happens inside it and costs nothing extra - only the remainder is spent
-     * waiting. Blocking, not spinning, per the rules. The codec is prepared
-     * but not started (ALSA's start threshold is half a buffer and nothing
-     * has written a frame yet), so no underrun accrues while we sit here. */
+     * waiting. Blocking, not spinning, per the rules.
+     *
+     * Silence rather than nothing while we wait, and that is the part that
+     * matters. ALSA starts the stream once half the buffer has been written,
+     * so until now the class-D amplifier powered up about three frames into
+     * the game: mid-music, at full volume, which is both where a power-up
+     * transient is loudest and where it reads as a fault rather than as a
+     * machine turning on. It was audible as a pop the instant the wordmark
+     * left the screen. Feeding zeros through the hold brings the amplifier up
+     * on DC two seconds earlier, behind the wordmark, and gives it the whole
+     * hold to settle before the first sample anybody wants to hear.
+     *
+     * Feeding stops early and the last stretch is a plain wait, so the buffer
+     * drains back to about where a running game holds it. aud_silence fills
+     * to one period short of full, which is the right target while nothing
+     * else is writing and the wrong one to hand over: aud_due is a rate and
+     * not a level, so the game's first frames would be written into a full
+     * buffer and block there, and the samples piling up behind them sit in
+     * the core's ring as sound arriving after the picture. SILENCE_DRAIN_US
+     * at 48 kHz is about two thousand frames, which lands it where the
+     * sessions on the device actually run. */
+    for (uint64_t t = plat_now_us() + FRAME_US;
+         t < splashed + SPLASH_HOLD_US - SILENCE_DRAIN_US; t += FRAME_US) {
+        aud_silence();
+        plat_sleep_until(t);
+    }
     plat_sleep_until(splashed + SPLASH_HOLD_US);
 
     uint64_t start = plat_now_us(), next = start, mark = start;
