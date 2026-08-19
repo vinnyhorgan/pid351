@@ -1,0 +1,565 @@
+<6>[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd042]
+<5>[    0.000000] Linux version 6.12.103 (dvh@hp) (aarch64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #35 SMP PREEMPT Wed Aug 19 22:51:46 CEST 2026
+<4>[    0.000000] KASLR disabled due to lack of seed
+<6>[    0.000000] Machine model: Anbernic RG351P (pid351)
+<6>[    0.000000] efi: UEFI not found.
+<6>[    0.000000] OF: reserved mem: Reserved memory: No reserved-memory node in the DT
+<6>[    0.000000] NUMA: Faking a node at [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000] NODE_DATA(0) allocated [mem 0x3fdc31c0-0x3fdc57ff]
+<6>[    0.000000] Zone ranges:
+<6>[    0.000000]   DMA      [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000]   DMA32    empty
+<6>[    0.000000]   Normal   empty
+<6>[    0.000000] Movable zone start for each node
+<6>[    0.000000] Early memory node ranges
+<6>[    0.000000]   node   0: [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000] Initmem setup node 0 [mem 0x0000000000200000-0x000000003fffffff]
+<6>[    0.000000] On node 0, zone DMA: 512 pages in unavailable ranges
+<6>[    0.000000] cma: Reserved 16 MiB at 0x000000003dc00000 on node -1
+<6>[    0.000000] psci: probing for conduit method from DT.
+<6>[    0.000000] psci: PSCIv1.1 detected in firmware.
+<6>[    0.000000] psci: Using standard PSCI v0.2 function IDs
+<6>[    0.000000] psci: MIGRATE_INFO_TYPE not supported.
+<6>[    0.000000] psci: SMC Calling Convention v1.2
+<6>[    0.000000] percpu: Embedded 22 pages/cpu s57504 r0 d32608 u90112
+<7>[    0.000000] pcpu-alloc: s57504 r0 d32608 u90112 alloc=22*4096
+<7>[    0.000000] pcpu-alloc: [0] 0 [0] 1 [0] 2 [0] 3 
+<6>[    0.000000] Detected VIPT I-cache on CPU0
+<6>[    0.000000] alternatives: applying boot alternatives
+<5>[    0.000000] Kernel command line: console=ttyS2,1500000 console=tty0 quiet vt.global_cursor_default=0 fbcon=rotate:3 panic=5 cma=16M printk.devkmsg=on
+<6>[    0.000000] Dentry cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)
+<6>[    0.000000] Inode-cache hash table entries: 65536 (order: 7, 524288 bytes, linear)
+<6>[    0.000000] Fallback order for Node 0: 0 
+<6>[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 261632
+<6>[    0.000000] Policy zone: DMA
+<6>[    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+<6>[    0.000000] software IO TLB: SWIOTLB bounce buffer size adjusted to 0MB
+<6>[    0.000000] software IO TLB: area num 4.
+<6>[    0.000000] software IO TLB: mapped [mem 0x000000003da80000-0x000000003db80000] (1MB)
+<6>[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+<6>[    0.000000] rcu: Preemptible hierarchical RCU implementation.
+<6>[    0.000000] rcu: 	RCU event tracing is enabled.
+<6>[    0.000000] rcu: 	RCU restricting CPUs from NR_CPUS=512 to nr_cpu_ids=4.
+<6>[    0.000000] 	Trampoline variant of Tasks RCU enabled.
+<6>[    0.000000] 	Tracing variant of Tasks RCU enabled.
+<6>[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 25 jiffies.
+<6>[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+<6>[    0.000000] RCU Tasks: Setting shift to 2 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=4.
+<6>[    0.000000] RCU Tasks Trace: Setting shift to 2 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=4.
+<6>[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+<6>[    0.000000] Root IRQ handler: gic_handle_irq
+<6>[    0.000000] GIC: Using split EOI/Deactivate mode
+<6>[    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.
+<6>[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+<6>[    0.000000] arch_timer: cp15 timer(s) running at 24.00MHz (phys).
+<6>[    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+<6>[    0.000002] sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+<6>[    0.001430] Console: colour dummy device 80x25
+<6>[    0.001466] printk: legacy console [tty0] enabled
+<6>[    0.001746] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=96000)
+<6>[    0.001784] pid_max: default: 32768 minimum: 301
+<6>[    0.001945] LSM: initializing lsm=capability
+<6>[    0.002116] Mount-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+<6>[    0.002151] Mountpoint-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)
+<4>[    0.004303] cacheinfo: Unable to detect cache hierarchy for CPU 0
+<6>[    0.007229] rcu: Hierarchical SRCU implementation.
+<6>[    0.007265] rcu: 	Max phase no-delay instances is 1000.
+<6>[    0.007988] Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+<6>[    0.008964] EFI services will not be available.
+<6>[    0.009657] smp: Bringing up secondary CPUs ...
+<6>[    0.010885] Detected VIPT I-cache on CPU1
+<6>[    0.011072] CPU1: Booted secondary processor 0x0000000001 [0x410fd042]
+<6>[    0.012855] Detected VIPT I-cache on CPU2
+<6>[    0.013039] CPU2: Booted secondary processor 0x0000000002 [0x410fd042]
+<6>[    0.014648] Detected VIPT I-cache on CPU3
+<6>[    0.014825] CPU3: Booted secondary processor 0x0000000003 [0x410fd042]
+<6>[    0.015178] smp: Brought up 1 node, 4 CPUs
+<6>[    0.015218] SMP: Total of 4 processors activated.
+<6>[    0.015231] CPU: All CPU(s) started at EL2
+<6>[    0.015300] CPU features: detected: 32-bit EL0 Support
+<6>[    0.015312] CPU features: detected: 32-bit EL1 Support
+<6>[    0.015329] CPU features: detected: CRC32 instructions
+<6>[    0.015432] alternatives: applying system-wide alternatives
+<6>[    0.018001] Memory: 972352K/1046528K available (15872K kernel code, 3132K rwdata, 7952K rodata, 3200K init, 1034K bss, 53216K reserved, 16384K cma-reserved)
+<6>[    0.019514] devtmpfs: initialized
+<6>[    0.038222] futex hash table entries: 1024 (order: 4, 65536 bytes, linear)
+<6>[    0.040375] 24896 pages in range for non-PLT usage
+<6>[    0.040415] 516416 pages in range for PLT usage
+<6>[    0.041078] pinctrl core: initialized pinctrl subsystem
+<6>[    0.042409] DMI not present or invalid.
+<6>[    0.045082] DMA: preallocated 128 KiB GFP_KERNEL pool for atomic allocations
+<6>[    0.045969] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations
+<6>[    0.047467] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations
+<6>[    0.051094] thermal_sys: Registered thermal governor 'step_wise'
+<6>[    0.051125] thermal_sys: Registered thermal governor 'power_allocator'
+<6>[    0.051300] cpuidle: using governor menu
+<6>[    0.051874] hw-breakpoint: found 6 breakpoint and 4 watchpoint registers.
+<6>[    0.052092] ASID allocator initialised with 65536 entries
+<6>[    0.053465] Serial: AMBA PL011 UART driver
+<6>[    0.075517] /dsi@ff450000: Fixed dependency cycle(s) with /dsi@ff450000/panel@0
+<6>[    0.075858] /dsi@ff450000/panel@0: Fixed dependency cycle(s) with /dsi@ff450000
+<6>[    0.076534] /dsi@ff450000: Fixed dependency cycle(s) with /vop@ff460000
+<6>[    0.076689] /vop@ff460000: Fixed dependency cycle(s) with /dsi@ff450000
+<4>[    0.097189] gpio gpiochip0: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.098066] rockchip-gpio ff040000.gpio: probed /pinctrl/gpio@ff040000
+<4>[    0.098869] gpio gpiochip1: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.099333] rockchip-gpio ff250000.gpio: probed /pinctrl/gpio@ff250000
+<4>[    0.100187] gpio gpiochip2: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.100621] rockchip-gpio ff260000.gpio: probed /pinctrl/gpio@ff260000
+<4>[    0.101476] gpio gpiochip3: Static allocation of GPIO base is deprecated, use dynamic allocation.
+<6>[    0.101946] rockchip-gpio ff270000.gpio: probed /pinctrl/gpio@ff270000
+<6>[    0.108471] HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages
+<6>[    0.108510] HugeTLB: 0 KiB vmemmap can be freed for a 1.00 GiB page
+<6>[    0.108531] HugeTLB: registered 32.0 MiB page size, pre-allocated 0 pages
+<6>[    0.108545] HugeTLB: 0 KiB vmemmap can be freed for a 32.0 MiB page
+<6>[    0.108563] HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages
+<6>[    0.108577] HugeTLB: 0 KiB vmemmap can be freed for a 2.00 MiB page
+<6>[    0.108595] HugeTLB: registered 64.0 KiB page size, pre-allocated 0 pages
+<6>[    0.108608] HugeTLB: 0 KiB vmemmap can be freed for a 64.0 KiB page
+<6>[    0.113371] ACPI: Interpreter disabled.
+<6>[    0.114885] iommu: Default domain type: Translated
+<6>[    0.114923] iommu: DMA domain TLB invalidation policy: strict mode
+<5>[    0.116221] SCSI subsystem initialized
+<7>[    0.116700] libata version 3.00 loaded.
+<6>[    0.117025] usbcore: registered new interface driver usbfs
+<6>[    0.117098] usbcore: registered new interface driver hub
+<6>[    0.117177] usbcore: registered new device driver usb
+<6>[    0.119192] EDAC MC: Ver: 3.0.0
+<6>[    0.119973] scmi_core: SCMI protocol bus registered
+<6>[    0.121090] FPGA manager framework
+<6>[    0.121715] Advanced Linux Sound Architecture Driver Initialized.
+<6>[    0.122118] vgaarb: loaded
+<6>[    0.122997] clocksource: Switched to clocksource arch_sys_counter
+<5>[    0.123682] VFS: Disk quotas dquot_6.6.0
+<6>[    0.123765] VFS: Dquot-cache hash table entries: 512 (order 0, 4096 bytes)
+<6>[    0.124571] pnp: PnP ACPI: disabled
+<6>[    0.141943] PCI: CLS 0 bytes, default 64
+<6>[    0.151832] kvm [1]: nv: 554 coarse grained trap handlers
+<6>[    0.153019] kvm [1]: IPA Size Limit: 40 bits
+<6>[    0.157520] kvm [1]: vgic interrupt IRQ9
+<6>[    0.157624] kvm [1]: Hyp nVHE mode initialized successfully
+<6>[    0.162030] workingset: timestamp_bits=42 max_order=18 bucket_order=0
+<6>[    0.162800] squashfs: version 4.0 (2009/01/31) Phillip Lougher
+<6>[    0.163385] fuse: init (API version 7.41)
+<6>[    0.326486] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 244)
+<6>[    0.326529] io scheduler mq-deadline registered
+<6>[    0.326545] io scheduler kyber registered
+<6>[    0.326643] io scheduler bfq registered
+<6>[    0.342645] ledtrig-cpu: registered to indicate activity on CPUs
+<6>[    0.354654] dma-pl330 ff240000.dma-controller: Loaded driver for PL330 DMAC-241330
+<6>[    0.354703] dma-pl330 ff240000.dma-controller: 	DBUFF-128x8bytes Num_Chans-8 Num_Peri-32 Num_Events-16
+<6>[    0.368344] Serial: 8250/16550 driver, 4 ports, IRQ sharing enabled
+<6>[    0.373468] printk: legacy console [ttyS2] disabled
+<6>[    0.374304] ff160000.serial: ttyS2 at MMIO 0xff160000 (irq = 22, base_baud = 1500000) is a 16550A
+<6>[    0.374494] printk: legacy console [ttyS2] enabled
+<6>[    0.384814] rockchip-vop ff460000.vop: Adding to iommu group 0
+<6>[    0.389365] /dsi@ff450000: Fixed dependency cycle(s) with /dsi@ff450000/panel@0
+<6>[    0.389549] /dsi@ff450000/panel@0: Fixed dependency cycle(s) with /dsi@ff450000
+<6>[    0.421317] loop: module loaded
+<6>[    0.423900] megasas: 07.727.03.00-rc1
+<6>[    0.424106] mpt3sas version 48.100.00.00 loaded
+<6>[    0.444700] VFIO - User Level meta-driver version: 0.3
+<4>[    0.446552] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+<4>[    0.446641] dwc2 ff300000.usb: supply vusb_d not found, using dummy regulator
+<4>[    0.446952] dwc2 ff300000.usb: supply vusb_a not found, using dummy regulator
+<4>[    0.447303] dwc2 ff300000.usb: Configuration mismatch. dr_mode forced to host
+<4>[    0.459537] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+<4>[    0.459580] rockchip-usb2phy ff2c0000.syscon:usb2phy@100: Requested PHY is disabled
+<6>[    0.459605] dwc2 ff300000.usb: DWC OTG Controller
+<6>[    0.459663] dwc2 ff300000.usb: new USB bus registered, assigned bus number 1
+<6>[    0.459727] dwc2 ff300000.usb: irq 27, io mem 0xff300000
+<6>[    0.461354] hub 1-0:1.0: USB hub found
+<6>[    0.461442] hub 1-0:1.0: 1 port detected
+<6>[    0.465485] usbcore: registered new interface driver cdc_acm
+<6>[    0.465524] cdc_acm: USB Abstract Control Model driver for USB modems and ISDN adapters
+<6>[    0.465608] usbcore: registered new interface driver usb-storage
+<6>[    0.465775] usbcore: registered new interface driver cp210x
+<6>[    0.465835] usbserial: USB Serial support registered for cp210x
+<6>[    0.465907] usbcore: registered new interface driver ftdi_sio
+<6>[    0.465976] usbserial: USB Serial support registered for FTDI USB Serial Device
+<6>[    0.466075] usbcore: registered new interface driver option
+<6>[    0.466131] usbserial: USB Serial support registered for GSM modem (1-port)
+<6>[    0.466671] usbcore: registered new device driver onboard-usb-dev
+<4>[    0.473342] pwm-vibrator vibrator: supply vcc not found, using dummy regulator
+<6>[    0.474030] input: pwm-vibrator as /devices/platform/vibrator/input/input0
+<6>[    0.477469] i2c_dev: i2c /dev entries driver
+<6>[    0.514295] vcc_bl: Bringing 2800000uV into 3300000-3300000uV
+<6>[    0.516318] vcc_lcd: Bringing 1800000uV into 2800000-2800000uV
+<6>[    0.519532] usb_midu: Bringing 4700000uV into 5000000-5000000uV
+<6>[    0.524842] input: rk805 pwrkey as /devices/platform/ff180000.i2c/i2c-0/0-0020/rk805-pwrkey.2.auto/input/input1
+<6>[    0.530626] rk808-rtc rk808-rtc.3.auto: registered as rtc0
+<6>[    0.531556] rk808-rtc rk808-rtc.3.auto: setting system clock to 2017-08-07T15:50:40 UTC (1502121040)
+<4>[    0.550361] rockchip-thermal ff280000.tsadc: Missing tshut mode property, using default (cru)
+<4>[    0.550413] rockchip-thermal ff280000.tsadc: Missing tshut-polarity property, using default (low)
+<6>[    0.554391] device-mapper: ioctl: 4.48.0-ioctl (2023-03-01) initialised: dm-devel@lists.linux.dev
+<6>[    0.557210] cpu cpu0: EM: created perf domain
+<6>[    0.561372] sdhci: Secure Digital Host Controller Interface driver
+<6>[    0.561401] sdhci: Copyright(c) Pierre Ossman
+<6>[    0.561965] Synopsys Designware Multimedia Card Interface Driver
+<6>[    0.562818] sdhci-pltfm: SDHCI platform and OF driver helper
+<6>[    0.563907] dwmmc_rockchip ff370000.mmc: IDMAC supports 32-bit address mode.
+<6>[    0.563980] dwmmc_rockchip ff370000.mmc: Using internal DMA controller.
+<6>[    0.563998] dwmmc_rockchip ff370000.mmc: Version ID is 270a
+<6>[    0.564082] dwmmc_rockchip ff370000.mmc: DW MMC controller at irq 55,32 bit host data width,256 deep fifo
+<6>[    0.565251] dwmmc_rockchip ff370000.mmc: Got CD GPIO
+<6>[    0.565506] SMCCC: SOC_ID: ARCH_SOC_ID not implemented, skipping ....
+<6>[    0.566774] usbcore: registered new interface driver usbhid
+<6>[    0.566803] usbhid: USB HID core driver
+<4>[    0.577392] SPI driver st-magn-spi has no spi_device_id for st,lis3mdl-magn
+<4>[    0.577425] SPI driver st-magn-spi has no spi_device_id for st,lsm303agr-magn
+<4>[    0.577433] SPI driver st-magn-spi has no spi_device_id for st,lsm9ds1-magn
+<4>[    0.577441] SPI driver st-magn-spi has no spi_device_id for st,lsm303c-magn
+<6>[    0.579846] mmc_host mmc0: Bus speed (slot 0) = 400000Hz (slot req 400000Hz, actual 400000HZ div = 0)
+<6>[    0.580510] hw perfevents: enabled with armv8_cortex_a35 PMU driver, 7 (0,8000003f) counters available
+<6>[    0.583142]  cs_system_cfg: CoreSight Configuration manager initialised
+<6>[    0.587108] gnss: GNSS driver registered with major 236
+<6>[    0.622932] Demotion targets for Node 0: null
+<6>[    0.641174] mmc_host mmc0: Bus speed (slot 0) = 50000000Hz (slot req 50000000Hz, actual 50000000HZ div = 0)
+<6>[    0.641514] mmc0: new high speed SDHC card at address 0001
+<6>[    0.643397] mmcblk0: mmc0:0001 00000 29.2 GiB
+<6>[    0.646404]  mmcblk0: p1 p2
+<6>[    0.656872] rockchip-drm display-subsystem: bound ff460000.vop (ops vop_component_ops)
+<6>[    0.657312] rockchip-drm display-subsystem: bound ff450000.dsi (ops dw_mipi_dsi_rockchip_ops)
+<6>[    0.658575] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+<6>[    0.747412] usb 1-1: new high-speed USB device number 2 using dwc2
+<6>[    0.945103] hub 1-1:1.0: USB hub found
+<6>[    0.945657] hub 1-1:1.0: 4 ports detected
+<6>[    1.085566] Console: switching to colour frame buffer device 60x20
+<6>[    1.104166] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+<6>[    1.130212] input: rk817_int Headphones as /devices/platform/rk817-sound/sound/card0/input2
+<6>[    1.131524] clk: Disabling unused clocks
+<6>[    1.131909] PM: genpd: Disabling unused power domains
+<6>[    1.131984] ALSA device list:
+<6>[    1.131993]   #0: rk817_int
+<6>[    1.134490] Freeing unused kernel memory: 3200K
+<6>[    1.134625] Run /init as init process
+<7>[    1.134633]   with arguments:
+<7>[    1.134639]     /init
+<7>[    1.134645]   with environment:
+<7>[    1.134651]     HOME=/
+<7>[    1.134656]     TERM=linux
+<12>[    1.140417] pid351: stage mounts       + 0.002 s (0.002 s in)
+<12>[    1.140450] pid351: running as PID 1
+<4>[    1.144225] FAT-fs (mmcblk0p1): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.
+<12>[    1.144472] pid351: stage card         + 0.004 s (0.006 s in)
+<12>[    1.152813] pid351: stage rom          + 0.008 s (0.014 s in)
+<12>[    1.152859] pid351: playing /boot/pid351/roms/smb3.nes
+<12>[    1.153164] pid351: connector 40, crtc 36, mode 320x480@60
+<6>[    1.391247] usb 1-1.2: new full-speed USB device number 3 using dwc2
+<6>[    1.498509] input: OpenSimHardware OSH PB Controller Keyboard as /devices/platform/ff300000.usb/usb1/1-1/1-1.2/1-1.2:1.0/0003:1209:3100.0001/input/input3
+<6>[    1.552241] input: OpenSimHardware OSH PB Controller Mouse as /devices/platform/ff300000.usb/usb1/1-1/1-1.2/1-1.2:1.0/0003:1209:3100.0001/input/input4
+<6>[    1.553268] input: OpenSimHardware OSH PB Controller as /devices/platform/ff300000.usb/usb1/1-1/1-1.2/1-1.2:1.0/0003:1209:3100.0001/input/input5
+<6>[    1.553998] hid-generic 0003:1209:3100.0001: input: USB HID v1.11 Keyboard [OpenSimHardware OSH PB Controller] on usb-ff300000.usb-1.2/input0
+<12>[    1.675865] pid351: pad on /dev/input/event5 (OpenSimHardware OSH PB Controller)
+<12>[    1.675970] pid351: pad appeared after 60 ms
+<12>[    1.675995] pid351: display up, rotating counter-clockwise
+<12>[    1.676051] pid351: stage display      + 0.523 s (0.538 s in)
+<12>[    1.683186] pid351: stage splash       + 0.007 s (0.545 s in)
+<12>[    1.683386] pid351: audio card 0 is "rk817int" driver "simple-card" (rk817_int)
+<12>[    1.683457] pid351: audio "Playback Mux" = 0
+<12>[    1.684319] pid351: audio "Master Playback Volume" = 255
+<12>[    1.779425] pid351: audio jack /dev/input/event2 "rk817_int Headphones" reports headphones INSERTED
+<12>[    1.947893] pid351: audio accepts channels     2 .. 8
+<12>[    1.947949] pid351: audio accepts rate         8000 .. 96000
+<12>[    1.947975] pid351: audio accepts period_size  4 .. 65536
+<12>[    1.947999] pid351: audio accepts periods      2 .. 32768
+<12>[    1.948023] pid351: audio accepts buffer_size  8 .. 131072
+<12>[    1.977293] pid351: audio /dev/snd/pcmC0D0p: 48000 Hz, period 512, buffer 4096 (85.3 ms), 799 frames/video frame
+<12>[    1.977386] pid351: stage audio        + 0.294 s (0.839 s in)
+<12>[    2.056089] pid351: first frame 256x224 pitch=512 (2.0 bytes/pixel)
+<12>[    2.065478] pid351: core fceumm, 256x224, par 1.1429, 60.100 fps, 48000 Hz -> 48000 Hz (stretch -0.133%)
+<12>[    2.065544] pid351: stage core         + 0.088 s (0.927 s in)
+<5>[    3.475261] random: crng init done
+<12>[    3.676467] pid351: stage hold         + 1.611 s (2.538 s in)
+<12>[    3.678770] pid351: stage loop         + 0.002 s (2.540 s in)
+<12>[    4.706494] pid351: T t=1.0 up=4.69 cpu=18.3/0.0/0.0/79.0% khz=1296000 gpu=-1 ddr=-1 temp=35000/35909 load=0 ctxt=783 intr=8994 sirq=1280 run=2 blk=0 rss=10140 free=950168 avail=919936 dirty=0 wb=0 slab=15856 flt=19/0 vctx=61 nvctx=1 schedwait=144 cap=52 uv=3662040 ua=-204336 uah=1755948 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[    5.722649] pid351: T t=2.0 up=5.71 cpu=18.0/0.9/0.0/77.0% khz=1296000 gpu=-1 ddr=-1 temp=37272/36363 load=160 ctxt=573 intr=8530 sirq=1286 run=1 blk=0 rss=10140 free=950168 avail=919936 dirty=0 wb=0 slab=15860 flt=0/0 vctx=67 nvctx=1 schedwait=335 cap=52 uv=3662040 ua=-204336 uah=1755948 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[    6.739237] pid351: T t=3.0 up=6.73 cpu=18.0/0.0/0.0/78.2% khz=1296000 gpu=-1 ddr=-1 temp=37727/35909 load=160 ctxt=675 intr=8713 sirq=1296 run=1 blk=0 rss=10140 free=950168 avail=919936 dirty=0 wb=0 slab=15864 flt=0/0 vctx=72 nvctx=1 schedwait=165 cap=52 uv=3662040 ua=-204336 uah=1755948 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[    7.755328] pid351: T t=4.1 up=7.74 cpu=19.0/0.0/0.9/77.4% khz=1296000 gpu=-1 ddr=-1 temp=37727/37272 load=160 ctxt=583 intr=8699 sirq=1350 run=1 blk=0 rss=10140 free=950168 avail=919936 dirty=0 wb=0 slab=15868 flt=0/0 vctx=68 nvctx=2 schedwait=214 cap=52 uv=3662040 ua=-204336 uah=1755948 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[    8.685385] pid351: fceumm 59.91 fps  emu 59.91 (1.00x)  frames=300  ring=1532  aud=2136 x1  scale=5404 blit=2878 us
+<12>[    8.771787] pid351: T t=5.1 up=8.76 cpu=17.0/0.9/0.0/78.4% khz=1296000 gpu=-1 ddr=-1 temp=39090/37272 load=160 ctxt=600 intr=8609 sirq=1282 run=1 blk=0 rss=10144 free=950168 avail=919936 dirty=0 wb=0 slab=15872 flt=2/0 vctx=68 nvctx=15 schedwait=470 cap=52 uv=3628300 ua=-455284 uah=1755088 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[    9.788185] pid351: T t=6.1 up=9.77 cpu=19.8/0.9/0.0/77.6% khz=1296000 gpu=-1 ddr=-1 temp=38636/36818 load=160 ctxt=551 intr=8718 sirq=1328 run=1 blk=0 rss=10144 free=950168 avail=919936 dirty=0 wb=0 slab=15876 flt=0/0 vctx=66 nvctx=1 schedwait=226 cap=52 uv=3628300 ua=-455284 uah=1755088 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   10.804540] pid351: T t=7.1 up=10.79 cpu=18.8/0.0/0.9/77.2% khz=1296000 gpu=-1 ddr=-1 temp=39090/37272 load=230 ctxt=621 intr=8657 sirq=1291 run=1 blk=0 rss=10144 free=950168 avail=919936 dirty=0 wb=0 slab=15880 flt=0/0 vctx=63 nvctx=2 schedwait=230 cap=52 uv=3628300 ua=-455284 uah=1755088 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   11.821588] pid351: T t=8.1 up=11.81 cpu=19.8/5.9/0.0/72.2% khz=1296000 gpu=-1 ddr=-1 temp=38181/38181 load=230 ctxt=651 intr=8837 sirq=1329 run=1 blk=0 rss=10144 free=941944 avail=911712 dirty=0 wb=0 slab=15880 flt=0/0 vctx=70 nvctx=3 schedwait=413 cap=52 uv=3628300 ua=-455284 uah=1755088 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   12.837409] pid351: T t=9.1 up=12.83 cpu=18.8/80.0/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=38636/38181 load=230 ctxt=536 intr=8720 sirq=1299 run=1 blk=0 rss=10144 free=941880 avail=911648 dirty=0 wb=0 slab=15956 flt=0/0 vctx=64 nvctx=1 schedwait=49 cap=52 uv=3628300 ua=-455284 uah=1755088 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   13.700338] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=601  ring=1478  aud=2137 x1  scale=3249 blit=3215 us
+<12>[   13.853792] pid351: T t=10.1 up=13.84 cpu=17.1/80.1/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=40000/38181 load=230 ctxt=571 intr=8599 sirq=1263 run=1 blk=0 rss=10144 free=941880 avail=911648 dirty=0 wb=0 slab=15956 flt=0/0 vctx=65 nvctx=2 schedwait=325 cap=52 uv=3628300 ua=-455284 uah=1755088 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   14.869639] pid351: T t=11.2 up=14.86 cpu=18.0/80.3/0.0/1.9% khz=1296000 gpu=-1 ddr=-1 temp=39545/38636 load=230 ctxt=515 intr=8747 sirq=1289 run=1 blk=0 rss=10144 free=941880 avail=911648 dirty=0 wb=0 slab=15956 flt=0/0 vctx=64 nvctx=1 schedwait=142 cap=52 uv=3628300 ua=-455284 uah=1755088 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   15.869864] pid351: T t=12.2 up=15.86 cpu=18.0/79.7/0.9/0.0% khz=1296000 gpu=-1 ddr=-1 temp=40000/39545 load=290 ctxt=584 intr=8638 sirq=1283 run=1 blk=0 rss=10144 free=942184 avail=911952 dirty=0 wb=0 slab=15960 flt=0/0 vctx=66 nvctx=1 schedwait=257 cap=52 uv=3628300 ua=-455284 uah=1755088 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   16.885920] pid351: T t=13.2 up=16.87 cpu=18.1/78.2/0.0/0.9% khz=1200000 gpu=-1 ddr=-1 temp=40000/38636 load=290 ctxt=563 intr=8777 sirq=1293 run=1 blk=0 rss=10144 free=943024 avail=912792 dirty=0 wb=0 slab=15964 flt=0/0 vctx=64 nvctx=15 schedwait=547 cap=52 uv=3615560 ua=-534748 uah=1753884 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   17.902324] pid351: T t=14.2 up=17.89 cpu=17.8/81.3/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=39545/39090 load=290 ctxt=591 intr=8674 sirq=1277 run=1 blk=0 rss=10144 free=943024 avail=912792 dirty=0 wb=0 slab=15968 flt=0/0 vctx=66 nvctx=0 schedwait=44 cap=52 uv=3615560 ua=-534748 uah=1753884 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   18.715272] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=902  ring=1424  aud=2138 x1  scale=3066 blit=2280 us
+<12>[   18.918488] pid351: T t=15.2 up=18.91 cpu=18.8/82.1/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=39090/40000 load=290 ctxt=517 intr=8758 sirq=1267 run=1 blk=0 rss=10144 free=943024 avail=912792 dirty=0 wb=0 slab=15972 flt=0/0 vctx=63 nvctx=1 schedwait=202 cap=52 uv=3615560 ua=-534748 uah=1753884 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   19.934593] pid351: T t=16.2 up=19.92 cpu=18.0/80.5/0.9/0.0% khz=1296000 gpu=-1 ddr=-1 temp=40909/39090 load=290 ctxt=518 intr=8737 sirq=1283 run=1 blk=0 rss=10144 free=943024 avail=912792 dirty=0 wb=0 slab=15976 flt=0/0 vctx=63 nvctx=1 schedwait=207 cap=52 uv=3615560 ua=-534748 uah=1753884 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   20.951074] pid351: T t=17.2 up=20.94 cpu=19.0/81.1/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=40000/39545 load=430 ctxt=519 intr=8721 sirq=1287 run=1 blk=0 rss=10144 free=943024 avail=912792 dirty=0 wb=0 slab=15980 flt=0/0 vctx=63 nvctx=1 schedwait=38 cap=52 uv=3615560 ua=-534748 uah=1753884 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   21.951139] pid351: T t=18.2 up=21.94 cpu=18.1/82.1/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=41363/40454 load=430 ctxt=507 intr=8704 sirq=1297 run=1 blk=0 rss=10144 free=943024 avail=912792 dirty=0 wb=0 slab=15984 flt=0/0 vctx=60 nvctx=1 schedwait=185 cap=52 uv=3615560 ua=-534748 uah=1753884 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   22.966804] pid351: T t=19.3 up=22.95 cpu=18.8/81.0/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=41363/39545 load=430 ctxt=548 intr=8693 sirq=1290 run=1 blk=0 rss=10144 free=943024 avail=912792 dirty=0 wb=0 slab=15980 flt=0/0 vctx=64 nvctx=1 schedwait=175 cap=52 uv=3615560 ua=-534748 uah=1753884 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   23.730191] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=1203  ring=1371  aud=2146 x1  scale=3055 blit=2253 us
+<12>[   23.983326] pid351: T t=20.3 up=23.97 cpu=17.8/82.5/0.0/1.9% khz=1296000 gpu=-1 ddr=-1 temp=40454/40000 load=430 ctxt=568 intr=8705 sirq=1285 run=1 blk=0 rss=10144 free=943024 avail=912792 dirty=0 wb=0 slab=15980 flt=0/0 vctx=67 nvctx=1 schedwait=264 cap=52 uv=3615560 ua=-534748 uah=1753884 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   24.999714] pid351: T t=21.3 up=24.99 cpu=18.0/82.0/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=41363/40454 load=430 ctxt=525 intr=8710 sirq=1294 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16012 flt=0/0 vctx=61 nvctx=0 schedwait=168 cap=52 uv=3615560 ua=-534748 uah=1753884 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   26.016086] pid351: T t=22.3 up=26.00 cpu=18.8/7.7/0.0/75.4% khz=1296000 gpu=-1 ddr=-1 temp=42272/40909 load=550 ctxt=592 intr=8785 sirq=1300 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16012 flt=0/0 vctx=61 nvctx=0 schedwait=135 cap=52 uv=3606530 ua=-589788 uah=1752508 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   27.032554] pid351: T t=23.3 up=27.02 cpu=18.8/0.0/0.0/82.0% khz=1296000 gpu=-1 ddr=-1 temp=42727/40000 load=550 ctxt=519 intr=8716 sirq=1306 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16012 flt=0/0 vctx=65 nvctx=0 schedwait=21 cap=52 uv=3606530 ua=-589788 uah=1752508 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   28.048675] pid351: T t=24.3 up=28.04 cpu=17.8/0.0/0.0/82.3% khz=1296000 gpu=-1 ddr=-1 temp=42272/39545 load=550 ctxt=554 intr=8635 sirq=1274 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16012 flt=0/0 vctx=63 nvctx=0 schedwait=128 cap=52 uv=3606530 ua=-589788 uah=1752508 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   28.745370] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=1504  ring=1316  aud=2139 x1  scale=3083 blit=3354 us
+<12>[   29.065354] pid351: T t=25.4 up=29.05 cpu=18.0/0.0/0.0/81.1% khz=1296000 gpu=-1 ddr=-1 temp=42727/40454 load=550 ctxt=531 intr=8677 sirq=1306 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16008 flt=0/0 vctx=63 nvctx=0 schedwait=9 cap=52 uv=3606530 ua=-589788 uah=1752508 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   30.081730] pid351: T t=26.4 up=30.07 cpu=17.0/0.9/1.9/82.3% khz=1296000 gpu=-1 ddr=-1 temp=44090/43181 load=590 ctxt=568 intr=8709 sirq=1284 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16008 flt=0/0 vctx=68 nvctx=0 schedwait=162 cap=52 uv=3606530 ua=-589788 uah=1752508 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   31.097853] pid351: T t=27.4 up=31.09 cpu=17.8/0.0/0.0/82.1% khz=1296000 gpu=-1 ddr=-1 temp=44545/40909 load=590 ctxt=583 intr=8659 sirq=1289 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16008 flt=0/0 vctx=68 nvctx=0 schedwait=80 cap=52 uv=3606530 ua=-589788 uah=1752508 bl=833 mmcr=0 mmcw=0 mmcms=0
+<6>[   31.715325] vcc_wifi: disabling
+<12>[   32.113667] pid351: T t=28.4 up=32.10 cpu=18.8/0.0/0.9/82.1% khz=1296000 gpu=-1 ddr=-1 temp=43636/41363 load=590 ctxt=533 intr=8752 sirq=1320 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16000 flt=0/0 vctx=63 nvctx=0 schedwait=10 cap=52 uv=3606530 ua=-589788 uah=1752508 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   33.130671] pid351: T t=29.4 up=33.11 cpu=18.0/0.0/0.9/81.3% khz=1296000 gpu=-1 ddr=-1 temp=44090/41818 load=590 ctxt=567 intr=8757 sirq=1308 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16000 flt=0/0 vctx=66 nvctx=0 schedwait=100 cap=52 uv=3606530 ua=-589788 uah=1752508 bl=833 mmcr=0 mmcw=1 mmcms=16
+<12>[   33.760515] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=1805  ring=1262  aud=2132 x1  scale=3436 blit=2259 us
+<12>[   34.146595] pid351: T t=30.4 up=34.13 cpu=17.0/0.9/0.0/84.3% khz=1296000 gpu=-1 ddr=-1 temp=44090/41363 load=590 ctxt=599 intr=8784 sirq=1280 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16000 flt=0/0 vctx=66 nvctx=14 schedwait=432 cap=52 uv=3615840 ua=-499660 uah=1751476 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   35.162925] pid351: T t=31.5 up=35.15 cpu=18.6/0.9/0.0/82.0% khz=1296000 gpu=-1 ddr=-1 temp=43636/40454 load=700 ctxt=531 intr=8713 sirq=1296 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16000 flt=0/0 vctx=63 nvctx=0 schedwait=180 cap=52 uv=3615840 ua=-499660 uah=1751476 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   36.179477] pid351: T t=32.5 up=36.17 cpu=18.0/0.9/0.9/82.6% khz=1296000 gpu=-1 ddr=-1 temp=43181/42272 load=700 ctxt=566 intr=8688 sirq=1276 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16004 flt=0/0 vctx=66 nvctx=1 schedwait=120 cap=52 uv=3615840 ua=-499660 uah=1751476 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   37.195818] pid351: T t=33.5 up=37.18 cpu=17.1/0.0/0.0/81.3% khz=1296000 gpu=-1 ddr=-1 temp=44090/42272 load=700 ctxt=530 intr=8704 sirq=1280 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16008 flt=0/0 vctx=64 nvctx=1 schedwait=53 cap=52 uv=3615840 ua=-499660 uah=1751476 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   38.212207] pid351: T t=34.5 up=38.20 cpu=18.8/0.0/0.9/81.1% khz=1296000 gpu=-1 ddr=-1 temp=44090/41818 load=700 ctxt=522 intr=8740 sirq=1310 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16012 flt=0/0 vctx=63 nvctx=1 schedwait=95 cap=52 uv=3615840 ua=-499660 uah=1751476 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   38.775335] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=2106  ring=1209  aud=2141 x1  scale=3065 blit=2257 us
+<12>[   39.228564] pid351: T t=35.5 up=39.22 cpu=18.8/0.0/0.9/82.1% khz=1296000 gpu=-1 ddr=-1 temp=44090/42272 load=700 ctxt=523 intr=8707 sirq=1293 run=1 blk=0 rss=10144 free=942800 avail=912568 dirty=0 wb=0 slab=16016 flt=0/0 vctx=63 nvctx=2 schedwait=124 cap=52 uv=3615840 ua=-499660 uah=1751476 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   39.291801] pid351: save ok
+<12>[   40.244811] pid351: T t=36.5 up=40.22 cpu=17.1/0.0/0.0/81.1% khz=1296000 gpu=-1 ddr=-1 temp=45454/42272 load=810 ctxt=551 intr=8727 sirq=1323 run=1 blk=0 rss=10156 free=942800 avail=912576 dirty=20 wb=0 slab=16024 flt=3/0 vctx=67 nvctx=2 schedwait=354 cap=52 uv=3615840 ua=-499660 uah=1751476 bl=833 mmcr=1 mmcw=1 mmcms=16
+<12>[   41.261066] pid351: T t=37.6 up=41.25 cpu=17.8/0.9/0.0/82.0% khz=1296000 gpu=-1 ddr=-1 temp=42727/43636 load=810 ctxt=574 intr=8719 sirq=1273 run=1 blk=0 rss=10156 free=942800 avail=912576 dirty=20 wb=0 slab=16028 flt=0/0 vctx=65 nvctx=0 schedwait=192 cap=52 uv=3615840 ua=-499660 uah=1751476 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   42.277544] pid351: T t=38.6 up=42.27 cpu=18.6/0.9/0.9/81.5% khz=1296000 gpu=-1 ddr=-1 temp=43636/42272 load=810 ctxt=557 intr=8717 sirq=1286 run=1 blk=0 rss=10156 free=942800 avail=912576 dirty=20 wb=0 slab=16028 flt=0/0 vctx=63 nvctx=14 schedwait=559 cap=52 uv=3612620 ua=-515484 uah=1750272 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   43.293660] pid351: T t=39.6 up=43.28 cpu=18.0/0.9/0.0/81.8% khz=1296000 gpu=-1 ddr=-1 temp=44090/43181 load=810 ctxt=558 intr=8705 sirq=1284 run=1 blk=0 rss=10156 free=942800 avail=912580 dirty=20 wb=0 slab=16028 flt=0/0 vctx=66 nvctx=1 schedwait=40 cap=52 uv=3612620 ua=-515484 uah=1750272 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   43.790239] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=2407  ring=1159  aud=2141 x1  scale=3168 blit=2240 us
+<12>[   44.273047] pid351: load ok
+<12>[   44.310070] pid351: T t=40.6 up=44.30 cpu=18.0/0.0/0.0/82.6% khz=1296000 gpu=-1 ddr=-1 temp=45000/42727 load=810 ctxt=507 intr=8723 sirq=1313 run=1 blk=0 rss=10168 free=942800 avail=912580 dirty=20 wb=0 slab=16024 flt=3/0 vctx=61 nvctx=1 schedwait=125 cap=52 uv=3612620 ua=-515484 uah=1750272 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   45.326117] pid351: T t=41.6 up=45.31 cpu=18.8/0.0/0.0/82.1% khz=1296000 gpu=-1 ddr=-1 temp=45000/43181 load=900 ctxt=711 intr=8958 sirq=1370 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=4 wb=0 slab=16008 flt=0/0 vctx=65 nvctx=1 schedwait=82 cap=52 uv=3612620 ua=-515484 uah=1750272 bl=833 mmcr=0 mmcw=7 mmcms=56
+<12>[   46.342596] pid351: T t=42.6 up=46.33 cpu=18.0/0.9/0.0/81.0% khz=1296000 gpu=-1 ddr=-1 temp=44545/42272 load=900 ctxt=519 intr=8756 sirq=1312 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=4 wb=0 slab=16008 flt=0/0 vctx=64 nvctx=2 schedwait=143 cap=52 uv=3612620 ua=-515484 uah=1750272 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   47.359058] pid351: T t=43.7 up=47.35 cpu=17.0/0.9/0.0/82.3% khz=1296000 gpu=-1 ddr=-1 temp=45000/42727 load=900 ctxt=562 intr=8730 sirq=1288 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=4 wb=0 slab=16008 flt=0/0 vctx=67 nvctx=0 schedwait=97 cap=52 uv=3612620 ua=-515484 uah=1750272 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   48.375525] pid351: T t=44.7 up=48.36 cpu=18.0/0.0/0.9/82.5% khz=1296000 gpu=-1 ddr=-1 temp=44545/43636 load=900 ctxt=542 intr=8727 sirq=1318 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=4 wb=0 slab=16008 flt=0/0 vctx=66 nvctx=0 schedwait=77 cap=52 uv=3612620 ua=-515484 uah=1750272 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   48.805472] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=2708  ring=1111  aud=2134 x1  scale=3049 blit=2252 us
+<12>[   49.391702] pid351: T t=45.7 up=49.38 cpu=18.8/0.0/0.0/81.8% khz=1296000 gpu=-1 ddr=-1 temp=45000/42727 load=900 ctxt=513 intr=8730 sirq=1300 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=4 wb=0 slab=16008 flt=0/0 vctx=62 nvctx=0 schedwait=60 cap=52 uv=3612620 ua=-515484 uah=1750272 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   50.391511] pid351: T t=46.7 up=50.38 cpu=18.1/8.9/1.0/74.0% khz=1296000 gpu=-1 ddr=-1 temp=44545/43181 load=990 ctxt=606 intr=8833 sirq=1301 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=62 nvctx=14 schedwait=409 cap=52 uv=3610450 ua=-522364 uah=1748896 bl=833 mmcr=0 mmcw=1 mmcms=0
+<12>[   51.407830] pid351: T t=47.7 up=51.40 cpu=18.0/81.1/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=44090/41818 load=990 ctxt=535 intr=8721 sirq=1290 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=64 nvctx=0 schedwait=66 cap=52 uv=3610450 ua=-522364 uah=1748896 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   52.424153] pid351: T t=48.7 up=52.41 cpu=17.8/82.0/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=44545/42272 load=990 ctxt=560 intr=8683 sirq=1293 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=66 nvctx=0 schedwait=74 cap=52 uv=3610450 ua=-522364 uah=1748896 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   53.440485] pid351: T t=49.7 up=53.43 cpu=18.0/81.5/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=43636/42727 load=990 ctxt=539 intr=8643 sirq=1287 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=66 nvctx=1 schedwait=63 cap=52 uv=3610450 ua=-522364 uah=1748896 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   53.820500] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=3009  ring=1066  aud=2135 x1  scale=3053 blit=2528 us
+<12>[   54.456667] pid351: T t=50.8 up=54.44 cpu=17.0/83.1/0.9/0.0% khz=1296000 gpu=-1 ddr=-1 temp=44090/42272 load=990 ctxt=563 intr=8707 sirq=1294 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=65 nvctx=0 schedwait=79 cap=52 uv=3610450 ua=-522364 uah=1748896 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   55.473372] pid351: T t=51.8 up=55.46 cpu=18.8/82.0/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=44545/43636 load=990 ctxt=536 intr=8727 sirq=1280 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=65 nvctx=0 schedwait=146 cap=52 uv=3610450 ua=-522364 uah=1748896 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   56.489427] pid351: T t=52.8 up=56.48 cpu=17.8/82.5/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=44545/42727 load=990 ctxt=541 intr=8792 sirq=1325 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16012 flt=0/0 vctx=65 nvctx=1 schedwait=61 cap=52 uv=3610450 ua=-522364 uah=1748896 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   57.506141] pid351: T t=53.8 up=57.49 cpu=17.1/81.0/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45000/45454 load=990 ctxt=572 intr=8635 sirq=1274 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16012 flt=0/0 vctx=66 nvctx=1 schedwait=199 cap=52 uv=3610450 ua=-522364 uah=1748896 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   58.522099] pid351: T t=54.8 up=58.51 cpu=18.6/82.1/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45000/42272 load=990 ctxt=571 intr=8747 sirq=1303 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16016 flt=0/0 vctx=70 nvctx=11 schedwait=414 cap=52 uv=3610240 ua=-513592 uah=1747864 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   58.835300] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=3310  ring=1024  aud=2143 x1  scale=3340 blit=2278 us
+<12>[   59.538685] pid351: T t=55.8 up=59.53 cpu=18.0/82.1/1.9/0.9% khz=1296000 gpu=-1 ddr=-1 temp=45000/44090 load=990 ctxt=535 intr=8701 sirq=1272 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16024 flt=0/0 vctx=61 nvctx=2 schedwait=154 cap=52 uv=3610240 ua=-513592 uah=1747864 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   60.554672] pid351: T t=56.9 up=60.54 cpu=17.8/81.5/0.9/1.9% khz=1296000 gpu=-1 ddr=-1 temp=44545/43181 load=1070 ctxt=545 intr=8706 sirq=1288 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16024 flt=0/0 vctx=66 nvctx=1 schedwait=158 cap=52 uv=3610240 ua=-513592 uah=1747864 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   61.571296] pid351: T t=57.9 up=61.56 cpu=18.0/81.0/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=45000/43636 load=1070 ctxt=513 intr=8661 sirq=1280 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16028 flt=0/0 vctx=63 nvctx=1 schedwait=201 cap=52 uv=3610240 ua=-513592 uah=1747864 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   62.587335] pid351: T t=58.9 up=62.58 cpu=18.0/82.5/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=44545/43181 load=1070 ctxt=561 intr=8757 sirq=1293 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16024 flt=0/0 vctx=66 nvctx=1 schedwait=209 cap=52 uv=3610240 ua=-513592 uah=1747864 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   63.603958] pid351: T t=59.9 up=63.59 cpu=17.8/82.0/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=43636/42727 load=1070 ctxt=532 intr=8671 sirq=1268 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16024 flt=0/0 vctx=63 nvctx=0 schedwait=98 cap=52 uv=3610240 ua=-513592 uah=1747864 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   63.850301] pid351: batt t=60s 52% 1747864 uAh -513592 uA 45.0 C 1296 MHz
+<12>[   63.850387] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=3611  ring=985  aud=2136 x1  scale=3112 blit=2245 us
+<12>[   64.620199] pid351: T t=60.9 up=64.61 cpu=17.1/82.1/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=44545/43636 load=1070 ctxt=523 intr=8725 sirq=1300 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16024 flt=0/0 vctx=68 nvctx=0 schedwait=144 cap=52 uv=3610240 ua=-513592 uah=1747864 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   65.636593] pid351: T t=61.9 up=65.62 cpu=19.8/81.1/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=44545/44545 load=1150 ctxt=515 intr=8688 sirq=1282 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=63 nvctx=0 schedwait=105 cap=52 uv=3610240 ua=-513592 uah=1747864 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   66.652515] pid351: T t=62.9 up=66.64 cpu=18.8/81.0/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45454/43636 load=1150 ctxt=542 intr=8742 sirq=1280 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=64 nvctx=14 schedwait=514 cap=52 uv=3610450 ua=-502584 uah=1746660 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   67.669220] pid351: T t=64.0 up=67.66 cpu=18.0/82.1/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45000/43636 load=1150 ctxt=521 intr=8697 sirq=1257 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=63 nvctx=0 schedwait=10 cap=52 uv=3610450 ua=-502584 uah=1746660 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   68.685613] pid351: T t=65.0 up=68.67 cpu=18.8/81.1/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=45000/44545 load=1150 ctxt=521 intr=8753 sirq=1314 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=65 nvctx=0 schedwait=71 cap=52 uv=3610450 ua=-502584 uah=1746660 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   68.865453] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=3912  ring=947  aud=2137 x1  scale=3049 blit=2220 us
+<12>[   69.701665] pid351: T t=66.0 up=69.69 cpu=18.0/81.3/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=44545/44090 load=1150 ctxt=524 intr=8716 sirq=1294 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=66 nvctx=0 schedwait=189 cap=52 uv=3610450 ua=-502584 uah=1746660 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   70.717988] pid351: T t=67.0 up=70.70 cpu=19.6/80.3/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=44545/44545 load=1140 ctxt=514 intr=8686 sirq=1308 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=64 nvctx=0 schedwait=234 cap=52 uv=3610450 ua=-502584 uah=1746660 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   70.947699] pid351: load ok
+<12>[   71.734190] pid351: T t=68.0 up=71.72 cpu=18.0/81.1/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45000/44090 load=1140 ctxt=528 intr=8668 sirq=1290 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=64 nvctx=0 schedwait=133 cap=52 uv=3610450 ua=-502584 uah=1746660 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   72.750745] pid351: T t=69.0 up=72.73 cpu=17.0/82.5/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45454/44545 load=1140 ctxt=542 intr=8688 sirq=1282 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=67 nvctx=0 schedwait=72 cap=52 uv=3610450 ua=-502584 uah=1746660 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   73.767091] pid351: T t=70.1 up=73.75 cpu=18.0/82.3/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=45000/44090 load=1140 ctxt=556 intr=8707 sirq=1294 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16012 flt=0/0 vctx=62 nvctx=2 schedwait=189 cap=52 uv=3610450 ua=-502584 uah=1746660 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   73.873002] pid351: fceumm 59.11 fps  emu 61.11 (1.03x)  frames=4208  ring=912  aud=-149 x1  scale=3060 blit=2255 us
+<12>[   74.771059] pid351: T t=71.1 up=74.76 cpu=14.1/100.0/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46363/44545 load=1140 ctxt=164 intr=8623 sirq=1077 run=2 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=0 nvctx=16 schedwait=556 cap=52 uv=3607020 ua=-525632 uah=1745456 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   75.786075] pid351: T t=72.1 up=75.77 cpu=14.0/100.0/0.9/1.9% khz=1296000 gpu=-1 ddr=-1 temp=46363/44545 load=1120 ctxt=126 intr=8542 sirq=1074 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=0 nvctx=0 schedwait=0 cap=52 uv=3607020 ua=-525632 uah=1745456 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   76.793380] pid351: T t=73.1 up=76.78 cpu=15.6/100.0/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=46363/45454 load=1120 ctxt=127 intr=8516 sirq=1057 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=0 nvctx=0 schedwait=0 cap=52 uv=3607020 ua=-525632 uah=1745456 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   77.797456] pid351: T t=74.1 up=77.79 cpu=14.1/100.0/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45454/45909 load=1120 ctxt=129 intr=8444 sirq=1050 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16008 flt=0/0 vctx=2 nvctx=0 schedwait=0 cap=52 uv=3607020 ua=-525632 uah=1745456 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   78.799116] pid351: T t=75.1 up=78.79 cpu=14.1/100.0/0.9/0.9% khz=1296000 gpu=-1 ddr=-1 temp=45909/45454 load=1120 ctxt=135 intr=8552 sirq=1070 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16012 flt=0/0 vctx=0 nvctx=1 schedwait=42 cap=52 uv=3607020 ua=-525632 uah=1745456 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   78.907856] pid351: fceumm 18.87 fps  emu 113.21 (6.00x)  frames=4303  ring=912  aud=-149 x1  scale=3044 blit=2167 us
+<12>[   79.811510] pid351: T t=76.1 up=79.80 cpu=14.0/100.0/0.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=47272/45000 load=1120 ctxt=146 intr=8558 sirq=1088 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16012 flt=0/0 vctx=1 nvctx=1 schedwait=64 cap=52 uv=3607020 ua=-525632 uah=1745456 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   80.814579] pid351: T t=77.1 up=80.80 cpu=17.0/94.0/0.0/1.9% khz=1296000 gpu=-1 ddr=-1 temp=46363/44545 load=1190 ctxt=253 intr=8630 sirq=1157 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16012 flt=0/0 vctx=21 nvctx=1 schedwait=50 cap=52 uv=3607020 ua=-525632 uah=1745456 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   80.877599] pid351: load ok
+<12>[   81.830904] pid351: T t=78.1 up=81.81 cpu=18.0/82.5/0.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45909/45000 load=1190 ctxt=518 intr=8714 sirq=1285 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16012 flt=0/0 vctx=64 nvctx=0 schedwait=170 cap=52 uv=3607020 ua=-525632 uah=1745456 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   82.847647] pid351: T t=79.1 up=82.84 cpu=18.8/47.5/34.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45909/45000 load=1190 ctxt=569 intr=8811 sirq=1306 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16012 flt=0/0 vctx=66 nvctx=9 schedwait=479 cap=52 uv=3608770 ua=-504648 uah=1744424 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   83.863806] pid351: T t=80.2 up=83.85 cpu=17.1/0.0/82.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45909/45000 load=1190 ctxt=530 intr=8685 sirq=1286 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16088 flt=0/0 vctx=62 nvctx=2 schedwait=109 cap=52 uv=3608770 ua=-504648 uah=1744424 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   83.910411] pid351: fceumm 46.77 fps  emu 77.76 (1.66x)  frames=4537  ring=889  aud=2275 x2  scale=3273 blit=3174 us
+<12>[   84.880228] pid351: T t=81.2 up=84.87 cpu=18.0/0.9/81.5/0.9% khz=1296000 gpu=-1 ddr=-1 temp=46363/45000 load=1190 ctxt=550 intr=8723 sirq=1298 run=1 blk=0 rss=10168 free=943052 avail=912832 dirty=0 wb=0 slab=16084 flt=0/0 vctx=65 nvctx=0 schedwait=10 cap=52 uv=3608770 ua=-504648 uah=1744424 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   85.901523] pid351: T t=82.2 up=85.89 cpu=16.6/0.0/88.2/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45454/45454 load=1180 ctxt=407 intr=8637 sirq=1226 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=8/0 vctx=33 nvctx=1 schedwait=42 cap=52 uv=3608770 ua=-504648 uah=1744424 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   86.909547] pid351: T t=83.2 up=86.90 cpu=15.8/0.0/100.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=47272/46363 load=1180 ctxt=130 intr=8660 sirq=1179 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=0 nvctx=1 schedwait=59 cap=52 uv=3608770 ua=-504648 uah=1744424 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   87.915730] pid351: T t=84.2 up=87.90 cpu=15.1/0.0/100.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/47272 load=1180 ctxt=127 intr=8622 sirq=1161 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=0 nvctx=0 schedwait=0 cap=52 uv=3608770 ua=-504648 uah=1744424 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   88.928503] pid351: T t=85.2 up=88.92 cpu=14.8/0.0/100.0/0.9% khz=1296000 gpu=-1 ddr=-1 temp=47727/46363 load=1180 ctxt=134 intr=8621 sirq=1176 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=0 nvctx=0 schedwait=0 cap=52 uv=3608770 ua=-504648 uah=1744424 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   88.929461] pid351: fceumm 33.10 fps  emu 94.92 (2.87x)  frames=4703  ring=877  aud=3064 x2  scale=3049 blit=2295 us
+<12>[   89.928633] pid351: T t=86.2 up=89.92 cpu=15.1/0.0/97.9/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/45909 load=1180 ctxt=181 intr=8579 sirq=1158 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=7 nvctx=0 schedwait=0 cap=52 uv=3608770 ua=-504648 uah=1744424 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   90.107835] pid351: load ok
+<12>[   90.944930] pid351: T t=87.2 up=90.93 cpu=18.0/0.9/82.3/0.9% khz=1296000 gpu=-1 ddr=-1 temp=46363/45454 load=1240 ctxt=564 intr=8718 sirq=1263 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=66 nvctx=14 schedwait=639 cap=52 uv=3607720 ua=-504820 uah=1743048 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   91.960949] pid351: T t=88.3 up=91.95 cpu=18.8/0.0/81.1/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45909/46818 load=1240 ctxt=513 intr=8745 sirq=1284 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=63 nvctx=0 schedwait=79 cap=52 uv=3607720 ua=-504820 uah=1743048 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   92.977343] pid351: T t=89.3 up=92.97 cpu=18.0/0.0/82.1/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45454/45454 load=1240 ctxt=515 intr=8736 sirq=1303 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=65 nvctx=0 schedwait=158 cap=52 uv=3607720 ua=-504820 uah=1743048 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   93.940683] pid351: fceumm 52.84 fps  emu 69.78 (1.32x)  frames=4968  ring=849  aud=3431 x2  scale=3113 blit=2262 us
+<12>[   93.993850] pid351: T t=90.3 up=93.98 cpu=17.1/0.0/82.3/0.9% khz=1296000 gpu=-1 ddr=-1 temp=45909/46363 load=1240 ctxt=540 intr=8716 sirq=1277 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=63 nvctx=2 schedwait=312 cap=52 uv=3607720 ua=-504820 uah=1743048 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   95.010172] pid351: T t=91.3 up=95.00 cpu=17.8/0.0/83.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/45454 load=1240 ctxt=583 intr=8712 sirq=1287 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=66 nvctx=0 schedwait=67 cap=52 uv=3607720 ua=-504820 uah=1743048 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   96.026399] pid351: T t=92.3 up=96.01 cpu=17.8/0.0/81.1/0.9% khz=1296000 gpu=-1 ddr=-1 temp=46363/45000 load=1310 ctxt=564 intr=8638 sirq=1280 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=69 nvctx=0 schedwait=113 cap=52 uv=3607720 ua=-504820 uah=1743048 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   97.042567] pid351: T t=93.3 up=97.03 cpu=18.8/0.9/83.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45909/45909 load=1310 ctxt=514 intr=8743 sirq=1287 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=65 nvctx=0 schedwait=0 cap=52 uv=3607720 ua=-504820 uah=1743048 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   98.059141] pid351: T t=94.4 up=98.05 cpu=17.0/0.9/82.8/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/45909 load=1310 ctxt=566 intr=8690 sirq=1270 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16088 flt=0/0 vctx=66 nvctx=1 schedwait=319 cap=52 uv=3607720 ua=-504820 uah=1743048 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[   98.955541] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=5269  ring=820  aud=3440 x2  scale=3080 blit=2240 us
+<12>[   99.075430] pid351: T t=95.4 up=99.06 cpu=18.0/0.0/82.3/0.9% khz=1296000 gpu=-1 ddr=-1 temp=46363/47272 load=1310 ctxt=553 intr=8804 sirq=1309 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16092 flt=0/0 vctx=70 nvctx=15 schedwait=686 cap=52 uv=3604080 ua=-530104 uah=1741844 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  100.091666] pid351: T t=96.4 up=100.08 cpu=18.8/0.0/81.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/45454 load=1310 ctxt=534 intr=8648 sirq=1286 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16092 flt=0/0 vctx=63 nvctx=0 schedwait=323 cap=52 uv=3604080 ua=-530104 uah=1741844 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  101.108197] pid351: T t=97.4 up=101.10 cpu=17.0/0.0/82.1/1.9% khz=1296000 gpu=-1 ddr=-1 temp=45454/46363 load=1280 ctxt=561 intr=8705 sirq=1281 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16092 flt=0/0 vctx=66 nvctx=0 schedwait=98 cap=52 uv=3604080 ua=-530104 uah=1741844 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  102.107912] pid351: T t=98.4 up=102.10 cpu=19.1/0.0/81.6/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47272/46363 load=1280 ctxt=554 intr=8718 sirq=1291 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16092 flt=0/0 vctx=65 nvctx=0 schedwait=93 cap=52 uv=3604080 ua=-530104 uah=1741844 bl=833 mmcr=0 mmcw=1 mmcms=0
+<12>[  103.124236] pid351: T t=99.4 up=103.11 cpu=17.8/0.9/82.6/0.9% khz=1296000 gpu=-1 ddr=-1 temp=46363/46818 load=1280 ctxt=556 intr=8695 sirq=1260 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=67 nvctx=0 schedwait=0 cap=52 uv=3604080 ua=-530104 uah=1741844 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  103.970351] pid351: fceumm 60.02 fps  emu 60.02 (1.00x)  frames=5570  ring=792  aud=3448 x2  scale=3049 blit=2272 us
+<12>[  104.140611] pid351: T t=100.4 up=104.13 cpu=18.0/0.0/81.8/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/46363 load=1280 ctxt=515 intr=8667 sirq=1261 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=62 nvctx=0 schedwait=158 cap=52 uv=3604080 ua=-530104 uah=1741844 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  105.156777] pid351: T t=101.5 up=105.14 cpu=17.0/0.0/81.5/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/46363 load=1340 ctxt=536 intr=8713 sirq=1272 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=66 nvctx=0 schedwait=82 cap=52 uv=3604080 ua=-530104 uah=1741844 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  106.172842] pid351: T t=102.5 up=106.16 cpu=17.8/0.9/82.8/1.9% khz=1296000 gpu=-1 ddr=-1 temp=48181/46363 load=1340 ctxt=568 intr=8670 sirq=1251 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=65 nvctx=0 schedwait=240 cap=52 uv=3604080 ua=-530104 uah=1741844 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  107.189597] pid351: T t=103.5 up=107.18 cpu=19.8/0.0/80.3/0.9% khz=1296000 gpu=-1 ddr=-1 temp=46818/45909 load=1340 ctxt=545 intr=8766 sirq=1252 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=65 nvctx=7 schedwait=393 cap=52 uv=3602190 ua=-542316 uah=1740812 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  108.205604] pid351: T t=104.5 up=108.19 cpu=18.0/0.9/82.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/45454 load=1340 ctxt=512 intr=8735 sirq=1247 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16084 flt=0/0 vctx=62 nvctx=0 schedwait=40 cap=52 uv=3602190 ua=-542316 uah=1740812 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  109.005772] pid351: fceumm 59.18 fps  emu 61.17 (1.03x)  frames=5868  ring=764  aud=3272 x2  scale=3152 blit=2238 us
+<12>[  109.218938] pid351: T t=105.5 up=109.21 cpu=17.0/0.0/86.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48636/46363 load=1340 ctxt=404 intr=8628 sirq=1208 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16088 flt=0/0 vctx=46 nvctx=1 schedwait=165 cap=52 uv=3602190 ua=-542316 uah=1740812 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  110.222434] pid351: T t=106.5 up=110.21 cpu=15.0/0.0/100.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48181/47272 load=1310 ctxt=123 intr=8549 sirq=1140 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16092 flt=0/0 vctx=0 nvctx=1 schedwait=62 cap=52 uv=3602190 ua=-542316 uah=1740812 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  111.269211] pid351: T t=107.6 up=111.26 cpu=15.3/0.0/100.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47727/45454 load=1310 ctxt=139 intr=8637 sirq=1169 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16096 flt=0/0 vctx=2 nvctx=1 schedwait=61 cap=52 uv=3602190 ua=-542316 uah=1740812 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  112.313646] pid351: T t=108.6 up=112.30 cpu=14.5/0.0/100.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48181/46818 load=1310 ctxt=147 intr=8598 sirq=1151 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16092 flt=0/0 vctx=0 nvctx=1 schedwait=63 cap=52 uv=3602190 ua=-542316 uah=1740812 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  113.329409] pid351: T t=109.6 up=113.32 cpu=15.0/0.0/100.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48181/47272 load=1310 ctxt=137 intr=8651 sirq=1163 run=1 blk=0 rss=10184 free=942800 avail=912580 dirty=0 wb=0 slab=16092 flt=0/0 vctx=0 nvctx=1 schedwait=60 cap=52 uv=3602190 ua=-542316 uah=1740812 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  114.022197] pid351: fceumm 23.72 fps  emu 112.43 (4.74x)  frames=5987  ring=762  aud=3432 x2  scale=3092 blit=2204 us
+<12>[  114.337241] pid351: T t=110.6 up=114.33 cpu=17.1/0.0/83.8/0.9% khz=1296000 gpu=-1 ddr=-1 temp=47272/46363 load=1310 ctxt=510 intr=8863 sirq=1226 run=1 blk=0 rss=10196 free=942800 avail=912580 dirty=0 wb=0 slab=16092 flt=6/0 vctx=42 nvctx=2 schedwait=93 cap=52 uv=3602190 ua=-542316 uah=1740812 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  115.359137] pid351: T t=111.7 up=115.35 cpu=17.8/0.9/80.3/0.9% khz=1296000 gpu=-1 ddr=-1 temp=47272/46818 load=1370 ctxt=590 intr=8711 sirq=1215 run=1 blk=0 rss=10196 free=942800 avail=912580 dirty=0 wb=0 slab=16088 flt=0/0 vctx=56 nvctx=14 schedwait=396 cap=51 uv=3604710 ua=-513936 uah=1739608 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  116.371810] pid351: T t=112.7 up=116.36 cpu=18.8/0.9/78.4/0.9% khz=1296000 gpu=-1 ddr=-1 temp=46818/46363 load=1370 ctxt=573 intr=8600 sirq=1197 run=1 blk=0 rss=10196 free=942800 avail=912580 dirty=0 wb=0 slab=16088 flt=0/0 vctx=56 nvctx=0 schedwait=17 cap=51 uv=3604710 ua=-513936 uah=1739608 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  117.374854] pid351: T t=113.7 up=117.36 cpu=19.0/0.0/79.3/1.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/46818 load=1370 ctxt=557 intr=8831 sirq=1241 run=1 blk=0 rss=10196 free=942800 avail=912580 dirty=0 wb=0 slab=16088 flt=0/0 vctx=51 nvctx=0 schedwait=0 cap=51 uv=3604710 ua=-513936 uah=1739608 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  118.388029] pid351: T t=114.7 up=118.38 cpu=18.0/0.0/81.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47272/45909 load=1370 ctxt=618 intr=8798 sirq=1228 run=1 blk=0 rss=10196 free=942800 avail=912580 dirty=0 wb=0 slab=16080 flt=0/0 vctx=55 nvctx=0 schedwait=0 cap=51 uv=3604710 ua=-513936 uah=1739608 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  119.032059] pid351: fceumm 60.08 fps  emu 60.08 (1.00x)  frames=6288  ring=737  aud=3673 x2  scale=3216 blit=2274 us
+<12>[  119.390777] pid351: T t=115.7 up=119.38 cpu=18.3/0.0/79.7/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47272/46818 load=1370 ctxt=586 intr=8942 sirq=1251 run=1 blk=0 rss=10196 free=942800 avail=912580 dirty=0 wb=0 slab=16080 flt=0/0 vctx=51 nvctx=0 schedwait=0 cap=51 uv=3604710 ua=-513936 uah=1739608 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  119.934058] pid351: save ok
+<12>[  120.404084] pid351: T t=116.7 up=120.39 cpu=18.0/0.0/82.1/0.9% khz=1296000 gpu=-1 ddr=-1 temp=47272/46363 load=1420 ctxt=501 intr=8756 sirq=1238 run=2 blk=0 rss=10196 free=942576 avail=912356 dirty=0 wb=0 slab=16080 flt=0/0 vctx=52 nvctx=1 schedwait=145 cap=51 uv=3604710 ua=-513936 uah=1739608 bl=833 mmcr=0 mmcw=1 mmcms=4
+<12>[  121.406749] pid351: T t=117.7 up=121.39 cpu=18.1/0.0/81.8/1.9% khz=1296000 gpu=-1 ddr=-1 temp=47727/45909 load=1420 ctxt=481 intr=8736 sirq=1250 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=20 wb=0 slab=16100 flt=0/0 vctx=47 nvctx=1 schedwait=35 cap=51 uv=3604710 ua=-513936 uah=1739608 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  121.980678] pid351: load ok
+<12>[  122.419943] pid351: T t=118.7 up=122.41 cpu=17.8/0.0/82.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/46818 load=1420 ctxt=526 intr=8818 sirq=1234 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=20 wb=0 slab=16100 flt=0/0 vctx=51 nvctx=1 schedwait=60 cap=51 uv=3604710 ua=-513936 uah=1739608 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  122.949411] pid351: undo ok
+<12>[  123.423384] pid351: T t=119.7 up=123.41 cpu=18.1/0.0/82.1/1.9% khz=1296000 gpu=-1 ddr=-1 temp=46818/47272 load=1420 ctxt=534 intr=8619 sirq=1197 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=20 wb=0 slab=16100 flt=0/0 vctx=50 nvctx=14 schedwait=365 cap=51 uv=3602190 ua=-529588 uah=1738404 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  123.996591] pid351: load ok
+<12>[  124.048718] pid351: batt t=120s 51% 1738404 uAh -529588 uA 46.8 C 1296 MHz
+<12>[  124.048813] pid351: fceumm 60.00 fps  emu 60.00 (1.00x)  frames=6589  ring=712  aud=3594 x2  scale=3453 blit=2244 us
+<12>[  124.436109] pid351: T t=120.7 up=124.42 cpu=18.8/0.0/82.1/0.9% khz=1296000 gpu=-1 ddr=-1 temp=46818/46818 load=1420 ctxt=533 intr=8831 sirq=1243 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=20 wb=0 slab=16104 flt=0/0 vctx=53 nvctx=2 schedwait=109 cap=51 uv=3602190 ua=-529588 uah=1738404 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  125.439123] pid351: T t=121.7 up=125.43 cpu=16.3/0.0/82.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47727/48636 load=1380 ctxt=699 intr=8732 sirq=1270 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=20 wb=0 slab=16108 flt=0/0 vctx=52 nvctx=1 schedwait=60 cap=51 uv=3602190 ua=-529588 uah=1738404 bl=833 mmcr=0 mmcw=7 mmcms=32
+<12>[  126.452051] pid351: T t=122.7 up=126.44 cpu=18.0/1.9/82.1/0.0% khz=1296000 gpu=-1 ddr=-1 temp=45454/47272 load=1380 ctxt=482 intr=8788 sirq=1233 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16112 flt=0/0 vctx=47 nvctx=2 schedwait=84 cap=51 uv=3602190 ua=-529588 uah=1738404 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  127.455313] pid351: T t=123.8 up=127.44 cpu=18.8/1.0/81.1/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/47272 load=1380 ctxt=511 intr=8722 sirq=1249 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16116 flt=0/0 vctx=54 nvctx=1 schedwait=58 cap=51 uv=3602190 ua=-529588 uah=1738404 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  128.467888] pid351: T t=124.8 up=128.46 cpu=17.1/0.0/82.8/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47272/46363 load=1380 ctxt=483 intr=8751 sirq=1278 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16116 flt=0/0 vctx=49 nvctx=0 schedwait=0 cap=51 uv=3602190 ua=-529588 uah=1738404 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  129.062089] pid351: fceumm 60.04 fps  emu 60.04 (1.00x)  frames=6890  ring=690  aud=3674 x2  scale=3159 blit=2251 us
+<12>[  129.471106] pid351: T t=125.8 up=129.46 cpu=18.1/1.0/81.8/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47727/47272 load=1380 ctxt=516 intr=8554 sirq=1261 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16124 flt=0/0 vctx=53 nvctx=1 schedwait=42 cap=51 uv=3602190 ua=-529588 uah=1738404 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  130.484235] pid351: T t=126.8 up=130.47 cpu=17.8/0.0/81.3/1.9% khz=1296000 gpu=-1 ddr=-1 temp=48181/47272 load=1430 ctxt=552 intr=8654 sirq=1274 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16124 flt=0/0 vctx=52 nvctx=1 schedwait=62 cap=51 uv=3602190 ua=-529588 uah=1738404 bl=833 mmcr=0 mmcw=1 mmcms=8
+<12>[  131.486676] pid351: T t=127.8 up=131.47 cpu=18.1/0.0/80.8/1.0% khz=1296000 gpu=-1 ddr=-1 temp=47272/46818 load=1430 ctxt=492 intr=8753 sirq=1290 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16124 flt=0/0 vctx=51 nvctx=1 schedwait=40 cap=51 uv=3602190 ua=-529588 uah=1738404 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  132.499750] pid351: T t=128.8 up=132.49 cpu=18.8/0.9/82.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47727/46818 load=1430 ctxt=593 intr=8952 sirq=1297 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16124 flt=0/0 vctx=51 nvctx=15 schedwait=464 cap=51 uv=3601350 ua=-531480 uah=1737200 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  133.502676] pid351: T t=129.8 up=133.49 cpu=19.0/0.9/80.6/0.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/46818 load=1430 ctxt=474 intr=8759 sirq=1294 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16120 flt=0/0 vctx=49 nvctx=0 schedwait=0 cap=51 uv=3601350 ua=-531480 uah=1737200 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  134.064892] pid351: fceumm 59.97 fps  emu 59.97 (1.00x)  frames=7190  ring=670  aud=3459 x2  scale=3428 blit=2390 us
+<12>[  134.516213] pid351: T t=130.8 up=134.50 cpu=17.8/1.9/81.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48636/46818 load=1430 ctxt=558 intr=8726 sirq=1269 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16120 flt=0/0 vctx=55 nvctx=0 schedwait=60 cap=51 uv=3601350 ua=-531480 uah=1737200 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  135.519105] pid351: T t=131.8 up=135.51 cpu=18.8/1.0/82.0/2.9% khz=1296000 gpu=-1 ddr=-1 temp=48636/45909 load=1480 ctxt=546 intr=8595 sirq=1263 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16120 flt=0/0 vctx=52 nvctx=0 schedwait=0 cap=51 uv=3601350 ua=-531480 uah=1737200 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  136.080862] pid351: save ok
+<12>[  136.532023] pid351: T t=132.8 up=136.52 cpu=17.1/0.9/83.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47727/47272 load=1480 ctxt=538 intr=8621 sirq=1269 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16120 flt=0/0 vctx=51 nvctx=2 schedwait=209 cap=51 uv=3601350 ua=-531480 uah=1737200 bl=833 mmcr=0 mmcw=1 mmcms=12
+<12>[  137.534697] pid351: T t=133.8 up=137.52 cpu=18.8/0.9/82.1/1.9% khz=1296000 gpu=-1 ddr=-1 temp=49090/48181 load=1480 ctxt=481 intr=8726 sirq=1287 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=12 wb=0 slab=16124 flt=0/0 vctx=46 nvctx=1 schedwait=38 cap=51 uv=3601350 ua=-531480 uah=1737200 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  138.548367] pid351: T t=134.8 up=138.54 cpu=18.0/0.0/83.4/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47727/48181 load=1480 ctxt=501 intr=8634 sirq=1248 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=12 wb=0 slab=16124 flt=0/0 vctx=46 nvctx=1 schedwait=77 cap=51 uv=3601350 ua=-531480 uah=1737200 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  139.078390] pid351: fceumm 60.04 fps  emu 60.04 (1.00x)  frames=7491  ring=649  aud=3532 x2  scale=3182 blit=2293 us
+<12>[  139.551258] pid351: T t=135.8 up=139.54 cpu=16.3/1.9/81.8/1.9% khz=1296000 gpu=-1 ddr=-1 temp=48181/47727 load=1480 ctxt=521 intr=8661 sirq=1251 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=12 wb=0 slab=16124 flt=0/0 vctx=45 nvctx=0 schedwait=0 cap=51 uv=3601350 ua=-531480 uah=1737200 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  139.675158] pid351: load ok
+<12>[  140.564197] pid351: T t=136.9 up=140.55 cpu=18.0/0.0/83.1/0.9% khz=1296000 gpu=-1 ddr=-1 temp=47272/46818 load=1520 ctxt=514 intr=8771 sirq=1258 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=12 wb=0 slab=16124 flt=0/0 vctx=48 nvctx=12 schedwait=408 cap=51 uv=3599390 ua=-544380 uah=1735996 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  141.566850] pid351: T t=137.9 up=141.55 cpu=18.8/0.0/81.6/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47727/47272 load=1520 ctxt=606 intr=9024 sirq=1363 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=12 wb=0 slab=16124 flt=0/0 vctx=52 nvctx=0 schedwait=0 cap=51 uv=3599390 ua=-544380 uah=1735996 bl=833 mmcr=0 mmcw=5 mmcms=24
+<12>[  142.580058] pid351: T t=138.9 up=142.57 cpu=17.1/0.0/82.5/0.9% khz=1296000 gpu=-1 ddr=-1 temp=47727/46818 load=1520 ctxt=544 intr=8702 sirq=1265 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16124 flt=0/0 vctx=51 nvctx=0 schedwait=0 cap=51 uv=3599390 ua=-544380 uah=1735996 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  143.582753] pid351: T t=139.9 up=143.57 cpu=19.0/1.0/81.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=49090/46818 load=1520 ctxt=521 intr=8747 sirq=1284 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16124 flt=0/0 vctx=49 nvctx=0 schedwait=0 cap=51 uv=3599390 ua=-544380 uah=1735996 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  144.091732] pid351: fceumm 60.04 fps  emu 60.04 (1.00x)  frames=7792  ring=630  aud=3613 x2  scale=3166 blit=2378 us
+<12>[  144.596206] pid351: T t=140.9 up=144.58 cpu=18.0/1.9/81.6/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47272/46363 load=1520 ctxt=536 intr=8842 sirq=1275 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16124 flt=0/0 vctx=51 nvctx=0 schedwait=0 cap=51 uv=3599390 ua=-544380 uah=1735996 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  144.689647] pid351: load ok
+<12>[  145.599098] pid351: T t=141.9 up=145.59 cpu=17.1/0.0/82.1/1.0% khz=1296000 gpu=-1 ddr=-1 temp=48181/46818 load=1480 ctxt=509 intr=8709 sirq=1263 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16124 flt=0/0 vctx=51 nvctx=0 schedwait=0 cap=51 uv=3599390 ua=-544380 uah=1735996 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  146.611823] pid351: T t=142.9 up=146.60 cpu=17.0/0.0/83.3/0.9% khz=1296000 gpu=-1 ddr=-1 temp=47727/47727 load=1480 ctxt=541 intr=8655 sirq=1256 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16124 flt=0/0 vctx=50 nvctx=1 schedwait=43 cap=51 uv=3599390 ua=-544380 uah=1735996 bl=833 mmcr=0 mmcw=1 mmcms=4
+<12>[  147.614785] pid351: T t=143.9 up=147.60 cpu=18.1/2.9/82.1/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48636/46818 load=1480 ctxt=514 intr=8696 sirq=1313 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16124 flt=0/0 vctx=51 nvctx=1 schedwait=62 cap=51 uv=3599390 ua=-544380 uah=1735996 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  148.628031] pid351: T t=144.9 up=148.62 cpu=17.8/0.0/83.1/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47272/47727 load=1480 ctxt=541 intr=8669 sirq=1239 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16124 flt=0/0 vctx=51 nvctx=14 schedwait=470 cap=51 uv=3600580 ua=-530792 uah=1734792 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  149.094407] pid351: fceumm 59.97 fps  emu 59.97 (1.00x)  frames=8092  ring=611  aud=3406 x2  scale=3106 blit=2754 us
+<12>[  149.630825] pid351: T t=145.9 up=149.62 cpu=17.1/0.0/82.8/0.9% khz=1296000 gpu=-1 ddr=-1 temp=48181/47727 load=1480 ctxt=519 intr=8573 sirq=1245 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16120 flt=0/0 vctx=51 nvctx=0 schedwait=0 cap=51 uv=3600580 ua=-530792 uah=1734792 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  150.644066] pid351: T t=146.9 up=150.63 cpu=18.0/0.9/81.5/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48636/47272 load=1520 ctxt=530 intr=8744 sirq=1271 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16120 flt=0/0 vctx=54 nvctx=0 schedwait=0 cap=51 uv=3600580 ua=-530792 uah=1734792 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  151.647307] pid351: T t=147.9 up=151.63 cpu=18.0/0.0/81.8/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48636/47272 load=1520 ctxt=520 intr=8703 sirq=1270 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=4 wb=0 slab=16120 flt=0/0 vctx=54 nvctx=0 schedwait=0 cap=51 uv=3600580 ua=-530792 uah=1734792 bl=833 mmcr=0 mmcw=1 mmcms=8
+<12>[  152.660096] pid351: T t=149.0 up=152.65 cpu=17.1/0.0/82.1/0.9% khz=1296000 gpu=-1 ddr=-1 temp=48181/47727 load=1520 ctxt=482 intr=8752 sirq=1267 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16120 flt=0/0 vctx=49 nvctx=0 schedwait=25 cap=51 uv=3600580 ua=-530792 uah=1734792 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  153.663090] pid351: T t=150.0 up=153.65 cpu=18.0/1.0/82.3/1.0% khz=1296000 gpu=-1 ddr=-1 temp=48181/47727 load=1520 ctxt=518 intr=8614 sirq=1277 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16120 flt=0/0 vctx=50 nvctx=0 schedwait=0 cap=51 uv=3600580 ua=-530792 uah=1734792 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  154.104141] pid351: fceumm 60.08 fps  emu 60.08 (1.00x)  frames=8393  ring=596  aud=3662 x2  scale=3129 blit=2259 us
+<12>[  154.675964] pid351: T t=151.0 up=154.66 cpu=17.1/0.9/83.1/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48636/47727 load=1520 ctxt=497 intr=8753 sirq=1267 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16120 flt=0/0 vctx=48 nvctx=0 schedwait=0 cap=51 uv=3600580 ua=-530792 uah=1734792 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  155.678651] pid351: T t=152.0 up=155.66 cpu=18.0/0.0/82.1/1.0% khz=1296000 gpu=-1 ddr=-1 temp=46818/48181 load=1560 ctxt=506 intr=8809 sirq=1290 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16116 flt=0/0 vctx=52 nvctx=0 schedwait=0 cap=51 uv=3600580 ua=-530792 uah=1734792 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  156.689932] pid351: T t=153.0 up=156.68 cpu=18.0/0.0/83.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48636/47727 load=1560 ctxt=515 intr=8709 sirq=1250 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16116 flt=0/0 vctx=46 nvctx=0 schedwait=60 cap=51 uv=3598690 ua=-541628 uah=1733588 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  157.695305] pid351: T t=154.0 up=157.68 cpu=18.0/1.0/82.0/1.9% khz=1296000 gpu=-1 ddr=-1 temp=48636/48181 load=1560 ctxt=494 intr=8525 sirq=1235 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16116 flt=0/0 vctx=47 nvctx=0 schedwait=0 cap=51 uv=3598690 ua=-541628 uah=1733588 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  158.707656] pid351: T t=155.0 up=158.69 cpu=17.8/0.0/83.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48636/47727 load=1560 ctxt=555 intr=8796 sirq=1271 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16116 flt=0/0 vctx=48 nvctx=0 schedwait=0 cap=51 uv=3598690 ua=-541628 uah=1733588 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  159.110464] pid351: fceumm 59.92 fps  emu 59.92 (1.00x)  frames=8693  ring=580  aud=3279 x2  scale=3158 blit=2393 us
+<12>[  159.711116] pid351: T t=156.0 up=159.69 cpu=17.1/2.9/82.0/1.0% khz=1296000 gpu=-1 ddr=-1 temp=48181/47727 load=1560 ctxt=509 intr=8525 sirq=1255 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16116 flt=0/0 vctx=50 nvctx=0 schedwait=0 cap=51 uv=3598690 ua=-541628 uah=1733588 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  160.723989] pid351: T t=157.0 up=160.71 cpu=18.0/0.0/82.3/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47727/48181 load=1590 ctxt=542 intr=8667 sirq=1256 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16120 flt=0/0 vctx=53 nvctx=1 schedwait=102 cap=51 uv=3598690 ua=-541628 uah=1733588 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  161.726858] pid351: T t=158.0 up=161.71 cpu=17.3/0.0/81.6/0.0% khz=1296000 gpu=-1 ddr=-1 temp=48636/48181 load=1590 ctxt=486 intr=8832 sirq=1296 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16124 flt=0/0 vctx=50 nvctx=1 schedwait=56 cap=51 uv=3598690 ua=-541628 uah=1733588 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  162.740090] pid351: T t=159.0 up=162.72 cpu=18.0/0.9/81.0/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47272/48636 load=1590 ctxt=516 intr=8796 sirq=1282 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16128 flt=0/0 vctx=49 nvctx=1 schedwait=41 cap=51 uv=3598690 ua=-541628 uah=1733588 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  163.742880] pid351: T t=160.0 up=163.72 cpu=17.1/0.0/81.8/0.0% khz=1296000 gpu=-1 ddr=-1 temp=47727/48181 load=1590 ctxt=489 intr=8731 sirq=1270 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16132 flt=0/0 vctx=49 nvctx=1 schedwait=58 cap=51 uv=3598690 ua=-541628 uah=1733588 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  164.117799] pid351: fceumm 60.11 fps  emu 60.11 (1.00x)  frames=8994  ring=564  aud=3648 x2  scale=3150 blit=2253 us
+<12>[  164.756150] pid351: T t=161.1 up=164.74 cpu=17.8/0.9/83.1/0.9% khz=1296000 gpu=-1 ddr=-1 temp=48636/49090 load=1590 ctxt=534 intr=8672 sirq=1259 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16128 flt=0/0 vctx=50 nvctx=8 schedwait=371 cap=51 uv=3597850 ua=-541972 uah=1732384 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  165.758760] pid351: T t=162.1 up=165.75 cpu=18.1/0.0/80.6/0.9% khz=1296000 gpu=-1 ddr=-1 temp=48181/48636 load=1630 ctxt=568 intr=8900 sirq=1295 run=1 blk=0 rss=10196 free=942560 avail=912360 dirty=0 wb=0 slab=16124 flt=0/0 vctx=51 nvctx=1 schedwait=48 cap=51 uv=3597850 ua=-541972 uah=1732384 bl=833 mmcr=0 mmcw=0 mmcms=0
+<12>[  166.437038] pid351: stage exit         +162.758 s (165.299 s in)
+<12>[  166.438078] 
+<12>[  166.438103] pid351: ==== session report ====
+<12>[  166.438142] pid351: exit (combo) 162.8 s, 9133 panel frames, 10623 emulated
+<12>[  166.438157] pid351: normal frames (8835 of 9133, budget 16661 us):
+<12>[  166.438347] pid351:   emu      p50   8004  p90   8192  p99   8384  max  10913 us   48.0% of frame
+<12>[  166.438422] pid351:   scale    p50   3006  p90   3024  p99   3071  max   5404 us   18.0% of frame
+<12>[  166.438480] pid351:   blit     p50   2063  p90   2182  p99   2241  max   3354 us   12.4% of frame
+<12>[  166.438647] pid351:   busy     p50  13248  p90  13504  p99  13760  max  19594 us   79.5% of frame
+<12>[  166.438741] pid351:   audio    p50     43  p90   4780  p99  11072  max  12304 us    0.3% of frame
+<12>[  166.438820] pid351:   vblank   p50   3039  p90   3639  p99   4140  max   5509 us   18.2% of frame
+<12>[  166.439057] pid351:   latency  p50  30784  p90  31040  p99  31168  max  32987 us  184.8% of frame
+<12>[  166.439222] pid351:   deadtime p50  14144  p90  14464  p99  14592  max  14733 us   84.9% of frame
+<12>[  166.439385] pid351:   period   p50  16576  p90  18880  p99  24640  max  53347 us   99.5% of frame
+<12>[  166.439542] pid351:   flip     p50  16640  p90  16768  p99  16896  max 2015979 us   99.9% of frame
+<12>[  166.439561] pid351:   latency is pad read to the latching vblank; the panel then paints it over 16661 us more, none of that at the first pixel scanned and all of it at the last
+<12>[  166.439577] pid351: buffers:
+<12>[  166.439617] pid351:   ring     min   557  p1   562  p10   605  p50   886  p90  1422  max  1586 frames (n=9133)
+<12>[  166.439679] pid351:   codec    min     0  p1  1080  p10  1792  p50  1937  p90  3325  max  3408 frames (n=9004)
+<12>[  166.439696] pid351: frames: 0 produced no picture, 7611 had a control held (83.3%)
+<12>[  166.439710] pid351: panel: 756 refreshes with no new frame, 0 flips on one vblank, 0 sequence jumps
+<12>[  166.439746] pid351: input (presses/frames held): A 4/30 B 161/2106 Y 26/6969 up 12/240 down 10/289 left 64/1055 right 97/4829 L1 3/27 R1 1/8 L2 3/27 R2 4/298 select 1/1 start 3/13 L3 8/69 R3 1/8
+<12>[  166.439760] pid351: fast frames (298, each runs the core 6 times):
+<12>[  166.439926] pid351:   emu      p50  46848  p90  48192  p99  49088  max  49681 us  281.2% of frame
+<12>[  166.440100] pid351:   busy     p50  52224  p90  53504  p99  54400  max  55002 us  313.5% of frame
+<12>[  166.440123] pid351:   audio    p50     43  p90     48  p99    132  max    136 us    0.3% of frame
+<12>[  166.440295] pid351:   latency  p50  59776  p90  67264  p99  69440  max  69931 us  358.8% of frame
+<12>[  166.440318] pid351: pacing: 3 over budget of 8835 normal frames (0.034%), 56.1131 fps against 60.0204 panel
+<12>[  166.440338] pid351: fast mode: 15.5 s, 298 panel frames, 1788 emulated, 6.00x per frame, 115.6 emu fps = 1.92x wall clock
+<12>[  166.440441] pid351:   ceiling is 2.08x - emulation alone is 8004 us/frame at p50, so nothing above that is reachable
+<12>[  166.440458] pid351: audio: 2 xruns, core ring 557..1586, codec low water 32 frames (0.7 ms)
+<12>[  166.440471] pid351: state: 3 saved, 8 loaded, 1 undone; last save 1014 us on the frame, published 30 frames later in 498 us
+<12>[  166.440486] pid351: power: backlight 833/1666, governor schedutil, 1296 MHz
+<12>[  166.440502] pid351: power: 52% -> 51%, -204336 -> -541972 uA, 1296 MHz, temp 30.4 -> 48.1 peak 49.0 C
+<12>[  166.440526] pid351: drain: 23564 uAh over 162.8 s = 521 mA, 3380 mAh pack -> 6.5 h from full, 3.3 h left at 51%
+<12>[  166.444960] pid351: ---- system ----
+<12>[  166.445024] pid351: sampled 160 times over 162.7 s at 1000000 us
+<12>[  166.445042] pid351: boot timeline (kernel was 1.12 s in at stage mounts):
+<12>[  166.445060] pid351:   entry        +  0.000 s  (  0.000 s in)
+<12>[  166.445079] pid351:   mounts       +  0.002 s  (  0.002 s in)
+<12>[  166.445094] pid351:   card         +  0.004 s  (  0.006 s in)
+<12>[  166.445108] pid351:   rom          +  0.008 s  (  0.014 s in)
+<12>[  166.445121] pid351:   display      +  0.523 s  (  0.538 s in)
+<12>[  166.445135] pid351:   splash       +  0.007 s  (  0.545 s in)
+<12>[  166.445149] pid351:   audio        +  0.294 s  (  0.839 s in)
+<12>[  166.445164] pid351:   core         +  0.088 s  (  0.927 s in)
+<12>[  166.445177] pid351:   hold         +  1.611 s  (  2.538 s in)
+<12>[  166.445191] pid351:   loop         +  0.002 s  (  2.540 s in)
+<12>[  166.445209] pid351:   exit         +162.758 s  (165.299 s in)
+<12>[  166.445231] pid351: cpu busy over the session: cpu0=17.7% cpu1=23.8% cpu2=43.3% cpu3=16.9%
+<12>[  166.445251] pid351: process: utime 12926 jiffies, stime 322, on cpu 132.467 s, waiting to run 0.022 s over 8983 slices
+<12>[  166.445266] pid351: process: rss 10196 kB (peak 10196), threads 1, faults 56 minor 0 major, ctxt 8664 voluntary 319 not
+<12>[  166.445296] pid351: idle WFI      cpu0=14.1%/240014x cpu1=0.1%/271x cpu2=0.1%/221x cpu3=0.0%/162x  total 23.27 core-seconds
+<12>[  166.445321] pid351: idle cpu-sleep cpu0=1.0%/14248x cpu1=0.4%/345x cpu2=0.4%/410x cpu3=0.3%/213x  total 3.47 core-seconds
+<12>[  166.445350] pid351: idle cluster-sleep cpu0=59.3%/790348x cpu1=75.3%/10118x cpu2=55.8%/7648x cpu3=82.3%/10890x  total 443.81 core-seconds
+<12>[  166.445364] pid351: memory: free 942560 kB, available 912360 (low water 911648), cached 7076, slab 16100, dirty 0, writeback 0
+<12>[  166.445378] pid351: paging: 56 faults, 0 major, 0 kB in, 54 kB out
+<12>[  166.445397] pid351: switching: 82425 context switches (506/s), 1417380 interrupts (8709/s), 205919 softirqs (1265/s), 4 forks
+<12>[  166.445408] pid351: interrupts over the session:
+<12>[  166.445424] pid351:   arch_timer              55644    341.92/s
+<12>[  166.445438] pid351:   rk_timer                 6685     41.08/s
+<12>[  166.445452] pid351:   ff240000.dma-controller    14626     89.87/s
+<12>[  166.445466] pid351:   ff460000.vop             9767     60.02/s
+<12>[  166.445481] pid351:   dwc2_hsotg:usb1       1287421   7910.85/s
+<12>[  166.445495] pid351:   ff180000.i2c             3006     18.47/s
+<12>[  166.445508] pid351:   dw-mci                    250      1.54/s
+<12>[  166.445523] pid351:   interrupts                290      1.78/s
+<12>[  166.445538] pid351:   interrupts              39418    242.21/s
+<12>[  166.445551] pid351:   interrupts                144      0.88/s
+<12>[  166.445564] pid351:   interrupts                125      0.77/s
+<12>[  166.445581] pid351: thermal: soc-thermal=49.0(peak 49.0) gpu-thermal=46.8(peak 49.0) C
+<12>[  166.445595] pid351: clocks: cpu 1296000 kHz (peak 1296000), gpu -1 Hz, ddr -1 Hz, load 1630 milli (peak 1630)
+<12>[  166.445608] pid351: card: 1 reads, 28 writes, 1 sectors read, 109 written, 180 ms of io
+<12>[  166.445625] pid351: gauge: /sys/class/power_supply/rk817-battery, capacity 51% (low 51), 3597850 uV, -541972 uA (peak draw -589788, negative is out), charge 1732384 of 3380000 uAh, backlight 833
+<12>[  166.445639] pid351: verdict:
+<12>[  166.445649] pid351:   pacing   PASS  (late frames under 0.1%)
+<12>[  166.445660] pid351:   audio    FAIL  (no xrun after the first 5 s)
+<12>[  166.445670] pid351:   ring     PASS  (never starved)
+<12>[  166.445680] pid351:   thermal  PASS  (peak under 70 C)
+<12>[  166.446418] pid351: stage core out     + 0.009 s (165.308 s in)
+<12>[  166.447189] pid351: stage audio out    + 0.001 s (165.309 s in)
+<12>[  166.448211] pid351: stage dark         + 0.001 s (165.310 s in)
+<12>[  166.530201] pid351: stage drm out      + 0.082 s (165.392 s in)
+<12>[  166.530271] pid351: stage log          + 0.000 s (165.392 s in)
