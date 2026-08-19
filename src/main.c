@@ -1117,6 +1117,24 @@ int main(void)
     }
 
     canvas_t c = { framebuffer, PANEL_W, PANEL_H };
+
+    /* Present once before anything that can block. SDL does not map the
+     * window until the first flip, so a stall anywhere between here and the
+     * frame loop shows no window at all rather than a frozen one - and "no
+     * window" reads as "the program never started", which sent the wrong
+     * question to the wrong subsystem the first time it happened. A frozen
+     * splash says the display came up and something after it did not.
+     *
+     * The same argument holds on the device with more force: the panel keeps
+     * whatever the bootloader left there until we flip, so without this a
+     * hang looks identical to a machine that never got as far as us. */
+    gfx_rect(&c, 0, 0, PANEL_W, PANEL_H, C_BG);
+    gfx_rect(&c, 0, 0, PANEL_W, 17, C_PANEL);
+    gfx_rect(&c, 0, 17, PANEL_W, 1, C_ACCENT);
+    gfx_text(&c, 6, 2, "PID351", 2, C_ACCENT);
+    gfx_text(&c, 6, 26, "STARTING", 1, C_DIM);
+    plat_present(framebuffer, PANEL_W, PANEL_H);
+
     struct sysinfo_s si;
     memset(&si, 0, sizeof si);
     sysinfo_read(&si);

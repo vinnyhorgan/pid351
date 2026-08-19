@@ -193,10 +193,28 @@ int aud_open(void)
     if (wait_for_card() != 0)
         printf("pid351: audio node %s never appeared\n", AUD_NODE);
 
-    fd = open(AUD_NODE, O_RDWR | O_CLOEXEC);
+    /* O_NONBLOCK on the open only. A PCM node another process already holds
+     * makes open() *wait* rather than fail, with no timeout - and a silent
+     * indefinite wait is the one behaviour this program cannot afford. As
+     * PID 1 there is no shell to interrupt it from, nothing has been drawn
+     * yet, and the boot log is still in a buffer nobody will ever read. It
+     * hangs looking exactly like a dead machine.
+     *
+     * Cleared again immediately, because blocking writes are what let the
+     * hardware pace us and are the whole reason aud_write is allowed to
+     * wait at all. */
+    fd = open(AUD_NODE, O_RDWR | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0) {
         printf("pid351: audio open %s: %s\n", AUD_NODE, strerror(errno));
         list_snd();
+        return -1;
+    }
+
+    int fl = fcntl(fd, F_GETFL);
+    if (fl < 0 || fcntl(fd, F_SETFL, fl & ~O_NONBLOCK) < 0) {
+        printf("pid351: audio could not restore blocking mode: %s\n",
+               strerror(errno));
+        aud_close();
         return -1;
     }
 

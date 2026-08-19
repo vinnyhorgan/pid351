@@ -1185,3 +1185,32 @@ HDA codec, while on the device it is the panel's crystal against the rk817's.
 `aud_lvl` is in the ten-second report line and on screen so the first device
 boot measures the pair that matters. Read the slope over several minutes;
 anything shorter is the sawtooth.
+
+### Opening the PCM can hang, and did
+
+`open()` on a PCM node another process already holds does not fail - it
+**waits, with no timeout**. Hit on the laptop when a background measurement
+still had the card: the demo printed its way to `after phases` and then
+stopped dead, with no window, looking exactly like a program that had never
+started.
+
+Fixed by opening `O_NONBLOCK` and clearing the flag immediately afterwards
+with `fcntl`, which is what alsa-lib does and for this reason. A busy device
+now reports `Device or resource busy` at once. Blocking writes are kept,
+since those are what let the hardware pace us.
+
+This matters far more on the device than it did here. As PID 1 there is no
+shell to interrupt from, and the boot log that would have explained it is
+still sitting in a buffer that only gets written on the way out.
+
+### A frozen splash beats no window
+
+The same incident showed a second gap: SDL does not map its window until the
+first flip, and the device's panel keeps whatever the bootloader left there
+until the first page flip. So a stall anywhere between `plat_init` and the
+frame loop displays *nothing at all*, which reads as "never started" and
+sends the wrong question to the wrong subsystem.
+
+The demo now presents a splash immediately after `plat_init`. A frozen splash
+says the display came up and something after it did not, which is a different
+and much more useful fault than a blank screen.
