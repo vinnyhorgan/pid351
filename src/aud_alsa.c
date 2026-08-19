@@ -273,9 +273,13 @@ int aud_open(void)
         return -1;
     }
 
-    printf("pid351: audio %u Hz, period %u, buffer %u (%u.%01u ms), "
+    /* Names the node it actually opened. On the handheld there is one card
+     * and no sound server, so this is a formality; on a laptop it is the
+     * difference between "audio is broken" and "audio is playing out of a
+     * speaker you are not listening to", which cost an hour once. */
+    printf("pid351: audio %s: %u Hz, period %u, buffer %u (%u.%01u ms), "
            "%d frames/video frame\n",
-           rate, period, buffer,
+           AUD_NODE, rate, period, buffer,
            1000u * buffer / rate, (10000u * buffer / rate) % 10u,
            (int)((uint64_t)rate * PANEL_FRAME_PX / PANEL_PIXEL_HZ));
     return 0;
