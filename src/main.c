@@ -50,6 +50,13 @@
  * buffer is not the same as handing it a healthy one. */
 #define SILENCE_DRAIN_US 50000u
 
+/* Where in the hold the gain is brought up, in panel frames. Half a second of
+ * silence at zero gain first, so the analogue side is done settling before
+ * anything is asked of it, then half a second of ramp. Both are far longer
+ * than they need to be and the hold is being spent anyway. */
+#define VOL_RAMP_START  30
+#define VOL_RAMP_FRAMES 30
+
 #define C_BG     RGB565(  8, 10, 14)
 #define C_PANEL  RGB565( 20, 24, 32)
 #define C_EDGE   RGB565( 46, 56, 72)
@@ -1731,11 +1738,27 @@ static int run_game(const char *rom, int as_init)
      * the core's ring as sound arriving after the picture. SILENCE_DRAIN_US
      * at 48 kHz is about two thousand frames, which lands it where the
      * sessions on the device actually run. */
+    unsigned n = 0;
     for (uint64_t t = plat_now_us() + FRAME_US;
-         t < splashed + SPLASH_HOLD_US - SILENCE_DRAIN_US; t += FRAME_US) {
+         t < splashed + SPLASH_HOLD_US - SILENCE_DRAIN_US; t += FRAME_US, n++) {
         aud_silence();
+        /* And the codec opens muted, so whatever the output stage does on its
+         * way up does it into an attenuator rather than into the speaker.
+         *
+         * Stated honestly: this is worth trying and is not a fix. The gain is
+         * digital, in front of the DAC, and if the pop is the headphone
+         * charge pump and output stage powering up - which is what the driver
+         * makes it look like - then no digital gain can touch it. If it is
+         * the DAC settling, this removes it. One boot answers it, and the
+         * cost of asking is a control write per frame for half a second. */
+        if (n >= VOL_RAMP_START && n < VOL_RAMP_START + VOL_RAMP_FRAMES)
+            aud_volume((int)(n - VOL_RAMP_START + 1) * AUD_VOLUME_MAX
+                       / VOL_RAMP_FRAMES);
         plat_sleep_until(t);
     }
+    /* Unconditionally, so that no path through the loop above can leave the
+     * machine playing quietly for the rest of the session. */
+    aud_volume(AUD_VOLUME_MAX);
     plat_sleep_until(splashed + SPLASH_HOLD_US);
 
     uint64_t start = plat_now_us(), next = start, mark = start;

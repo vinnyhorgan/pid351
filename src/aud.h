@@ -70,6 +70,19 @@ int aud_silence(void);
 
 int aud_level(void);
 
+/* The one playback gain the rk817 has, as the control counts it: 255 is 0 dB
+ * and 0 is -95 dB. Public because the boot sequence ramps it, and a ramp
+ * needs to know where it is going. */
+#define AUD_VOLUME_MAX 255
+
+/* Set the playback gain, 0 to AUD_VOLUME_MAX.
+ *
+ * Exists for one job: the codec opens muted and is brought up over the splash
+ * rather than switched on under the game. Whether that helps the pop is a
+ * question about analogue silicon and is answered by listening, not by
+ * reasoning - see the ramp in main.c for what is and is not being claimed. */
+void aud_volume(int level);
+
 /* Times the buffer has run dry since open. A machine with no serial port
  * needs its faults counted rather than logged as they happen. */
 int aud_xruns(void);
