@@ -76,6 +76,10 @@ make olddefconfig >/dev/null
 grep -q '^# CONFIG_SND_DRIVERS is not set' .config || {
     echo "CONFIG_SND_DRIVERS survived the merge - card 0 would be a loopback"
     exit 1; }
+grep -q '^# CONFIG_LOGO is not set' .config || {
+    echo "merge lost CONFIG_LOGO=n - the penguins are back"; exit 1; }
+grep -q '^CONFIG_FRAMEBUFFER_CONSOLE_ROTATION=y' .config || {
+    echo "merge lost fbcon rotation - a panic would print sideways"; exit 1; }
 grep -q '^CONFIG_PL330_DMA=y' .config || {
     echo "CONFIG_PL330_DMA lost - the i2s block would have no DMA"; exit 1; }
 

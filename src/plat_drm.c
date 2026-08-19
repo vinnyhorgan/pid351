@@ -176,9 +176,22 @@ static int xioctl(unsigned long req, void *arg)
     return r;
 }
 
+/* KERN_ERR, so that this survives `quiet` on the command line and reaches the
+ * panel. Every other line we print is deliberately below the console's
+ * threshold - a running game must not be able to scribble on its own screen -
+ * but this one is only ever reached when something has already gone wrong,
+ * and the panel is the only channel left if it went wrong before the card was
+ * mounted and pid351-fail.log could be written.
+ *
+ * The prefix is /dev/kmsg's, is stripped before the message is stored, and
+ * only makes sense when we are PID 1 writing there; anywhere else it would
+ * print literally into a terminal. */
+static int is_init;
+
 static void fail(const char *what)
 {
-    fprintf(stderr, "pid351: %s: %s\n", what, strerror(errno));
+    fprintf(stderr, "%spid351: %s: %s\n",
+            is_init ? "<3>" : "", what, strerror(errno));
 }
 
 /* ------------------------------------------------------------------- KMS */
@@ -1000,8 +1013,6 @@ static void flush_disks(void)
 
 #define BOOT_DEV   "/dev/mmcblk0p1"
 #define BOOT_MOUNT "/boot"
-
-static int is_init;
 
 /* Wait for a device node to be created by devtmpfs as its driver probes. See
  * the note above open_pad for why sleeping here is not the busy-waiting the

@@ -1273,15 +1273,30 @@ static void power_phase(canvas_t *c, const char *name, const char *gov,
  * machine that never reached us, which is exactly the wrong question to be
  * asked when something goes wrong. A frozen splash says the display works and
  * something after it does not. */
+/* The one thing on the screen between the kernel handing over and the game
+ * appearing, which is about eight hundred milliseconds.
+ *
+ * It used to wear the demo's header bar and sit in the top left corner, and
+ * at that length it read as a glimpse of some other program rather than as
+ * this one starting - the honest description offered was "the demo for a
+ * flash of a second". Centred on black it reads as a boot screen, which is
+ * what it is.
+ *
+ * It is still here rather than deleted for the reason it was added: the panel
+ * holds whatever the bootloader left until something flips it, so without
+ * this a hang before the first frame looks exactly like a machine that never
+ * reached us. A frozen wordmark says the display came up and something after
+ * it did not. */
 static void splash(const char *line)
 {
     canvas_t c = { framebuffer, PANEL_W, PANEL_H };
+    int mark = 4;
 
     gfx_rect(&c, 0, 0, PANEL_W, PANEL_H, C_BG);
-    gfx_rect(&c, 0, 0, PANEL_W, 17, C_PANEL);
-    gfx_rect(&c, 0, 17, PANEL_W, 1, C_ACCENT);
-    gfx_text(&c, 6, 2, "PID351", 2, C_ACCENT);
-    gfx_text(&c, 6, 26, line, 1, C_DIM);
+    gfx_text(&c, (PANEL_W - gfx_text_w("PID351", mark)) / 2,
+             PANEL_H / 2 - FONT_H * mark, "PID351", mark, C_ACCENT);
+    gfx_text(&c, (PANEL_W - gfx_text_w(line, 1)) / 2,
+             PANEL_H / 2 + FONT_H, line, 1, C_DIM);
     plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
 }
 
@@ -1605,7 +1620,8 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
 static int run_game(const char *rom, int as_init)
 {
     if (plat_init() != 0) {
-        fprintf(stderr, "pid351: platform init failed\n");
+        fprintf(stderr, "%spid351: platform init failed\n",
+            plat_is_init() ? "<3>" : "");
         plat_boot_save_log("pid351-fail.log");
         plat_boot_shutdown(1);
         return 1;
@@ -1883,7 +1899,8 @@ int main(int argc, char **argv)
     }
 
     if (plat_init() != 0) {
-        fprintf(stderr, "pid351: platform init failed\n");
+        fprintf(stderr, "%spid351: platform init failed\n",
+            plat_is_init() ? "<3>" : "");
         /* A failed display bring-up is exactly the case where the screen
          * cannot tell us anything, so the kernel log has to. */
         plat_boot_save_log("pid351-fail.log");
@@ -1903,12 +1920,7 @@ int main(int argc, char **argv)
      * The same argument holds on the device with more force: the panel keeps
      * whatever the bootloader left there until we flip, so without this a
      * hang looks identical to a machine that never got as far as us. */
-    gfx_rect(&c, 0, 0, PANEL_W, PANEL_H, C_BG);
-    gfx_rect(&c, 0, 0, PANEL_W, 17, C_PANEL);
-    gfx_rect(&c, 0, 17, PANEL_W, 1, C_ACCENT);
-    gfx_text(&c, 6, 2, "PID351", 2, C_ACCENT);
-    gfx_text(&c, 6, 26, "STARTING", 1, C_DIM);
-    plat_present(framebuffer, PANEL_W, PANEL_H, NULL);
+    splash("STARTING");
 
     struct sysinfo_s si;
     memset(&si, 0, sizeof si);
