@@ -16,6 +16,17 @@
 #define PANEL_W 480
 #define PANEL_H 320
 
+/* The panel's exact timing, as a rational rather than a rounded frequency.
+ * cpll/24 is exactly 17.000000 MHz and the mode totals are 584x485, so a
+ * frame is exactly 283240/17000000 s. Audio needs it in this form and not as
+ * a period in microseconds: at 48 kHz a frame is 799.7365 samples, and only
+ * exact integer arithmetic stops a resampler drifting a whole sample every
+ * few seconds. Rounding here is the one place that error is unrecoverable. */
+#define PANEL_PIXEL_HZ 17000000
+#define PANEL_HTOTAL   584
+#define PANEL_VTOTAL   485
+#define PANEL_FRAME_PX (PANEL_HTOTAL * PANEL_VTOTAL)
+
 typedef uint16_t px_t;
 
 #define RGB565(r, g, b) \

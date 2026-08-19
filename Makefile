@@ -14,7 +14,10 @@ RG      ?= ark@rg351p
 
 WARN     = -std=c11 -Wall -Wextra -Wpedantic -Wshadow -Wconversion
 CFLAGS   = $(WARN) -O2 -g -Isrc -D_POSIX_C_SOURCE=200809L
-COMMON   = src/main.c
+# aud_alsa.c is in COMMON rather than in either backend on purpose: both
+# targets are Linux with ALSA, so the audio path that runs on the laptop is
+# byte for byte the one that runs on the device.
+COMMON   = src/main.c src/aud_alsa.c
 
 HOST_CFLAGS = $(CFLAGS) $(shell pkg-config --cflags sdl3)
 HOST_LIBS   = $(shell pkg-config --libs sdl3)

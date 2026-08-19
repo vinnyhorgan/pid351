@@ -1053,3 +1053,119 @@ The charge-implied column was noise again, as expected: 427, 299, 278, 342,
 320, 320 mA against current_avg's clean monotonic 378, 367, 318, 297, 284.
 Four counter steps in a 29 second window cannot resolve this. `current_avg`
 is the instrument; the coulomb counter is not.
+
+## Audio, built on the laptop — what is settled and what is not
+
+Written away from the device. Everything below marked **[laptop]** was
+measured on an HP `sof-hda-dsp` card, everything marked **[source]** was read
+out of the 6.12.103 tree we actually build, and nothing has run on the
+handheld yet.
+
+### There is nothing to abstract, so there is one implementation
+
+The laptop and the handheld are both Linux with ALSA, so unlike the display
+there is no per-target audio backend. `aud_alsa.c` is in `COMMON` in the
+Makefile and compiles into both binaries — the ioctls tested on the laptop are
+byte for byte the ones that will run on the device. That makes the laptop a
+real test rig for this subsystem rather than a simulation of one, which is not
+true of anything else in the project.
+
+Raw ioctls, no alsa-lib, for the same reason the display talks to DRM
+directly. The whole path is seven: `HW_REFINE`, `HW_PARAMS`, `SW_PARAMS`,
+`PREPARE`, `WRITEI_FRAMES`, `STATUS`, `DROP`.
+
+### The device tree already has the card — [source]
+
+`rk3326-anbernic-rg351m.dtsi` carries a `simple-audio-card` named
+`rk817_int`, codec `&rk817`, cpu `&i2s1_2ch` (`rockchip,px30-i2s` at
+`ff070000`), `mclk-fs = <256>`. So unlike the battery, no board file change is
+needed — the node mainline ships is complete.
+
+Note `hp-det-gpio = <&gpio2 RK_PC6 GPIO_ACTIVE_HIGH>`. Earlier notes recorded
+this as `gpio0 22`, which came from the vendor DTS; `RK_PC6` is pin 22 of
+**gpio2**. Mainline is what we boot.
+
+### The config prerequisite that was only there by accident
+
+The i2s block moves samples by DMA (`dmas = <&dmac 18>, <&dmac 19>`, a PL330
+at `ff240000`). Without `CONFIG_DMADEVICES`/`CONFIG_PL330_DMA` the codec
+defers forever and the machine has **no sound card at all** — not a broken
+one, an absent one.
+
+Both were already `=y` in our merged config, but only by inheritance from
+`arm64 defconfig`, and *leaning the kernel is on the roadmap*. They are now
+written into `image/pid351.config` explicitly. This is the first case found of
+a working feature resting entirely on inheritance we intend to delete; it is
+probably not the last, and it argues for auditing the merged config against
+the fragment before that work starts rather than after.
+
+### Mixer controls, read from the driver rather than remembered — [source]
+
+`sound/soc/codecs/rk817_codec.c`:
+
+- `"Master Playback Volume"` — `SOC_DOUBLE_R_RANGE_TLV`, range **-95.00 dB to
+  0 dB**, registers `DDAC_VOLL`/`DDAC_VOLR`.
+- `"Playback Mux"` — `SOC_DAPM_ENUM`, values **`"HP"`** and **`"SPK"`**.
+
+Everything else in that driver is DAPM and powers itself up along the route.
+Two controls is the whole mixer surface we need.
+
+### Resampling is exact, not approximate — [laptop]
+
+The panel is the master clock and audio is resampled to it, so the sample
+count per video frame is carried in integer pixel-clock ticks rather than a
+period in microseconds:
+
+    acc += rate * PANEL_FRAME_PX;   n = acc / PANEL_PIXEL_HZ;   acc %= PANEL_PIXEL_HZ;
+
+At 48 kHz that is 799.7365 samples a frame, emitted as a 799/800 pattern.
+Measured over 3600 frames (60 s): **2879051 samples emitted against 2879051.3
+exact — an error of 0.29 samples, bounded rather than accumulating.** Buffer
+level stayed inside 2602..2682 frames and there were **zero underruns**.
+
+Rounding `FRAME_US` to 16661 µs instead would drift about a sample every four
+seconds. This is the one place in the project where rounding is unrecoverable.
+
+### A blocking write costs no CPU — [laptop]
+
+1.16 s of wall clock to play 1.0 s of audio through blocking `WRITEI_FRAMES`
+cost **0.005 s user and 0.000 s sys**. Blocking on the audio buffer really is
+a sleep, which is what CLAUDE.md's rule assumes but had never been checked.
+
+### Period sizing: the battery argument loses, and should
+
+512-frame periods over an 8-period buffer is 85 ms of cushion at 48 kHz and 94
+interrupts a second. Battery-first would argue for longer periods and fewer
+interrupts. It loses, because the gamepad's USB bus already costs ~6700
+interrupts a second, so 94 more is not measurable, whereas the added latency
+would be audible. **Where a power term sits below the noise floor of a term we
+cannot remove, it is not a power term.**
+
+`HW_REFINE` on the laptop accepted period_size 384..524288 and periods 2..256.
+The device's constraints are unknown and are printed at every open for exactly
+that reason — on a machine with no serial port, the boot log is the only way
+that answer reaches us.
+
+### The one open question, and why it is not being fixed yet
+
+Running the full demo on the laptop showed `aud_lvl` pinned near the top of
+the buffer (3580..4020 of 4096) and one underrun, where the standalone test
+holds a rock-steady 2601..2658 with none.
+
+That difference is a **host artifact, not a defect**. The laptop has no
+vblank: `plat_sleep_until` returns immediately when late and `next` falls
+behind, so the loop free-runs in bursts, over-produces, and `aud_write` blocks
+— which quietly makes *audio* the pacing source. On the device `plat_present`
+blocks on a real page flip, so the panel stays master and this cannot happen
+the same way.
+
+What remains genuinely unknown is drift between the panel's crystal and the
+codec's, which are independent oscillators. Exact arithmetic stops us adding
+error of our own; it cannot hold the level steady against two clocks. The
+correction term is a single number and measuring it needs the device — watch
+`aud_lvl` in the ten-second report over several minutes and read the slope.
+
+Adding an adaptive controller now, tuned against a laptop artifact, would
+repeat the mistake this project has already had to correct twice: trusting the
+wrong oracle. `aud_lvl` is in the report line and on screen precisely so the
+first device boot answers it.

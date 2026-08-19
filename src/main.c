@@ -27,6 +27,7 @@
 #include "platform.h"
 #include "gfx.h"
 #include "scale.h"
+#include "aud.h"
 
 /* The panel's real period, not a console's. cpll runs at 408 MHz and the VOP
  * divides it by exactly 24 for a 17.000000 MHz pixel clock, so 584x485 totals
@@ -475,15 +476,79 @@ static void report(uint64_t elapsed_us, const struct sysinfo_s *s,
     printf("pid351: t=%llus frames=%u fps=%.2f n=%d "
            "blit=%u/%u/%u life=%u/%u draw=%u/%u/%u wait=%u/%u/%u "
            "cpu_khz=%ld gov=%s gpu_hz=%ld temp_mc=%ld "
-           "volt_uv=%ld curr_ua=%ld backlight=%ld/%ld\n",
+           "volt_uv=%ld curr_ua=%ld backlight=%ld/%ld "
+           "aud_hz=%d aud_lvl=%d aud_xrun=%d\n",
            (unsigned long long)(elapsed_us / 1000000u), frames, fps, ring_n,
            blit_stat.min, blit_stat.med, blit_stat.max,
            blit_min_life == UINT32_MAX ? 0u : blit_min_life, blit_max_life,
            draw_stat.min, draw_stat.med, draw_stat.max,
            wait_stat.min, wait_stat.med, wait_stat.max,
            s->cpu_khz, s->governor, s->gpu_hz, s->temp_mc,
-           s->voltage_uv, s->current_ua, s->backlight, s->backlight_max);
+           s->voltage_uv, s->current_ua, s->backlight, s->backlight_max,
+           aud_rate(), aud_level(), aud_xruns());
     fflush(stdout);
+}
+
+/* ---------------------------------------------------------------- audio */
+
+/* A tone while a face button is held, silence otherwise. Two things can be
+ * independently wrong - that samples reach the codec at all, and that they
+ * arrive at the rate the panel is pacing - and only the second one is subtle.
+ * A continuous tone would prove the first and hide the second, because a
+ * buffer that is slowly draining sounds exactly like one that is not, right
+ * up until it runs dry. Silence between notes makes the buffer level on
+ * screen the thing being watched rather than the sound. */
+static uint32_t tone_phase;
+static int tone_amp;
+static int aud_lvl;
+
+static void audio_frame(uint32_t held)
+{
+    static int16_t buf[2048 * 2];
+    const int cap = (int)(sizeof buf / sizeof buf[0]) / 2;
+
+    int n = aud_due();
+    if (n <= 0)
+        return;
+    if (n > cap)
+        n = cap;
+
+    /* Four notes rather than one, so a button stuck down is audible as well
+     * as visible - the pad is the part of this machine we cannot see. */
+    unsigned hz = 0;
+    if      (held & PAD_A) hz = 440;
+    else if (held & PAD_B) hz = 349;
+    else if (held & PAD_X) hz = 523;
+    else if (held & PAD_Y) hz = 587;
+
+    int rate = aud_rate();
+    /* Phase as 32-bit turns: the integer wrap is the period, so the frequency
+     * carries no accumulating rounding and there is no modulo per sample. */
+    uint32_t step = rate ? (uint32_t)(((uint64_t)hz << 32) / (unsigned)rate)
+                         : 0u;
+
+    for (int i = 0; i < n; i++) {
+        /* Ramped, not gated. A gated tone clicks, and a click is exactly what
+         * an underrun sounds like, so gating would disguise the fault this
+         * whole subsystem is being watched for. */
+        int want = hz ? 2600 : 0;
+        if (tone_amp < want) {
+            tone_amp += 40;
+            if (tone_amp > want) tone_amp = want;
+        } else if (tone_amp > want) {
+            tone_amp -= 40;
+            if (tone_amp < want) tone_amp = want;
+        }
+
+        tone_phase += step;
+        /* Triangle rather than sine: there is no libm in the device build,
+         * and the harmonics make a wrong sample rate easy to hear. */
+        int32_t t   = (int32_t)(tone_phase >> 16);
+        int32_t tri = t < 32768 ? t - 16384 : 49152 - t;
+        buf[i * 2] = buf[i * 2 + 1] = (int16_t)(tri * tone_amp / 16384);
+    }
+
+    aud_write(buf, n);
 }
 
 static void info_line(canvas_t *c, int x, int y, const char *label,
@@ -593,6 +658,15 @@ static void draw_info(canvas_t *c, int x, int y, const struct sysinfo_s *s,
     snprintf(v, sizeof v, "%u/%u/%u", blit_stat.min, blit_stat.med,
              blit_stat.max);
     info_line(c, x, y, "BLIT US", v, C_TEXT);                      y += lh;
+
+    /* Buffer level and underruns, not "playing". The level is the only thing
+     * that shows the panel and the codec pulling against each other, and it
+     * shows it long before anything becomes audible. */
+    if (aud_rate() > 0)
+        snprintf(v, sizeof v, "%d x%d", aud_lvl, aud_xruns());
+    else
+        snprintf(v, sizeof v, "none");
+    info_line(c, x, y, "AUDIO", v, aud_xruns() ? C_WARN : C_TEXT); y += lh;
 
     if (s->uptime_s >= 0)
         snprintf(v, sizeof v, "%ld:%02ld:%02ld", s->uptime_s / 3600,
@@ -1042,6 +1116,13 @@ int main(void)
         return 1;
     }
 
+    /* Not fatal. A handheld with no sound still runs games, and the failure
+     * path prints what the card would have accepted - which on a machine
+     * with no serial port is the only way that answer ever reaches us. */
+    if (aud_open() != 0)
+        printf("pid351: WARN continuing without audio\n");
+    fflush(stdout);
+
     canvas_t c = { framebuffer, PANEL_W, PANEL_H };
     struct sysinfo_s si;
     memset(&si, 0, sizeof si);
@@ -1189,6 +1270,12 @@ int main(void)
         uint32_t went_down = held & ~prev_held;
         prev_held = held;
 
+        /* Before any of the early exits below, and before the testcard
+         * branch returns to the top: aud_due advances an accumulator, so a
+         * frame that skips it silently steals those samples from the next
+         * one and the drift it is there to prevent creeps back in. */
+        audio_frame(held);
+
         /* Only the combo exits. Binding a single button to quit meant that
          * button could never be seen to light up, which is the one thing this
          * program is for. */
@@ -1216,6 +1303,9 @@ int main(void)
             blit_stat = stat_of(blit_ring, ring_n);
             wait_stat = stat_of(wait_ring, ring_n);
             draw_stat = stat_of(draw_ring, ring_n);
+            /* An ioctl, so sampled with the other per-second statistics
+             * rather than inside the frame it would be timing. */
+            aud_lvl = aud_level();
         }
 
         if (now - report_mark >= 10000000) {
@@ -1294,6 +1384,7 @@ int main(void)
     printf("pid351: exit (%s) after %u frames, %.2f fps\n",
            reason, frames, fps);
     fflush(stdout);
+    aud_close();
     plat_shutdown();
 
     /* Does not return when we are PID 1 - reaching the end of main as PID 1
