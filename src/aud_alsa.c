@@ -17,6 +17,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <linux/input.h>
 #include <time.h>
 
 #include <sound/asound.h>
@@ -92,10 +93,18 @@ static int wait_for_card(void)
  * solve a problem the menu's volume control is for. */
 #define AUD_VOLUME 255
 
-/* "HP" is 0 and "SPK" is 1, in the driver's dac_mux_text order. Fixed to the
- * speaker: headphone detect is a switch on /dev/input/event1 that nothing
- * reads yet, so choosing by jack is a change to make when something does. */
-#define AUD_MUX_SPK 1
+/* "HP" is 0 and "SPK" is 1, in the driver's dac_mux_text order, and this
+ * machine's speaker wants HP.
+ *
+ * That reads backwards and is not. The driver says why in its own comment:
+ * "the speaker output and L headphone pin are internally the same", and on
+ * this board it is the headphone side of that shared pad the speaker hangs
+ * off. Reasoning from the name got this wrong; the vendor system settles it,
+ * running numid=5 'Playback Mux' at 0 with the speaker working - captured in
+ * docs/probe-1.txt before any of this was written.
+ *
+ * The same capture confirms the volume: 'Master' at 255, "[100%] [0.00dB]". */
+#define AUD_MUX_HP 0
 
 static int ctl_open(void)
 {
@@ -171,6 +180,43 @@ static void ctl_list(int cfd)
     free(list.pids);
 }
 
+/* What ASoC believes about the headphone jack.
+ *
+ * Only a diagnostic, and here because the HP route is the one that feeds the
+ * speaker: mainline's simple-card creates a jack over hp-det-gpio and
+ * disables the "Headphones" DAPM pin whenever it reads "not inserted", which
+ * would leave the path unpowered no matter what the mux says. If the speaker
+ * is still silent, this line is the difference between knowing that and
+ * guessing at it for another boot. */
+static void jack_report(void)
+{
+    for (int i = 0; i < 16; i++) {
+        char path[32];
+        unsigned long bits[(SW_MAX / (8 * sizeof(unsigned long))) + 1];
+        char name[64] = "";
+
+        snprintf(path, sizeof path, "/dev/input/event%d", i);
+        int jfd = open(path, O_RDONLY | O_CLOEXEC);
+        if (jfd < 0)
+            continue;
+        memset(bits, 0, sizeof bits);
+        if (ioctl(jfd, EVIOCGBIT(EV_SW, sizeof bits), bits) > 0
+            && (bits[SW_HEADPHONE_INSERT / (8 * sizeof(unsigned long))]
+                >> (SW_HEADPHONE_INSERT % (8 * sizeof(unsigned long)))) & 1UL) {
+            ioctl(jfd, EVIOCGNAME(sizeof name), name);
+            memset(bits, 0, sizeof bits);
+            ioctl(jfd, EVIOCGSW(sizeof bits), bits);
+            int in = (int)((bits[SW_HEADPHONE_INSERT
+                                 / (8 * sizeof(unsigned long))]
+                            >> (SW_HEADPHONE_INSERT
+                                % (8 * sizeof(unsigned long)))) & 1UL);
+            printf("pid351: audio jack %s \"%s\" reports headphones %s\n",
+                   path, name, in ? "INSERTED" : "absent");
+        }
+        close(jfd);
+    }
+}
+
 static void mixer_setup(void)
 {
     if (!plat_is_init())
@@ -190,12 +236,13 @@ static void mixer_setup(void)
         printf("pid351: audio card 0 is \"%s\" driver \"%s\" (%s)\n",
                info.id, info.driver, info.longname);
 
-    int bad = ctl_set_enum(cfd, "Playback Mux", AUD_MUX_SPK) != 0;
+    int bad = ctl_set_enum(cfd, "Playback Mux", AUD_MUX_HP) != 0;
     bad |= ctl_set_int(cfd, "Master Playback Volume",
                        AUD_VOLUME, AUD_VOLUME) != 0;
     if (bad)
         ctl_list(cfd);
     close(cfd);
+    jack_report();
 }
 
 static int fd = -1;
