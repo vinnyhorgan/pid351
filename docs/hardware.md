@@ -1226,3 +1226,116 @@ sends the wrong question to the wrong subsystem.
 The demo now presents a splash immediately after `plat_init`. A frozen splash
 says the display came up and something after it did not, which is a different
 and much more useful fault than a blank screen.
+
+## The frame budget, measured over two full sessions — [device]
+
+Logs 27 and 28: 163 s and 112 s of real play, 14705 panel frames between
+them. Percentiles from the on-device histograms, normal frames only, against
+the 16661 us panel period.
+
+| | log 27 | log 28 | share |
+| --- | --- | --- | --- |
+| emu (fceumm) | 8004 us | 7998 us | 48.0% |
+| scale | 3006 | 3003 | 18.0% |
+| blit (rotate) | 2063 | 2089 | 12.5% |
+| everything else | 175 | 158 | 1.0% |
+| **busy** | **13248** | **13248** | **79.5%** |
+| vblank wait | 3039 | 3098 | 18.3% |
+
+**Headroom is 3.4 ms.** The closest any frame came to missing its vblank was
+**195 us**, out of a typical 14.1 ms of margin.
+
+The reproducibility is the part worth keeping. Two sessions, different lengths
+and different play, and `busy` and `deadtime` land in the *same histogram bin*
+while `emu` moves 6 us in 8000. cpu0's USB load reads 17.7% and 17.3%; boot to
+the loop 2.540 s and 2.537 s. A change of a few percent in any of these is now
+a signal, which was not true of anything on this project before.
+
+### Delivery, and why latency is 30.8 ms
+
+`plat_present` waits for the previous flip's vblank, *then* blits, so the flip
+is queued about 2 ms into a panel period and waits 14.5 ms for the next one.
+Measured deadtime is 14.1 ms p50 with a 14.7 ms max - a very tight
+distribution, because the phase is stable.
+
+That 14.1 ms is not waste, it is the margin, and it is what buys **2 repeated
+refreshes in 5051 normal frames (0.04%)** - one at startup and one within a
+second of a savestate load. Re-phasing the loop to queue just before a vblank
+would cut latency to roughly 15 ms and leave 1.4 ms of margin against a `busy`
+p99 of 13.8 ms. That trade is not affordable at the current frame cost.
+
+Fast mode's repeats are arithmetic rather than a fault: a 52 ms frame on a
+16.7 ms panel must repeat twice. 1122 measured against 1114.1 predicted from
+the frame period alone, which is the counter checking itself.
+
+### The power model closes to within 0.4%
+
+Charge differencing over the session, backlight at 833/1666:
+
+| | | |
+| --- | --- | --- |
+| machine on: panel, backlight, DDR, SoC static | ~400 mA | prior sweeps |
+| pid351, 81.4% of one core | ~98 mA | 0.814 x 120 mA/core |
+| the gamepad's USB bus | ~21 mA | see below |
+| **predicted** | **~519 mA** | **measured 517** |
+
+3380 mAh pack (the gauge's own `charge_full`, not the 3450 design figure)
+gives **6.5 h from full**. Treat anything finer than +/-30 mA as noise: the
+counter ticks every six or seven seconds, and 30 s windows inside a single
+session spread 428-607 mA.
+
+Software can address about 120 mA of the 500. Every optimisation this project
+could ever make, summed, is ~15% of the draw.
+
+### The USB figure in this file was too low by 5x
+
+Line 755 estimated 2-4 mA from a guessed 2-4 us handler. Measured:
+`dwc2_hsotg:usb1` fires **7911/s and 7972/s** across the two sessions - 91% of
+every interrupt on the machine - and `cpu0` sits at **17.3-17.7% busy in all
+269 samples**, with nothing else running on it. That is a ~22 us handler and
+**~21 mA**, 4% of the draw. Unavoidable: the pad genuinely is a full-speed HID
+device behind a high-speed hub.
+
+Also corrected: the 242/s IPI attributed here to scheduler migration is
+`IPI1 Function call`. Actual `IPI0 Rescheduling` is **1.44/s** - we barely
+migrate at all.
+
+## The VOP can scale, and we are deliberately not using it — [source]
+
+PLAN.md already records that no plane has a rotation property. Reading
+`px30_win0_data` for the second time turned up the other half:
+
+    static const struct vop_win_phy px30_win0_data = {
+            .scl = &px30_win_scl,
+            ...
+    { .base = 0x00, .phy = &px30_win0_data, .type = DRM_PLANE_TYPE_PRIMARY },
+
+Our panel is on `vopb`, `rockchip,px30-vop-big`, so **the primary plane we
+already program has a hardware scaler** - 1/8x to 8x per
+`vop_plane_atomic_check`, RGB565 in `formats_win_full`, and win1/win2 spare
+for the bars. Rotation is genuinely absent: `vop_plane_add_properties` only
+ever creates `REFLECT_X`/`REFLECT_Y` from `x_mir_en`/`y_mir_en`, and none of
+the three px30 wins declare either.
+
+So the 5.07 ms of scale-plus-blit splits, and the expensive half could be
+free. Rotating the core's 256x224 instead of the scaled 417x320 is 2.3x fewer
+pixels, so `busy` would go from 13.2 ms to about 9.1 - which fits 1008 MHz
+with 5 ms to spare and probably 816 MHz too, worth 54 and 75 mA. It would also
+*remove* code rather than add a subsystem, which is the opposite of the RGA.
+
+**Not taken, and the reason is not technical.** The scaler is area-averaging
+into sharp-bilinear, chosen deliberately and validated by looking at it on the
+panel; the VOP's is fixed hardware of unknown quality at 320p, where softness
+shows. Trading a picture that is known good for 54 mA nobody will notice on a
+6.5 hour battery is a bad trade, and the decision is dvh's rather than a
+measurement's.
+
+Written down because the finding is expensive to rediscover and the reasoning
+is what would be lost. Two things would have to change for it to be worth
+revisiting: a workload that does not fit in 3.4 ms of headroom, or a session
+long enough that 15% of the battery matters. Neither is true of NES.
+
+Unverified, if it is ever picked up: whether a legacy `PAGE_FLIP` preserves a
+scaled plane's source rectangle. If it does not, the fix is atomic
+modesetting, which is a much larger change and cuts the other way on
+minimalism.
