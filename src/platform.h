@@ -84,6 +84,13 @@ void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us);
 int  plat_boot_init(void);
 int  plat_is_init(void);
 int  plat_boot_save_log(const char *name);
+
+/* Mounts the card's FAT partition and returns where it landed, or NULL if
+ * there is no such thing - which is every case except being PID 1 on the
+ * device. It is where the ROMs live and where savestates are written, so it
+ * stays mounted for the whole session rather than per write: a vfat mount
+ * cycle around every save is latency we would be paying during a frame. */
+const char *plat_boot_mount(void);
 void plat_boot_shutdown(int power_off);
 
 /* Time n blits of a src_w x src_h source into the back buffer, filling

@@ -228,6 +228,12 @@ int plat_axes(plat_axis_t *out, int max)
 }
 
 
+/* A laptop's filesystem is already there and its ROMs come from argv. */
+const char *plat_boot_mount(void)
+{
+    return NULL;
+}
+
 /* There is no init to be on a laptop. These exist so main.c can call them
  * unconditionally rather than growing an #ifdef around the boot path. */
 int plat_boot_init(void)

@@ -46,6 +46,23 @@ for f in pid351-boot.log pid351-fail.log; do
     echo "    archived $f -> docs/logs/$n-$f"
 done
 
+# ROMs, from roms/ in the tree. They live on the card rather than inside the
+# initramfs so that changing the game is a file copy instead of a kernel
+# rebuild. Savestates land beside them and are never touched here: the state
+# is the only record this machine keeps of a game, so the installer must not
+# be a thing that can eat one.
+if [ -d "$HERE/../roms" ]; then
+    mkdir -p "$CARD/pid351/roms"
+    n=0
+    for f in "$HERE/../roms"/*; do
+        [ -f "$f" ] || continue
+        cp "$f" "$CARD/pid351/roms/"
+        n=$((n + 1))
+    done
+    echo "==> staged $n ROM(s)"
+    ls -la "$CARD/pid351/roms"
+fi
+
 # The mainline dtb we shipped before our own board file existed.
 rm -f "$CARD/pid351/rk3326-anbernic-rg351m.dtb"
 

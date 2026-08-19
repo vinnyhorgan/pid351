@@ -51,6 +51,25 @@ void core_audio(void);
  * in a pocket, a held button cannot. */
 void core_fast(int extra);
 
+/* Savestates, which are the whole of pid351's save system: cartridge battery
+ * RAM is inside the state, so there is nothing a .srm file would add.
+ *
+ * The state is written next to the ROM. There is no slot selection and no
+ * saves directory, because there is no config file in which to name one.
+ *
+ * core_state_undo restores whatever was running immediately before the last
+ * load, which is what makes an accidental load survivable. Its only caller is
+ * the menu, and it lands unreachable until the menu does.
+ *
+ * All three return 0 on success. */
+int core_state_save(void);
+int core_state_load(void);
+int core_state_undo(void);
+
+/* Whether any core claims this file by extension. The launcher's whole
+ * filter, and the reason ROM discovery does not need its own table. */
+int core_accepts(const char *path);
+
 const char *core_name(void);
 int core_audio_rate(void);   /* the core's own rate, before resampling */
 int core_fps_mhz(void);      /* the core's own refresh, millihertz */

@@ -1098,17 +1098,66 @@ static void power_phase(canvas_t *c, const char *name, const char *gov,
     fflush(stdout);
 }
 
+/* Something on the panel before anything that can block.
+ *
+ * On the device the window between DRM coming up and the first emulated frame
+ * is seconds long - the sound card is still probing and the core has a ring to
+ * prime - and the panel holds whatever the bootloader left there until we
+ * flip. Without this, booting straight into a game is indistinguishable from a
+ * machine that never reached us, which is exactly the wrong question to be
+ * asked when something goes wrong. A frozen splash says the display works and
+ * something after it does not. */
+static void splash(const char *line)
+{
+    canvas_t c = { framebuffer, PANEL_W, PANEL_H };
+
+    gfx_rect(&c, 0, 0, PANEL_W, PANEL_H, C_BG);
+    gfx_rect(&c, 0, 0, PANEL_W, 17, C_PANEL);
+    gfx_rect(&c, 0, 17, PANEL_W, 1, C_ACCENT);
+    gfx_text(&c, 6, 2, "PID351", 2, C_ACCENT);
+    gfx_text(&c, 6, 26, line, 1, C_DIM);
+    plat_present(framebuffer, PANEL_W, PANEL_H);
+}
+
+/* Where ROMs live on the card, relative to the FAT partition's root. A
+ * compile-time constant because there is no config file and never will be
+ * one; the card layout is as fixed as the hardware. */
+#define ROM_DIR "pid351/roms"
+
+/* First file in `dir` that some core claims, by name order so that the same
+ * card always boots the same game. scandir sorts for us and allocates, which
+ * is fine exactly once at startup and would not be inside the frame loop. */
+static int first_rom(const char *dir, char *out, size_t outsz)
+{
+    struct dirent **ents;
+    int n = scandir(dir, &ents, NULL, alphasort);
+    if (n < 0)
+        return -1;
+
+    int found = -1;
+    for (int i = 0; i < n; i++) {
+        if (found < 0 && ents[i]->d_name[0] != '.'
+            && core_accepts(ents[i]->d_name)) {
+            snprintf(out, outsz, "%s/%s", dir, ents[i]->d_name);
+            found = 0;
+        }
+        free(ents[i]);
+    }
+    free(ents);
+    return found;
+}
+
+/* Four times speed. Enough to be worth reaching for and low enough that the
+ * A35 still lands every panel frame; past this the frame loop starts running
+ * late, which reads as stutter rather than as speed. */
+#define FAST_EXTRA 3
+
 /* Runs one ROM and nothing else: no demo, no sweep, no census.
  *
  * This is not the frontend and is not going to grow into one - it exists so a
  * core can be proven end to end before there is any menu to reach it
  * through, which is the same order the display and the pad were brought up
  * in. The frontend replaces the ROM argument, not this loop. */
-/* Four times speed. Enough to be worth reaching for and low enough that the
- * A35 still lands every panel frame; past this the frame loop starts running
- * late, which reads as stutter rather than as speed. */
-#define FAST_EXTRA 3
-
 static int run_game(const char *rom, int as_init)
 {
     if (plat_init() != 0) {
@@ -1117,6 +1166,7 @@ static int run_game(const char *rom, int as_init)
         plat_boot_shutdown(0);
         return 1;
     }
+    splash("LOADING");
     if (aud_open() != 0)
         printf("pid351: WARN continuing without audio\n");
     if (core_open(rom) != 0) {
@@ -1127,9 +1177,19 @@ static int run_game(const char *rom, int as_init)
     uint64_t start = plat_now_us(), next = start, mark = start;
     unsigned frames = 0, win = 0;
     const char *reason = "?";
+    uint32_t was = 0;
 
     for (;;) {
         uint32_t held = plat_input();
+        /* Edges, not levels: a state written every frame the button is down
+         * would hammer the card and stutter the game. */
+        uint32_t hit = held & ~was;
+        was = held;
+
+        if (hit & PAD_L2)
+            printf("pid351: save %s\n", core_state_save() == 0 ? "ok" : "FAILED");
+        if (hit & PAD_L3)
+            printf("pid351: load %s\n", core_state_load() == 0 ? "ok" : "none");
         if ((held & PAD_START) && (held & PAD_SELECT)) { reason = "combo"; break; }
         if (plat_should_quit())                        { reason = "quit";  break; }
 
@@ -1185,11 +1245,31 @@ int main(int argc, char **argv)
         printf("pid351: running as PID 1\n");
     fflush(stdout);
 
-    /* A ROM on the command line skips the demo entirely. There are no
-     * arguments when we are PID 1, so on the device this is unreachable
-     * until the frontend picks the ROM instead. */
+    /* A ROM on the command line skips the demo entirely. */
     if (argc > 1)
         return run_game(argv[1], as_init);
+
+    /* As PID 1 there is no command line, so the ROM comes off the card. One
+     * fixed directory and the first file any core claims - not a launcher,
+     * and not pretending to be one: it is the smallest thing that makes the
+     * console play a game, and the launcher replaces it rather than growing
+     * out of it. The demo still runs when the directory is empty or absent,
+     * which is what makes an SD card with no ROMs on it a working image
+     * rather than a black screen. */
+    if (as_init) {
+        const char *boot = plat_boot_mount();
+        char dir[256], rom[512];
+        if (boot) {
+            snprintf(dir, sizeof dir, "%s/%s", boot, ROM_DIR);
+            if (first_rom(dir, rom, sizeof rom) == 0) {
+                printf("pid351: playing %s\n", rom);
+                fflush(stdout);
+                return run_game(rom, as_init);
+            }
+            printf("pid351: no ROM in %s, running the demo\n", dir);
+            fflush(stdout);
+        }
+    }
 
     if (plat_init() != 0) {
         fprintf(stderr, "pid351: platform init failed\n");

@@ -21,3 +21,6 @@ cores/*.o
 cores/*.a
 cores/*.tar.gz
 cores/libretro-*/
+
+# ROMs. Staged onto the card by tools/install-image.sh, never committed.
+roms/

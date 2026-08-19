@@ -1042,6 +1042,13 @@ static int mount_boot(void)
     return 0;
 }
 
+const char *plat_boot_mount(void)
+{
+    if (!is_init)
+        return NULL;
+    return mount_boot() == 0 ? BOOT_MOUNT : NULL;
+}
+
 /* SYSLOG_ACTION_READ_ALL. The ring buffer is the only account of what the
  * kernel did before we existed, and with no serial port it is the only thing
  * that can explain a driver that failed to probe. */

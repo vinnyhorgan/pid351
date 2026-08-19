@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "pid351.h"
 #include "core.h"
@@ -38,7 +40,10 @@
     void p##_retro_get_system_info(struct retro_system_info *); \
     void p##_retro_get_system_av_info(struct retro_system_av_info *); \
     bool p##_retro_load_game(const struct retro_game_info *); \
-    void p##_retro_unload_game(void)
+    void p##_retro_unload_game(void); \
+    size_t p##_retro_serialize_size(void); \
+    bool p##_retro_serialize(void *, size_t); \
+    bool p##_retro_unserialize(const void *, size_t)
 
 DECLARE_CORE(nes);
 
@@ -128,6 +133,9 @@ typedef struct {
     void (*get_system_av_info)(struct retro_system_av_info *);
     bool (*load_game)(const struct retro_game_info *);
     void (*unload_game)(void);
+    size_t (*serialize_size)(void);
+    bool (*serialize)(void *, size_t);
+    bool (*unserialize)(const void *, size_t);
 } core_t;
 
 #define CORE_ENTRY(p, nm, ex, op, pd) { \
@@ -137,7 +145,8 @@ typedef struct {
     p##_retro_set_input_poll, p##_retro_set_input_state, \
     p##_retro_init, p##_retro_deinit, p##_retro_run, \
     p##_retro_get_system_info, p##_retro_get_system_av_info, \
-    p##_retro_load_game, p##_retro_unload_game }
+    p##_retro_load_game, p##_retro_unload_game, \
+    p##_retro_serialize_size, p##_retro_serialize, p##_retro_unserialize }
 
 /* Adding a console is one fetch, one blob.sh line and one row here. That is
  * the entire point of the renaming; if it ever takes more, something above
@@ -433,6 +442,100 @@ static const core_t *core_for(const char *path)
 static void *rom_data;
 static size_t rom_size;
 
+/* ------------------------------------------------------- savestates */
+
+/* The only save system pid351 has. Battery-backed cartridge RAM lives inside
+ * the state - fceumm registers it with AddExState on every board that has any
+ * - so keeping .srm files as well would only buy portability to other
+ * emulators, which is not something this machine does.
+ *
+ * Two buffers rather than one. undo_buf holds whatever was running in the
+ * instant before a load, because loading is the only control on the shell
+ * that destroys something, and it sits on a stick click that the d-pad alias
+ * can trigger by accident. */
+static uint8_t *st_buf, *undo_buf;
+static size_t st_size;
+static int undo_valid;
+static char st_path[512];
+
+/* Size is asked for once, after load_game, because it is a property of the
+ * cartridge rather than of the console - fceumm's varies with the mapper. */
+static int state_alloc(const char *rom_path)
+{
+    st_size = cur->serialize_size();
+    if (st_size == 0) {
+        fprintf(stderr, "pid351: %s offers no savestates\n", cur->name);
+        return -1;
+    }
+    st_buf   = malloc(st_size);
+    undo_buf = malloc(st_size);
+    if (!st_buf || !undo_buf) {
+        fprintf(stderr, "pid351: no room for a %zu byte state\n", st_size);
+        return -1;
+    }
+    undo_valid = 0;
+    snprintf(st_path, sizeof st_path, "%s.state", rom_path);
+    return 0;
+}
+
+int core_state_save(void)
+{
+    if (!cur || !st_buf || !cur->serialize(st_buf, st_size))
+        return -1;
+
+    /* Temp file, fsync, rename. This is the only record the machine keeps of
+     * a game, so losing power mid-write has to leave the previous state
+     * intact rather than half of the new one. On vfat the rename is a
+     * directory entry update, which is the strongest guarantee the card's
+     * filesystem offers. */
+    char tmp[sizeof st_path + 8];
+    snprintf(tmp, sizeof tmp, "%s.tmp", st_path);
+
+    int fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+    if (fd < 0)
+        return -1;
+    ssize_t n = write(fd, st_buf, st_size);
+    int ok = n == (ssize_t)st_size && fsync(fd) == 0;
+    close(fd);
+    if (!ok || rename(tmp, st_path) != 0) {
+        unlink(tmp);
+        return -1;
+    }
+    return 0;
+}
+
+int core_state_load(void)
+{
+    if (!cur || !st_buf)
+        return -1;
+
+    int fd = open(st_path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0)
+        return -1;
+    ssize_t n = read(fd, st_buf, st_size);
+    close(fd);
+    if (n != (ssize_t)st_size)
+        return -1;
+
+    /* Snapshot before applying, not after: once unserialize returns there is
+     * nothing left of the game that was running. */
+    undo_valid = cur->serialize(undo_buf, st_size);
+    return cur->unserialize(st_buf, st_size) ? 0 : -1;
+}
+
+int core_state_undo(void)
+{
+    if (!cur || !undo_valid)
+        return -1;
+    undo_valid = 0;
+    return cur->unserialize(undo_buf, st_size) ? 0 : -1;
+}
+
+int core_accepts(const char *path)
+{
+    return core_for(path) != NULL;
+}
+
 int core_open(const char *rom_path)
 {
     cur = core_for(rom_path);
@@ -490,6 +593,11 @@ int core_open(const char *rom_path)
         return -1;
     }
 
+    if (state_alloc(rom_path) != 0) {
+        core_close();
+        return -1;
+    }
+
     struct retro_system_av_info av;
     memset(&av, 0, sizeof av);
     cur->get_system_av_info(&av);
@@ -541,6 +649,11 @@ void core_close(void)
     free(rom_data);
     rom_data = NULL;
     rom_size = 0;
+    free(st_buf);
+    free(undo_buf);
+    st_buf = undo_buf = NULL;
+    st_size = 0;
+    undo_valid = 0;
 }
 
 const px_t *core_run(uint32_t held, int *w, int *h)
