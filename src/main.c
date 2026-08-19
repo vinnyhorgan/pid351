@@ -45,17 +45,6 @@
  * that lasts less than half a second is not a splash, it is a glitch. */
 #define SPLASH_HOLD_US 2000000u
 
-/* How much of the hold is spent letting the primed silence drain rather than
- * topping it up. See the hold itself for why handing the game a full codec
- * buffer is not the same as handing it a healthy one. */
-#define SILENCE_DRAIN_US 50000u
-
-/* Where in the hold the gain is brought up, in panel frames. Half a second of
- * silence at zero gain first, so the analogue side is done settling before
- * anything is asked of it, then half a second of ramp. Both are far longer
- * than they need to be and the hold is being spent anyway. */
-#define VOL_RAMP_START  30
-#define VOL_RAMP_FRAMES 30
 
 #define C_BG     RGB565(  8, 10, 14)
 #define C_PANEL  RGB565( 20, 24, 32)
@@ -1719,46 +1708,16 @@ static int run_game(const char *rom, int as_init)
      * happens inside it and costs nothing extra - only the remainder is spent
      * waiting. Blocking, not spinning, per the rules.
      *
-     * Silence rather than nothing while we wait, and that is the part that
-     * matters. ALSA starts the stream once half the buffer has been written,
-     * so until now the class-D amplifier powered up about three frames into
-     * the game: mid-music, at full volume, which is both where a power-up
-     * transient is loudest and where it reads as a fault rather than as a
-     * machine turning on. It was audible as a pop the instant the wordmark
-     * left the screen. Feeding zeros through the hold brings the amplifier up
-     * on DC two seconds earlier, behind the wordmark, and gives it the whole
-     * hold to settle before the first sample anybody wants to hear.
+     * Nothing is played through it. Priming the codec with silence here was
+     * tried, to bring the amplifier up behind the wordmark instead of under
+     * the game, and it is gone again: it did not move the pop and it cost a
+     * second xrun every boot - one in every session before it, two in the
+     * session with it. An audible click traded for an inaudible one is a bad
+     * trade even when the theory is sound, and this theory was not.
      *
-     * Feeding stops early and the last stretch is a plain wait, so the buffer
-     * drains back to about where a running game holds it. aud_silence fills
-     * to one period short of full, which is the right target while nothing
-     * else is writing and the wrong one to hand over: aud_due is a rate and
-     * not a level, so the game's first frames would be written into a full
-     * buffer and block there, and the samples piling up behind them sit in
-     * the core's ring as sound arriving after the picture. SILENCE_DRAIN_US
-     * at 48 kHz is about two thousand frames, which lands it where the
-     * sessions on the device actually run. */
-    unsigned n = 0;
-    for (uint64_t t = plat_now_us() + FRAME_US;
-         t < splashed + SPLASH_HOLD_US - SILENCE_DRAIN_US; t += FRAME_US, n++) {
-        aud_silence();
-        /* And the codec opens muted, so whatever the output stage does on its
-         * way up does it into an attenuator rather than into the speaker.
-         *
-         * Stated honestly: this is worth trying and is not a fix. The gain is
-         * digital, in front of the DAC, and if the pop is the headphone
-         * charge pump and output stage powering up - which is what the driver
-         * makes it look like - then no digital gain can touch it. If it is
-         * the DAC settling, this removes it. One boot answers it, and the
-         * cost of asking is a control write per frame for half a second. */
-        if (n >= VOL_RAMP_START && n < VOL_RAMP_START + VOL_RAMP_FRAMES)
-            aud_volume((int)(n - VOL_RAMP_START + 1) * AUD_VOLUME_MAX
-                       / VOL_RAMP_FRAMES);
-        plat_sleep_until(t);
-    }
-    /* Unconditionally, so that no path through the loop above can leave the
-     * machine playing quietly for the rest of the session. */
-    aud_volume(AUD_VOLUME_MAX);
+     * The codec is prepared but not started while we sit here, because ALSA's
+     * start threshold is half a buffer and nothing has written a frame yet,
+     * so no underrun accrues. */
     plat_sleep_until(splashed + SPLASH_HOLD_US);
 
     uint64_t start = plat_now_us(), next = start, mark = start;

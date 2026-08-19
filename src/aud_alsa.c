@@ -87,12 +87,16 @@ static int wait_for_card(void)
  * to share one would change the volume of whatever else is playing. */
 #define AUD_CTL_NODE "/dev/snd/controlC0"
 
-/* Opens muted, and the boot sequence ramps it up. AUD_VOLUME_MAX is 0 dB -
- * the control counts backwards, the driver declares it with xinvert, so 255
- * is no attenuation and 0 is -95 dB - and it is the only playback gain the
- * rk817 has. Attenuating during play would throw away DAC resolution to solve
- * a problem the menu's volume control is for; this is not that, it is the
- * first two seconds only. */
+/* 0 dB. The control counts backwards - the driver declares it with xinvert,
+ * so 255 is no attenuation and 0 is -95 dB - and this is the only playback
+ * gain the rk817 has. Attenuating here would throw away DAC resolution to
+ * solve a problem the menu's volume control is for.
+ *
+ * It was briefly ramped up from zero over the splash, on the theory that the
+ * pop might be the DAC settling rather than the analogue output stage. It is
+ * not: the ramp changed nothing audible. Kept as a plain constant, because a
+ * volume ramp that does not fix anything is a moving part for free. */
+#define AUD_VOLUME 255
 
 /* "HP" is 0 and "SPK" is 1, in the driver's dac_mux_text order, and this
  * machine's speaker wants HP.
@@ -238,31 +242,12 @@ static void mixer_setup(void)
                info.id, info.driver, info.longname);
 
     int bad = ctl_set_enum(cfd, "Playback Mux", AUD_MUX_HP) != 0;
-    bad |= ctl_set_int(cfd, "Master Playback Volume", 0, 0) != 0;
+    bad |= ctl_set_int(cfd, "Master Playback Volume",
+                       AUD_VOLUME, AUD_VOLUME) != 0;
     if (bad)
         ctl_list(cfd);
     close(cfd);
     jack_report();
-}
-
-void aud_volume(int level)
-{
-    int cfd;
-
-    /* Same guard as mixer_setup, and for the same reason: off the device
-     * this control name belongs to somebody else's sound card, and setting
-     * it would turn down whatever the laptop is playing. */
-    if (!plat_is_init())
-        return;
-    if (level < 0)
-        level = 0;
-    if (level > AUD_VOLUME_MAX)
-        level = AUD_VOLUME_MAX;
-    cfd = ctl_open();
-    if (cfd < 0)
-        return;
-    ctl_set_int(cfd, "Master Playback Volume", level, level);
-    close(cfd);
 }
 
 static int fd = -1;
