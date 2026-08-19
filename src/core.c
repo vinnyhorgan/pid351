@@ -42,9 +42,34 @@
 
 DECLARE_CORE(nes);
 
+/* A core option we have an opinion about, answered from a compile-time table.
+ *
+ * Not a config file and not going to become one. The reason this exists at
+ * all is that refusing every option does not give a core its own defaults -
+ * it gives whatever its code happened to initialise to, which is a different
+ * and undocumented thing. fceumm declares its overscan default as 8 and
+ * initialises it to 0, so saying nothing produced 256x240 while both we and
+ * the core intended 256x224. */
+typedef struct { const char *key, *val; } opt_t;
+
+/* Eight scanlines off each end. Every NES pushes garbage into the overscan
+ * and every television of the era hid it; more to the point, the scaling
+ * policy this project settled on already assumes 256x224 for this console,
+ * so cropping is what makes that policy true rather than aspirational. */
+static const opt_t nes_opts[] = {
+    { "fceumm_overscan_v_top",    "8" },
+    { "fceumm_overscan_v_bottom", "8" },
+    { "fceumm_overscan_h_left",   "0" },
+    { "fceumm_overscan_h_right",  "0" },
+    { "fceumm_palette",           "default" },
+    { "fceumm_sndquality",        "High" },
+    { NULL, NULL },
+};
+
 typedef struct {
     const char *name;
     const char *exts;          /* space separated, lower case, no dots */
+    const opt_t *opts;
     void (*set_environment)(retro_environment_t);
     void (*set_video_refresh)(retro_video_refresh_t);
     void (*set_audio_sample)(retro_audio_sample_t);
@@ -60,8 +85,8 @@ typedef struct {
     void (*unload_game)(void);
 } core_t;
 
-#define CORE_ENTRY(p, nm, ex) { \
-    nm, ex, \
+#define CORE_ENTRY(p, nm, ex, op) { \
+    nm, ex, op, \
     p##_retro_set_environment, p##_retro_set_video_refresh, \
     p##_retro_set_audio_sample, p##_retro_set_audio_sample_batch, \
     p##_retro_set_input_poll, p##_retro_set_input_state, \
@@ -73,13 +98,24 @@ typedef struct {
  * the entire point of the renaming; if it ever takes more, something above
  * has gone wrong. */
 static const core_t cores[] = {
-    CORE_ENTRY(nes, "fceumm", "nes fds unf unif"),
+    CORE_ENTRY(nes, "fceumm", "nes fds unf unif", nes_opts),
 };
 
 #define NCORES ((int)(sizeof cores / sizeof cores[0]))
 
 static const core_t *cur;
 static uint32_t pad_held;
+
+/* Set only when a core has explicitly agreed to RGB565.
+ *
+ * Refusing a format is not enough on its own, which cost an afternoon:
+ * fceumm built for 32bpp asks for XRGB8888, and when told no it does not try
+ * anything else - it keeps its default XRGB1555 and renders happily into it.
+ * The geometry stays perfect and only the colours are wrong, so it reads as a
+ * palette bug rather than a format mismatch. A core that never negotiates at
+ * all fails the same way. So the agreement is recorded and checked, rather
+ * than assumed from the absence of a complaint. */
+static int fmt_agreed;
 
 /* ------------------------------------------------------------- video */
 
@@ -100,6 +136,18 @@ static void cb_video(const void *data, unsigned width, unsigned height,
         fprintf(stderr, "pid351: core frame %ux%u exceeds panel\n",
                 width, height);
         return;
+    }
+
+    /* Printed once. Pitch is the only direct evidence of what the core
+     * actually decided to render in: 2 bytes per pixel or 4. A format
+     * mismatch shows up here as a number, rather than as a picture someone
+     * has to look at and judge. */
+    static int said;
+    if (!said) {
+        said = 1;
+        printf("pid351: first frame %ux%u pitch=%u (%.1f bytes/pixel)\n",
+               width, height, (unsigned)pitch, (double)pitch / width);
+        fflush(stdout);
     }
 
     const unsigned char *src = data;
@@ -263,7 +311,10 @@ static bool cb_environment(unsigned cmd, void *data)
         /* The only format we accept. It is what the VOP scans out and what
          * the blit is written against, so a core that cannot produce it
          * would need a conversion pass we are not going to write. */
-        return f == RETRO_PIXEL_FORMAT_RGB565;
+        if (f != RETRO_PIXEL_FORMAT_RGB565)
+            return false;
+        fmt_agreed = 1;
+        return true;
     }
     case RETRO_ENVIRONMENT_GET_CAN_DUPE:
         *(bool *)data = true;         /* we can repeat a frame */
@@ -274,6 +325,23 @@ static bool cb_environment(unsigned cmd, void *data)
         return true;
     case RETRO_ENVIRONMENT_GET_LOG_INTERFACE:
         ((struct retro_log_callback *)data)->log = cb_log;
+        return true;
+    case RETRO_ENVIRONMENT_GET_VARIABLE: {
+        struct retro_variable *v = data;
+        v->value = NULL;
+        if (!cur || !cur->opts || !v->key)
+            return false;
+        for (const opt_t *o = cur->opts; o->key; o++)
+            if (strcmp(o->key, v->key) == 0) {
+                v->value = o->val;
+                return true;
+            }
+        /* No opinion. The core uses its own default, which is the right
+         * outcome for the dozens of options we should not be choosing. */
+        return false;
+    }
+    case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
+        *(bool *)data = false;    /* compile-time; they never change */
         return true;
     default:
         /* Everything else is a frontend feature we do not have. Saying so is
@@ -344,6 +412,7 @@ int core_open(const char *rom_path)
     /* set_environment before init, per the libretro contract: a core is
      * entitled to make environment calls from inside retro_init and several
      * of them do. */
+    fmt_agreed = 0;
     cur->set_environment(cb_environment);
     cur->set_video_refresh(cb_video);
     cur->set_audio_sample(cb_audio_sample);
@@ -359,6 +428,14 @@ int core_open(const char *rom_path)
     gi.size = rom_size;
     if (!cur->load_game(&gi)) {
         fprintf(stderr, "pid351: %s refused %s\n", cur->name, rom_path);
+        core_close();
+        return -1;
+    }
+
+    if (!fmt_agreed) {
+        fprintf(stderr, "pid351: %s never agreed to RGB565 - it is rendering "
+                "in something else and the picture would be wrong. Build it "
+                "so it asks for RGB565.\n", cur->name);
         core_close();
         return -1;
     }

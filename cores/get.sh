@@ -22,11 +22,17 @@ LC_SRCS="streams/file_stream.c streams/file_stream_transforms.c
          compat/compat_strl.c compat/fopen_utf8.c vfs/vfs_implementation.c
          encodings/encoding_utf.c time/rtime.c"
 
-# name | prefix | tarball | unpacked dir | libretro-common path
-CORES="fceumm|nes|https://github.com/libretro/libretro-fceumm/archive/refs/heads/master.tar.gz|libretro-fceumm-master|src/drivers/libretro/libretro-common"
+# name | prefix | tarball | unpacked dir | libretro-common path | make flags
+#
+# The make flags are where a core is told to produce RGB565. Every core has
+# its own spelling for this and several default to 32bpp, so it is per-core
+# and not a global. Getting it wrong is not a build failure - the core just
+# renders in a format we did not agree to - which is why core.c checks that
+# the negotiation actually happened rather than trusting this column.
+CORES="fceumm|nes|https://github.com/libretro/libretro-fceumm/archive/refs/heads/master.tar.gz|libretro-fceumm-master|src/drivers/libretro/libretro-common|WANT_32BPP=0"
 
 one() {
-    IFS='|' read -r name prefix url dir lc <<EOF
+    IFS='|' read -r name prefix url dir lc mkflags <<EOF
 $1
 EOF
     cd "$HERE"
@@ -53,7 +59,8 @@ EOF
         # CFLAGS is not overridden: the core's own makefile builds it out of a
         # dozen -D flags it needs, and replacing it removes them. Arch flags
         # ride along on CC instead.
-        make -f Makefile.libretro platform=unix STATIC_LINKING=1 \
+        # shellcheck disable=SC2086
+        make -f Makefile.libretro platform=unix STATIC_LINKING=1 $mkflags \
              CC="$cc" AR="$ar" -j"$(nproc)" >/dev/null
 
         obj=$(mktemp -d)
