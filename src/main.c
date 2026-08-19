@@ -1610,18 +1610,23 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
         printf("pid351: fast mode: never used\n");
     }
 
-    /* Said plainly, because the alternative reads as health. A session where
+    /* Said plainly, because the alternative reads as health: a session where
      * the device never opened prints zero xruns, a codec low water of zero
-     * and a core ring pinned at its cap, and every one of those numbers is
-     * the absence of audio rather than a measurement of it - which cost
-     * twenty minutes of chasing a regression that was PipeWire holding the
-     * card on the laptop. */
-    if (aud_lo == INT32_MAX)
+     * and a core ring pinned at its cap, and every one of those is the
+     * absence of audio rather than a measurement of it.
+     *
+     * Asked of the device and not of the low water mark, which was the first
+     * attempt and was wrong twice over. The low water sampler ignores the
+     * first three hundred frames, so it is also unset after any session
+     * shorter than five seconds - and it duly accused a perfectly healthy
+     * two-second boot of having no audio at all. */
+    if (aud_rate() <= 0)
         printf("pid351: audio: NEVER OPENED - the ring figure below is the "
                "core talking to nothing\n");
-    printf("pid351: audio: %d xruns, core ring %d..%d, codec low water %d "
+    printf("pid351: audio: %d xruns, core ring %d..%d, codec low water %s%d "
            "frames (%.1f ms)\n",
            aud_xruns(), ring_lo == INT32_MAX ? 0 : ring_lo, ring_hi,
+           aud_lo == INT32_MAX ? "never sampled, " : "",
            aud_lo == INT32_MAX ? 0 : aud_lo,
            aud_lo == INT32_MAX ? 0.0
                : (double)aud_lo * 1000.0 / (double)(aud_rate() ? aud_rate()
