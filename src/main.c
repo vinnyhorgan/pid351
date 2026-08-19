@@ -1147,20 +1147,30 @@ static int first_rom(const char *dir, char *out, size_t outsz)
     return found;
 }
 
-/* Fast mode spends whatever is left of the panel frame on extra emulated
- * frames, rather than a fixed multiplier.
+/* Fast mode, paced by whether the panel is still hitting 60 Hz.
  *
- * A constant would have to be chosen for the slowest thing we ever run at the
- * capped 1008 MHz OPP, and would then leave a faster core crawling; chosen
- * for the fastest, it misses the vblank and reads as stutter rather than as
- * speed. Neither is knowable from here, and both are wrong on some ROM.
+ * Two earlier attempts got this wrong in the same way: they decided in
+ * advance how much work a frame could hold. A fixed multiplier of four missed
+ * the vblank outright, and a fixed 9 ms budget for the extra frames dropped
+ * the panel from 60 fps to 41 - and a panel dropping frames is precisely what
+ * "choppy" means, so both traded the thing being asked for against itself.
  *
- * FAST_BUDGET_US is what the skipped frames may take. The rest of the 16.6 ms
- * belongs to the frame we keep and to the rotate-and-blit onto the panel,
- * which is the expensive part on an in-order A35 writing to write-combined
- * scanout. FAST_MAX is only a runaway stop. */
-#define FAST_BUDGET_US 9000
-#define FAST_MAX       15
+ * The measurement that settled it: this machine emulates about 112 NES frames
+ * a second at the capped 1008 MHz OPP, whatever the panel is doing. At 60
+ * frames on the panel that is a ceiling of roughly 1.8x, and no amount of
+ * budgeting invents more.
+ *
+ * So nothing is budgeted. The panel's own frame period is the signal: longer
+ * than one and a half frames means a vblank was missed, and one extra frame
+ * comes off immediately. Climbing back is deliberately slow - one frame per
+ * FAST_PROBE panel frames - so the common case is a steady multiple rather
+ * than an oscillation between two of them, which would itself be the stutter.
+ *
+ * The blit's cost never has to be known, which is the point: it is inside
+ * plat_present along with the vblank wait, and the two cannot be told apart
+ * from out here. */
+#define FAST_MAX   15
+#define FAST_PROBE 30
 
 /* Runs one ROM and nothing else: no demo, no sweep, no census.
  *
@@ -1196,6 +1206,8 @@ static int run_game(const char *rom, int as_init)
     unsigned frames = 0, win = 0, emu = 0;
     const char *reason = "?";
     uint32_t was = 0;
+    uint64_t last = start;
+    int fast_n = 1, fast_ok = 0;
 
     for (;;) {
         uint32_t held = plat_input();
@@ -1219,12 +1231,13 @@ static int run_game(const char *rom, int as_init)
          * still gets its extra frames instead of silently doing nothing at
          * exactly the moment speed was asked for. */
         if (held & PAD_R2) {
-            uint64_t t0 = plat_now_us();
-            for (int i = 0; i < FAST_MAX
-                 && plat_now_us() - t0 < FAST_BUDGET_US; i++) {
+            for (int i = 0; i < fast_n; i++) {
                 core_skip(held);
                 emu++;
             }
+        } else {
+            fast_n = 1;
+            fast_ok = 0;
         }
 
         int w = 0, h = 0;
@@ -1240,6 +1253,23 @@ static int run_game(const char *rom, int as_init)
         win++;
         emu++;
         uint64_t now = plat_now_us();
+
+        /* Measured against the previous frame rather than against `next`:
+         * once a frame runs long, plat_sleep_until stops sleeping and `next`
+         * falls permanently behind the wall clock, so it cannot tell us
+         * whether we are keeping up. The gap between two presents can. */
+        if (held & PAD_R2) {
+            if (now - last > FRAME_US + FRAME_US / 2) {
+                if (fast_n > 1)
+                    fast_n--;
+                fast_ok = 0;
+            } else if (++fast_ok >= FAST_PROBE) {
+                fast_ok = 0;
+                if (fast_n < FAST_MAX)
+                    fast_n++;
+            }
+        }
+        last = now;
         if (now - mark >= 5000000) {
             double secs = (double)(now - mark) / 1000000.0;
             /* Emulated frames as well as panel frames: in fast mode they

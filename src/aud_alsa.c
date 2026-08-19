@@ -179,6 +179,17 @@ static void mixer_setup(void)
     int cfd = ctl_open();
     if (cfd < 0)
         return;
+
+    /* Say which card this is, always. Card 0 was a loopback for a whole
+     * session - it accepted every sample and played none of them, which from
+     * the writing end is indistinguishable from working audio. One line here
+     * would have caught it immediately, and costs nothing. */
+    struct snd_ctl_card_info info;
+    memset(&info, 0, sizeof info);
+    if (ioctl(cfd, SNDRV_CTL_IOCTL_CARD_INFO, &info) == 0)
+        printf("pid351: audio card 0 is \"%s\" driver \"%s\" (%s)\n",
+               info.id, info.driver, info.longname);
+
     int bad = ctl_set_enum(cfd, "Playback Mux", AUD_MUX_SPK) != 0;
     bad |= ctl_set_int(cfd, "Master Playback Volume",
                        AUD_VOLUME, AUD_VOLUME) != 0;
