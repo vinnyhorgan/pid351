@@ -877,6 +877,7 @@ struct tele_frame {
      * matter how much or how little is being done inside it, so counting
      * frames where work_us overran would report the panel rather than us. */
     uint32_t busy_us;
+    uint32_t fast;       /* 1 if R2 was held, so this frame ran six */
 };
 
 static struct tele_frame tele[TELE_MAX];
@@ -916,7 +917,7 @@ static uint32_t tele_emu_p50(void)
     int i, n = 0;
 
     for (i = 0; i < tele_n; i++)
-        if (tele[i].emu_us < FRAME_US)
+        if (!tele[i].fast)
             tmp[n++] = tele[i].emu_us;
     if (n <= 0)
         return 1;
@@ -927,22 +928,30 @@ static uint32_t tele_emu_p50(void)
 /* One field of every recorded frame, sorted, as p50/p90/p99/max. The name is
  * padded here rather than at the call site so the columns line up in a log
  * that will be read in a terminal at 80 columns. */
-static void tele_report_field(const char *name, size_t off, uint32_t budget)
+static void tele_report_field(const char *name, size_t off, uint32_t budget,
+                              int want_fast)
 {
     static uint32_t tmp[TELE_MAX];
-    int i;
+    int i, n = 0;
 
-    if (tele_n <= 0)
-        return;
+    /* Normal and fast frames are reported apart because they are not the same
+     * measurement. A fast frame runs the core six times, so its emu_us is six
+     * frames of work in one sample; mixed together, the p99 of a session that
+     * used fast mode for a seventh of its length is just "a fast frame" and
+     * the p50 has moved to make room for it. Neither number then describes
+     * anything that happens. */
     for (i = 0; i < tele_n; i++)
-        tmp[i] = *(const uint32_t *)((const char *)&tele[i] + off);
-    sort_u32(tmp, tele_n);
+        if (!tele[i].fast == !want_fast)
+            tmp[n++] = *(const uint32_t *)((const char *)&tele[i] + off);
+    if (n <= 0)
+        return;
+    sort_u32(tmp, n);
 
     printf("pid351:   %-8s p50 %6u  p90 %6u  p99 %6u  max %6u us  %5.1f%% "
            "of frame\n",
-           name, tele_pct(tmp, tele_n, 50), tele_pct(tmp, tele_n, 90),
-           tele_pct(tmp, tele_n, 99), tmp[tele_n - 1],
-           (double)tele_pct(tmp, tele_n, 50) * 100.0 / (double)budget);
+           name, tele_pct(tmp, n, 50), tele_pct(tmp, n, 90),
+           tele_pct(tmp, n, 99), tmp[n - 1],
+           (double)tele_pct(tmp, n, 50) * 100.0 / (double)budget);
 }
 
 /* ------------------------------------------------------------ power slope */
@@ -1435,14 +1444,19 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
         printf("pid351: NOTE %d frames past the buffer were not kept\n",
                tele_lost);
 
-    printf("pid351: per frame, over %d frames (budget %u us):\n",
-           tele_n, (unsigned)FRAME_US);
-    tele_report_field("emu",   offsetof(struct tele_frame, emu_us),   FRAME_US);
-    tele_report_field("scale", offsetof(struct tele_frame, scale_us), FRAME_US);
-    tele_report_field("blit",  offsetof(struct tele_frame, blit_us),  FRAME_US);
-    tele_report_field("busy",  offsetof(struct tele_frame, busy_us),  FRAME_US);
-    tele_report_field("work",  offsetof(struct tele_frame, work_us),  FRAME_US);
-    tele_report_field("vblank", offsetof(struct tele_frame, wait_us), FRAME_US);
+    printf("pid351: normal frames (%d of %d, budget %u us):\n",
+           tele_n - (int)fast_panel, tele_n, (unsigned)FRAME_US);
+    tele_report_field("emu",   offsetof(struct tele_frame, emu_us),   FRAME_US, 0);
+    tele_report_field("scale", offsetof(struct tele_frame, scale_us), FRAME_US, 0);
+    tele_report_field("blit",  offsetof(struct tele_frame, blit_us),  FRAME_US, 0);
+    tele_report_field("busy",  offsetof(struct tele_frame, busy_us),  FRAME_US, 0);
+    tele_report_field("vblank", offsetof(struct tele_frame, wait_us), FRAME_US, 0);
+    if (fast_panel) {
+        printf("pid351: fast frames (%u, each runs the core %d times):\n",
+               fast_panel, FAST_EXTRA + 1);
+        tele_report_field("emu",  offsetof(struct tele_frame, emu_us),  FRAME_US, 1);
+        tele_report_field("busy", offsetof(struct tele_frame, busy_us), FRAME_US, 1);
+    }
 
     printf("pid351: pacing: %u over budget of %u normal frames (%.3f%%), "
            "%.4f fps against %.4f panel\n",
@@ -1641,6 +1655,7 @@ static int run_game(const char *rom, int as_init)
         tf.wait_us  = pw;
         tf.work_us  = (uint32_t)(plat_now_us() - f0);
         tf.busy_us  = tf.work_us > tf.wait_us ? tf.work_us - tf.wait_us : 0;
+        tf.fast = (uint32_t)fast;
         if (fast)
             fast_us += tf.work_us;
         if (!fast && tf.busy_us > FRAME_US)
