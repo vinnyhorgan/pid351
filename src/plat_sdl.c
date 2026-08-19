@@ -70,22 +70,38 @@ uint32_t plat_input(void)
     const bool *k = SDL_GetKeyboardState(NULL);
     uint32_t held = 0;
 
-    if (k[SDL_SCANCODE_X])         held |= PAD_A;
-    if (k[SDL_SCANCODE_Z])         held |= PAD_B;
-    if (k[SDL_SCANCODE_S])         held |= PAD_X;
-    if (k[SDL_SCANCODE_A])         held |= PAD_Y;
-    if (k[SDL_SCANCODE_UP])        held |= PAD_UP;
-    if (k[SDL_SCANCODE_DOWN])      held |= PAD_DOWN;
-    if (k[SDL_SCANCODE_LEFT])      held |= PAD_LEFT;
-    if (k[SDL_SCANCODE_RIGHT])     held |= PAD_RIGHT;
-    if (k[SDL_SCANCODE_Q])         held |= PAD_L1;
-    if (k[SDL_SCANCODE_W])         held |= PAD_R1;
-    if (k[SDL_SCANCODE_1])         held |= PAD_L2;
-    if (k[SDL_SCANCODE_2])         held |= PAD_R2;
+    /* Laid out so the keyboard has the shell's geometry rather than the
+     * shell's letters. IJKL is a diamond in the same orientation as XYAB, so
+     * the pair that is comfortable to roll a finger across on the keyboard is
+     * the pair that is comfortable under a thumb on the device - which is the
+     * only property of a test rig that matters once the mapping above it
+     * starts depending on which buttons sit next to which.
+     *
+     * YUIOP puts L2 outside L1 and R2 outside R1, matching the way the two
+     * shoulder pairs stack on the shell. */
+    if (k[SDL_SCANCODE_I])         held |= PAD_X;
+    if (k[SDL_SCANCODE_J])         held |= PAD_Y;
+    if (k[SDL_SCANCODE_K])         held |= PAD_B;
+    if (k[SDL_SCANCODE_L])         held |= PAD_A;
+
+    /* Both, because the device has both and they are indistinguishable from
+     * up here: plat_drm.c folds the left stick into the same four bits as the
+     * hat, deliberately, so that nothing above the platform layer learns this
+     * machine has a stick. A laptop that offered only one of them would be
+     * testing something the handheld does not do. */
+    if (k[SDL_SCANCODE_UP]    || k[SDL_SCANCODE_W]) held |= PAD_UP;
+    if (k[SDL_SCANCODE_DOWN]  || k[SDL_SCANCODE_S]) held |= PAD_DOWN;
+    if (k[SDL_SCANCODE_LEFT]  || k[SDL_SCANCODE_A]) held |= PAD_LEFT;
+    if (k[SDL_SCANCODE_RIGHT] || k[SDL_SCANCODE_D]) held |= PAD_RIGHT;
+
+    if (k[SDL_SCANCODE_U])         held |= PAD_L1;
+    if (k[SDL_SCANCODE_O])         held |= PAD_R1;
+    if (k[SDL_SCANCODE_Y])         held |= PAD_L2;
+    if (k[SDL_SCANCODE_P])         held |= PAD_R2;
+    if (k[SDL_SCANCODE_N])         held |= PAD_L3;
+    if (k[SDL_SCANCODE_M])         held |= PAD_R3;
     if (k[SDL_SCANCODE_RETURN])    held |= PAD_START;
     if (k[SDL_SCANCODE_BACKSPACE]) held |= PAD_SELECT;
-    if (k[SDL_SCANCODE_3])         held |= PAD_L3;
-    if (k[SDL_SCANCODE_4])         held |= PAD_R3;
 
     return held;
 }

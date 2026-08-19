@@ -29,8 +29,19 @@ at build time, so runtime indirection would buy nothing.
     make run        build and run locally
     make push       cross-compile and scp to the device
 
-Laptop controls: arrows are the d-pad, `X`/`Z`/`S`/`A` are A/B/X/Y,
-Enter is Start, Backspace is Select, Escape quits.
+Laptop controls, laid out so the keyboard has the shell's geometry:
+
+    WASD / arrows   d-pad (the device folds its left stick into the same bits)
+    I J K L         X Y B A, in the same diamond as the shell
+    U / O           L1 / R1
+    Y / P           L2 / R2, outside the L1/R1 pair as on the shell
+    N / M           L3 / R3
+    Enter           Start
+    Backspace       Select
+    Escape          quit
+
+On the NES that makes `J`/`I` run and `K`/`L` jump, and holding `P` is fast
+mode.
 
 ## Pixel format
 
