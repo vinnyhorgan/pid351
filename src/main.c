@@ -1163,14 +1163,22 @@ static int run_game(const char *rom, int as_init)
     if (plat_init() != 0) {
         fprintf(stderr, "pid351: platform init failed\n");
         plat_boot_save_log("pid351-fail.log");
-        plat_boot_shutdown(0);
+        plat_boot_shutdown(1);
         return 1;
     }
     splash("LOADING");
     if (aud_open() != 0)
         printf("pid351: WARN continuing without audio\n");
     if (core_open(rom) != 0) {
+        /* Returning from main as PID 1 is a kernel panic, and panic=5 turns
+         * that into a reboot loop - so the one failure where a post-mortem
+         * matters most would be the one that never writes one. Power off
+         * rather than restart, for the same reason: a machine sitting dark
+         * with a log on its card can be diagnosed, and one rebooting into the
+         * same failure every five seconds cannot even be read. */
         plat_shutdown();
+        plat_boot_save_log("pid351-fail.log");
+        plat_boot_shutdown(1);
         return 1;
     }
 
