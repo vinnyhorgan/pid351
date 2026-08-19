@@ -1146,26 +1146,42 @@ The device's constraints are unknown and are printed at every open for exactly
 that reason — on a machine with no serial port, the boot log is the only way
 that answer reaches us.
 
-### The one open question, and why it is not being fixed yet
+### The sweep starves the buffer — found on the laptop, fixed before shipping
 
-Running the full demo on the laptop showed `aud_lvl` pinned near the top of
-the buffer (3580..4020 of 4096) and one underrun, where the standalone test
-holds a rock-steady 2601..2658 with none.
+The first full-demo run showed `aud_lvl` pinned near the top of the buffer and
+one underrun, where the standalone test holds steady with none. The cause was
+not the audio path: `audio_frame` is only called from the frame loop, and the
+OPP sweep runs for three and a half minutes *before* that loop starts. An open
+stream sat unfed the whole time and ran dry.
 
-That difference is a **host artifact, not a defect**. The laptop has no
-vblank: `plat_sleep_until` returns immediately when late and `next` falls
-behind, so the loop free-runs in bursts, over-produces, and `aud_write` blocks
-— which quietly makes *audio* the pacing source. On the device `plat_present`
-blocks on a real page flip, so the panel stays master and this cannot happen
-the same way.
+That would have happened on the device, where the sweep actually runs. Audio
+is now opened **after** the sweep rather than before it, which fixes the
+starvation and removes a second problem nobody had noticed: the codec draws
+current, the sweep exists to measure current, and leaving it running would
+have put a constant of unknown size into all six phases.
 
-What remains genuinely unknown is drift between the panel's crystal and the
-codec's, which are independent oscillators. Exact arithmetic stops us adding
-error of our own; it cannot hold the level steady against two clocks. The
-correction term is a single number and measuring it needs the device — watch
-`aud_lvl` in the ten-second report over several minutes and read the slope.
+The general rule this exposes: anything in this program that runs for longer
+than the buffer holds must either pump audio or not have it open.
 
-Adding an adaptive controller now, tuned against a laptop artifact, would
-repeat the mistake this project has already had to correct twice: trusting the
-wrong oracle. `aud_lvl` is in the report line and on screen precisely so the
-first device boot answers it.
+With the sweep skipped, the laptop holds **60.02 fps, level ~1810-1870 of
+4096, zero underruns**.
+
+### Drift between the two clocks — real, and not yet pinned down
+
+Over 70 s the level rose from 1809 to 1867, but with a sawtooth of roughly 50
+frames superimposed, so that window cannot separate a drift slope from the
+sawtooth. A naive fit gives ~20 ppm and should not be trusted at this length.
+
+What is certain is that the panel and the codec run off independent
+oscillators and exact arithmetic cannot hold the level steady against two
+clocks — it only stops us adding error of our own. At a plausible few tens of
+ppm the level would traverse half a buffer somewhere in the tens of minutes,
+which is well inside a play session, so a correction term is needed rather
+than merely possible.
+
+It is deliberately not written yet. Tuning it against the laptop would fit the
+wrong pair of clocks: here the loop is paced by `CLOCK_MONOTONIC` against an
+HDA codec, while on the device it is the panel's crystal against the rk817's.
+`aud_lvl` is in the ten-second report line and on screen so the first device
+boot measures the pair that matters. Read the slope over several minutes;
+anything shorter is the sawtooth.

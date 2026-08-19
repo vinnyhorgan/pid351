@@ -1116,13 +1116,6 @@ int main(void)
         return 1;
     }
 
-    /* Not fatal. A handheld with no sound still runs games, and the failure
-     * path prints what the card would have accepted - which on a machine
-     * with no serial port is the only way that answer ever reaches us. */
-    if (aud_open() != 0)
-        printf("pid351: WARN continuing without audio\n");
-    fflush(stdout);
-
     canvas_t c = { framebuffer, PANEL_W, PANEL_H };
     struct sysinfo_s si;
     memset(&si, 0, sizeof si);
@@ -1201,7 +1194,19 @@ int main(void)
      * bound the drift over the whole sweep, which is the only way to know
      * whether a 10 mA difference in the middle means anything. */
     long bl0 = si.backlight;
-    {
+
+    /* The sweep exists to measure current at each operating point, so with no
+     * fuel gauge it is 3.5 minutes producing -1 six times. That matters on the
+     * laptop and not on the device: the laptop is the loop everything else is
+     * developed in, and PLAN.md values it at about two seconds. Gated on the
+     * gauge rather than on which backend is linked, because a device that has
+     * somehow lost its gauge cannot produce this measurement either, and
+     * would be better off reaching the part of the demo that still works. */
+    if (si.current_ua < 0) {
+        printf("pid351: no fuel gauge, skipping the OPP sweep - it has "
+               "nothing to measure\n");
+        fflush(stdout);
+    } else {
         static const long khz[] = { 1296000, 1200000, 1008000, 816000,
                                     600000, 1296000 };
         static const char *const label[] = { "1296", "1200", "1008", "816",
@@ -1242,6 +1247,21 @@ int main(void)
         printf("pid351: WARN could not restore backlight %ld\n", bl0);
     sysinfo_read(&si);
     conditions("after phases", &si);
+
+    /* After the sweep, not before it, for two independent reasons. The codec
+     * draws current, and the sweep exists to measure current - leaving it
+     * running would put a constant of unknown size into every phase. And
+     * audio is only pumped from the frame loop, so an open stream would sit
+     * unfed for the three and a half minutes the sweep takes and underrun,
+     * which is exactly what the first run of this did.
+     *
+     * Not fatal either way. A handheld with no sound still runs games, and
+     * the failure path prints what the card would have accepted - on a
+     * machine with no serial port that is the only way the answer reaches
+     * us. */
+    if (aud_open() != 0)
+        printf("pid351: WARN continuing without audio\n");
+    fflush(stdout);
 
     uint64_t start = plat_now_us();
     uint64_t next  = start;
