@@ -1166,27 +1166,45 @@ static int first_rom(const char *dir, char *out, size_t outsz)
 
 /* The status bar down the side of a game.
  *
- * See scale.h for why it is exactly 53 columns. Those are the columns the
- * 4:3 consoles were spending on a 12.5% horizontal stretch, so this does not
- * take space from the picture - it hands the picture back its aspect ratio
- * and furnishes what falls out.
+ * See scale.h for why it is exactly 53 columns wide.
  *
- * No wall clock, deliberately. The rk817 has an RTC and the kernel reads it,
- * but nothing has ever set it: the console writes files onto the card dated
- * 2017. A clock that is confidently wrong is worse than no clock. Session
- * time is shown instead - it is correct without anything having to be set,
- * and on a handheld it answers the question actually being asked, which is
- * how long this has been going on rather than what time it is. */
+ * Almost nothing is drawn here on purpose. It sits a centimetre from Mario
+ * for hours at a time, so anything in it is either worth that or is noise -
+ * and the first version of this had a wordmark, a session timer and a
+ * current reading, none of which anyone would ever look at. Battery is the
+ * one thing a handheld cannot tell you any other way.
+ *
+ * No text labels either. A 53 pixel column at a 5x7 font is eight cramped
+ * characters, and a battery drawn as a battery needs no word next to it. The
+ * only glyphs are the number, which has to stay upright to be read.
+ *
+ * No wall clock. The rk817 has an RTC and the kernel reads it, but nothing
+ * has ever set it - the console writes files onto the card dated 2017 - and
+ * a clock that is confidently wrong is worse than no clock at all. */
+
+#define BAR_INK   RGB565(214, 220, 228)
+#define BAR_EDGE  RGB565( 72,  78,  88)
+#define BAR_WARN  RGB565(240, 176,  64)
+#define BAR_CRIT  RGB565(236,  84,  68)
+#define BAR_CHRG  RGB565( 96, 170, 240)
+
 static px_t barbuf[BAR_W * PANEL_H];
 
-static void draw_bar(uint32_t held, uint64_t elapsed_us)
+/* The battery, drawn as one. Cap at the top, level rising from the bottom,
+ * the shape doing the work a label would otherwise have to. */
+#define CELL_X 13
+#define CELL_Y 18
+#define CELL_W 27
+#define CELL_H 200
+
+static void draw_bar(uint32_t held)
 {
     canvas_t c = { barbuf, BAR_W, PANEL_H };
     static struct sysinfo_s si;
     static uint64_t next_read;
-    char buf[24];
+    char buf[8];
 
-    /* Five sysfs files at 60 Hz, to animate a number that moves once a
+    /* Five sysfs files at 60 Hz, to animate a figure that moves once a
      * minute, is precisely what a battery-first machine should not do. */
     uint64_t now = plat_now_us();
     if (now >= next_read) {
@@ -1194,63 +1212,50 @@ static void draw_bar(uint32_t held, uint64_t elapsed_us)
         next_read = now + 5000000;
     }
 
-    gfx_rect(&c, 0, 0, BAR_W, PANEL_H, C_BG);
-    gfx_rect(&c, 0, 0, BAR_W, 15, C_PANEL);
-    gfx_text(&c, 4, 4, "PID351", 1, C_ACCENT);
-    gfx_rect(&c, 0, 15, BAR_W, 1, C_ACCENT);
-
-    /* Battery. A gauge rather than only a number, because the number is what
-     * you read when you look and the gauge is what you catch when you do
-     * not. */
-    int y = 26;
-    gfx_text(&c, 4, y, "BATT", 1, C_DIM);
-    y += 11;
-
     int pct = si.capacity < 0 ? -1 : (int)si.capacity;
-    px_t col = pct < 0 ? C_DIM : pct <= 15 ? C_WARN
-                               : pct <= 35 ? C_LIT : C_ACCENT;
+    if (pct > 100)
+        pct = 100;
 
-    gfx_rect(&c, 4, y, 45, 12, C_PANEL);
-    gfx_rect(&c, 4, y, 45, 1, C_EDGE);
-    gfx_rect(&c, 4, y + 11, 45, 1, C_EDGE);
-    if (pct >= 0)
-        gfx_rect(&c, 5, y + 1, 43 * pct / 100, 10, col);
-    y += 16;
+    /* Colour carries one meaning only: something needs attention. A gauge
+     * that is green when nothing is wrong has spent the loudest thing it has
+     * on the most common case. */
+    px_t ink = pct < 0            ? BAR_EDGE
+             : si.current_ua > 0  ? BAR_CHRG
+             : pct <= 12          ? BAR_CRIT
+             : pct <= 30          ? BAR_WARN
+                                  : BAR_INK;
 
-    if (pct >= 0)
-        snprintf(buf, sizeof buf, "%d%%", pct);
-    else
-        snprintf(buf, sizeof buf, "--");
-    gfx_text(&c, 4, y, buf, 1, col);
-    y += 20;
+    gfx_rect(&c, 0, 0, BAR_W, PANEL_H, RGB565(0, 0, 0));
 
-    /* Current, when the driver gives it. Negative is discharge; the sign is
-     * dropped because the arrow is the interesting part and the column is 53
-     * pixels wide. */
-    if (si.current_ua != -1) {
-        long ma = si.current_ua / 1000;
-        snprintf(buf, sizeof buf, "%s%ldmA", ma < 0 ? "-" : "+",
-                 ma < 0 ? -ma : ma);
-        gfx_text(&c, 4, y, buf, 1, C_DIM);
+    gfx_rect(&c, CELL_X + 8, CELL_Y - 6, CELL_W - 16, 6, BAR_EDGE);
+    gfx_frame(&c, CELL_X, CELL_Y, CELL_W, CELL_H, BAR_EDGE);
+
+    if (pct >= 0) {
+        int ih = CELL_H - 6, iw = CELL_W - 6;
+        int fh = ih * pct / 100;
+        gfx_rect(&c, CELL_X + 3, CELL_Y + 3 + (ih - fh), iw, fh, ink);
     }
 
-    /* Session time, from the frame loop's own start. */
-    y = PANEL_H - 78;
-    gfx_rect(&c, 0, y - 8, BAR_W, 1, C_EDGE);
-    gfx_text(&c, 4, y, "PLAY", 1, C_DIM);
-    unsigned secs = (unsigned)(elapsed_us / 1000000);
-    if (secs >= 3600)
-        snprintf(buf, sizeof buf, "%u:%02u", secs / 3600, (secs / 60) % 60);
+    if (pct >= 0)
+        snprintf(buf, sizeof buf, "%d", pct);
     else
-        snprintf(buf, sizeof buf, "%u:%02u", secs / 60, secs % 60);
-    gfx_text(&c, 4, y + 11, buf, 1, C_TEXT);
+        snprintf(buf, sizeof buf, "--");
+    /* gfx_text_w counts the advance after the last glyph; the ink is one
+     * scale narrower than that, and centring on the advance leaves the
+     * number visibly off to the left at this width. */
+    int tw = gfx_text_w(buf, 2) - 2;
+    gfx_text(&c, (BAR_W - tw) / 2, CELL_Y + CELL_H + 14, buf, 2, ink);
 
-    /* Fast mode, because it is held rather than toggled and the picture goes
-     * choppy when it is on - which without this reads as the machine
-     * struggling rather than as the button doing its job. */
+    /* Fast mode is held rather than toggled, and it makes the picture choppy
+     * by design - without something saying so, that reads as the machine
+     * struggling rather than as the button working. */
     if (held & PAD_R2) {
-        gfx_rect(&c, 0, PANEL_H - 34, BAR_W, 18, C_LIT);
-        gfx_text(&c, 4, PANEL_H - 29, "FAST", 1, C_BG);
+        int y = PANEL_H - 40;
+        for (int i = 0; i < 2; i++) {
+            int x = 14 + i * 14;
+            for (int k = 0; k < 8; k++)
+                gfx_rect(&c, x + k, y + k, 1, 17 - 2 * k, BAR_INK);
+        }
     }
 }
 
@@ -1325,7 +1330,7 @@ static int run_game(const char *rom, int as_init)
          * vblank and the codec should not be waiting through that. */
         core_audio();
         if (fb) {
-            draw_bar(held, plat_now_us() - start);
+            draw_bar(held);
             plat_present(fb, w, h, barbuf);
         }
 
