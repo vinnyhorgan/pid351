@@ -83,7 +83,6 @@ int core_state_undo(void);
 int core_state_tick(void);
 int core_state_sync(void);
 uint32_t core_state_save_us(void);
-uint32_t core_state_sync_us(void);
 uint32_t core_state_rename_us(void);
 
 /* Whether any core claims this file by extension. The launcher's whole

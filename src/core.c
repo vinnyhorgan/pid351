@@ -513,31 +513,89 @@ static void writeback_start(int fd, size_t len)
 #endif
 }
 
+/* What a state file is. Sixteen bytes in front of the core's own blob.
+ *
+ * It exists because this no longer calls fsync (see below), so a state file
+ * can now be renamed into place before its contents have reached the card.
+ * The checksum is what makes that safe: a file that lost the race is
+ * detectably wrong rather than quietly wrong, and the previous state is kept
+ * beside it to fall back to. Without the checksum, dropping fsync would trade
+ * a stutter for silent corruption, which is not a trade.
+ *
+ * size is the core's serialize_size at the time of writing. A core update
+ * that changes it invalidates old states, which is correct - unserialising a
+ * blob of the wrong length into a different build is exactly the failure this
+ * is here to prevent. */
+#define ST_MAGIC   0x31353370u          /* "p351" little endian */
+#define ST_VERSION 1u
+#define ST_HDR     16
+
+/* Reflected CRC-32, nibble at a time. The table is sixteen entries rather
+ * than 256 because it runs on the frame that presses save and the difference
+ * between them is a tenth of a millisecond either way, while 1 KB of table
+ * would sit in cache the rest of the time doing nothing. */
+static uint32_t crc32(const void *buf, size_t len)
+{
+    static const uint32_t t[16] = {
+        0x00000000u, 0x1db71064u, 0x3b6e20c8u, 0x26d930acu,
+        0x76dc4190u, 0x6b6b51f4u, 0x4db26158u, 0x5005713cu,
+        0xedb88320u, 0xf00f9344u, 0xd6d6a3e8u, 0xcb61b38cu,
+        0x9b64c2b0u, 0x86d3d2d4u, 0xa00ae278u, 0xbdbdf21cu,
+    };
+    const uint8_t *p = buf;
+    uint32_t c = 0xFFFFFFFFu;
+
+    while (len--) {
+        c ^= *p++;
+        c = (c >> 4) ^ t[c & 0x0F];
+        c = (c >> 4) ^ t[c & 0x0F];
+    }
+    return c ^ 0xFFFFFFFFu;
+}
+
+static void put32(uint8_t *p, uint32_t v)
+{
+    p[0] = (uint8_t)v;         p[1] = (uint8_t)(v >> 8);
+    p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24);
+}
+
+static uint32_t get32(const uint8_t *p)
+{
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8)
+         | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
 /* Saving, in two parts, because the whole of it does not fit in a frame.
  *
  * Measured: pressing save cost about 93 ms and the panel repeated a frame six
- * times. Nearly all of it is fsync - a small write to a vfat partition on an
- * SD card is tens of milliseconds of nothing happening, and it was being done
- * between the emulator and the page flip.
+ * times. Splitting it fixed the frame that presses the button - serialise,
+ * write, ask for writeback, 808 us - but left fsync costing 63.7 ms a hundred
+ * milliseconds later, and every save in two sessions produced exactly one
+ * audio xrun and about eleven late frames.
  *
- * So the frame that presses the button now does only the parts that must
- * happen on that exact frame - serialise the state, write it, and ask the
- * kernel to begin writeback - and the durable half is done a few frames
- * later. That is not deferring the work so much as letting the card do it
- * while we are busy: by the time fsync is called the writeback it would have
- * waited for has already been running for eighty milliseconds.
+ * Giving it longer to settle was the experiment that decided this. At 100 ms
+ * of writeback the fsync took 63.7 ms; at 500 ms it took 76.0 ms. It was
+ * never waiting for our 13.8 KB - it is vfat metadata on an SD card, and no
+ * amount of waiting shortens it. The rename beside it costs 359 us.
  *
- * The state is not durable during those frames, which is the price. The
- * previous state is still intact throughout, because the rename is the last
- * thing that happens and is what makes the new one visible at all - so a
- * power cut in the window loses the save, never the game. */
-static int  pend_fd = -1;
+ * So fsync is gone from the play path. Phase two is the rename and nothing
+ * else, and durability comes from the checksum above plus keeping the
+ * previous state as .bak: a file that was renamed into place before its
+ * contents landed fails its own checksum on load and the one before it is
+ * still there. Losing power costs at most the newest save, never the game,
+ * and never both. core_close syncs, so exiting normally leaves nothing
+ * outstanding at all.
+ *
+ * The rotation order matters and is: write .tmp, drop the old .bak, move
+ * .state to .bak, move .tmp to .state. Every interruption of that leaves at
+ * least one loadable file on the card.
+ */
+static int  pend_valid;      /* a save is written but not yet published */
 static int  pend_wait;
 static char pend_tmp[sizeof st_path + 8];
-static uint32_t save_us, sync_us, rename_us;
+static uint32_t save_us, rename_us;
 
 uint32_t core_state_save_us(void) { return save_us; }
-uint32_t core_state_sync_us(void) { return sync_us; }
 uint32_t core_state_rename_us(void) { return rename_us; }
 
 /* The half that has to happen on the frame the button was pressed. */
@@ -548,25 +606,35 @@ int core_state_save(void)
 
     /* A save while one is still in flight finishes that one first rather
      * than abandoning a temp file and its open descriptor. */
-    if (pend_fd >= 0)
+    if (pend_valid)
         core_state_sync();
 
     uint64_t t0 = plat_now_us();
     if (!cur->serialize(st_buf, st_size))
         return -1;
 
+    uint8_t hdr[ST_HDR];
+    put32(hdr,      ST_MAGIC);
+    put32(hdr + 4,  ST_VERSION);
+    put32(hdr + 8,  (uint32_t)st_size);
+    put32(hdr + 12, crc32(st_buf, st_size));
+
     snprintf(pend_tmp, sizeof pend_tmp, "%s.tmp", st_path);
     int fd = open(pend_tmp, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
     if (fd < 0)
         return -1;
-    if (write(fd, st_buf, st_size) != (ssize_t)st_size) {
+    if (write(fd, hdr, ST_HDR) != (ssize_t)ST_HDR
+        || write(fd, st_buf, st_size) != (ssize_t)st_size) {
         close(fd);
         unlink(pend_tmp);
         return -1;
     }
-    writeback_start(fd, st_size);
-    pend_fd   = fd;
-    pend_wait = SAVE_SETTLE_FRAMES;
+    /* Still asked for, even though nothing waits on it now: it costs nothing
+     * and it shortens the window in which the checksum has to do its job. */
+    writeback_start(fd, ST_HDR + st_size);
+    close(fd);
+    pend_valid = 1;
+    pend_wait  = SAVE_SETTLE_FRAMES;
     save_us   = (uint32_t)(plat_now_us() - t0);
     return 0;
 }
@@ -575,34 +643,27 @@ int core_state_save(void)
  * settling frames have passed, and directly at close. */
 int core_state_sync(void)
 {
-    if (pend_fd < 0)
+    if (!pend_valid)
         return 0;
 
-    /* The codec gets a cushion first. fsync on this card blocks for tens of
-     * milliseconds, which is longer than the buffer holds, and every save in
-     * the last session cost exactly one xrun. Topping up to one period short
-     * of full covers a stall of about 75 ms; what the listener gets instead
-     * of a click is a few milliseconds of silence, and only if the stall runs
-     * past the real audio already queued. */
-    aud_silence();
-
     uint64_t t0 = plat_now_us();
-    int ok = fsync(pend_fd) == 0;
-    uint64_t t1 = plat_now_us();
-    close(pend_fd);
-    pend_fd = -1;
-    pend_wait = 0;
-    int bad = !ok || rename(pend_tmp, st_path) != 0;
-    /* Timed apart from the fsync because they are separate questions: fsync
-     * waits on our data, rename waits on the directory entry, and on vfat
-     * either could be the expensive one. Deciding whether to stop calling
-     * fsync at all needs to know which. */
-    rename_us = (uint32_t)(plat_now_us() - t1);
-    sync_us   = (uint32_t)(t1 - t0);
-    if (bad) {
+    char bak[sizeof st_path + 8];
+    snprintf(bak, sizeof bak, "%s.bak", st_path);
+
+    pend_valid = 0;
+    pend_wait  = 0;
+
+    /* Rotate, then publish. rename over an existing name is atomic enough on
+     * vfat for this - it is a directory entry update - and the order means
+     * there is never a moment with no loadable state on the card. */
+    unlink(bak);
+    rename(st_path, bak);
+    if (rename(pend_tmp, st_path) != 0) {
         unlink(pend_tmp);
+        rename(bak, st_path);
         return -1;
     }
+    rename_us = (uint32_t)(plat_now_us() - t0);
     return 0;
 }
 
@@ -610,9 +671,33 @@ int core_state_sync(void)
  * branch on every frame that is not settling a save. */
 int core_state_tick(void)
 {
-    if (pend_fd < 0 || --pend_wait > 0)
+    if (!pend_valid || --pend_wait > 0)
         return 0;
     return core_state_sync();
+}
+
+/* Read one state file into st_buf and say whether it is intact. Everything
+ * here is a reason to refuse: wrong magic means it is not ours or predates
+ * the header, wrong version or size means it belongs to a different build,
+ * and a failed checksum means it was renamed into place before its contents
+ * reached the card. */
+static int state_read(const char *path)
+{
+    uint8_t hdr[ST_HDR];
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+
+    if (fd < 0)
+        return -1;
+    if (read(fd, hdr, ST_HDR) != (ssize_t)ST_HDR
+        || get32(hdr) != ST_MAGIC
+        || get32(hdr + 4) != ST_VERSION
+        || get32(hdr + 8) != (uint32_t)st_size
+        || read(fd, st_buf, st_size) != (ssize_t)st_size) {
+        close(fd);
+        return -1;
+    }
+    close(fd);
+    return crc32(st_buf, st_size) == get32(hdr + 12) ? 0 : -1;
 }
 
 int core_state_load(void)
@@ -620,13 +705,21 @@ int core_state_load(void)
     if (!cur || !st_buf)
         return -1;
 
-    int fd = open(st_path, O_RDONLY | O_CLOEXEC);
-    if (fd < 0)
-        return -1;
-    ssize_t n = read(fd, st_buf, st_size);
-    close(fd);
-    if (n != (ssize_t)st_size)
-        return -1;
+    /* Any save still waiting to be published is published first, so that
+     * loading immediately after saving loads what was just saved rather than
+     * the one before it. */
+    if (pend_valid)
+        core_state_sync();
+
+    char bak[sizeof st_path + 8];
+    snprintf(bak, sizeof bak, "%s.bak", st_path);
+
+    if (state_read(st_path) != 0) {
+        if (state_read(bak) != 0)
+            return -1;
+        printf("pid351: state failed its checksum, fell back to .bak\n");
+        fflush(stdout);
+    }
 
     /* Snapshot before applying, not after: once unserialize returns there is
      * nothing left of the game that was running. */
@@ -769,7 +862,11 @@ void core_close(void)
     rom_data = NULL;
     rom_size = 0;
     free(st_buf);
+    /* Publish anything outstanding and then force it to the card. This is
+     * the one place fsync's cost does not matter, because nothing is being
+     * drawn or emulated after it. */
     core_state_sync();
+    syscall(__NR_sync);
     free(undo_buf);
     st_buf = undo_buf = NULL;
     st_size = 0;

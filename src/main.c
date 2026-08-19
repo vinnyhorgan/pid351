@@ -1496,9 +1496,9 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
                : (double)aud_lo * 1000.0 / (double)(aud_rate() ? aud_rate()
                                                               : 48000));
     printf("pid351: state: %u saved, %u loaded, %u undone; last save %u us "
-           "on the frame, then %d frames later fsync %u us + rename %u us\n",
+           "on the frame, published %d frames later in %u us\n",
            n_save, n_load, n_undo, core_state_save_us(),
-           SAVE_SETTLE_FRAMES, core_state_sync_us(), core_state_rename_us());
+           SAVE_SETTLE_FRAMES, core_state_rename_us());
     printf("pid351: power: backlight %ld/%ld, governor %s, %ld MHz\n",
            si.backlight, si.backlight_max, si.governor, si.cpu_khz / 1000);
     printf("pid351: power: %ld%% -> %ld%%, %ld -> %ld uA, %ld MHz, "
