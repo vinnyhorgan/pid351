@@ -434,10 +434,13 @@ int aud_open(void)
     sw.tstamp_mode     = SNDRV_PCM_TSTAMP_NONE;
     sw.period_step     = 1;
     sw.avail_min       = period;
-    /* Start as soon as priming finishes, and treat a dry buffer as an error
+    /* Start once half a buffer is queued, and treat a dry buffer as an error
      * rather than silently restarting: a gap we know about is a number in the
      * boot log, and a gap we do not is a mystery on a machine that cannot be
-     * questioned. */
+     * questioned.
+     *
+     * Which half-buffer arrives first matters, and for a year it was the
+     * wrong one - see below. */
     sw.start_threshold = buffer / 2;
     sw.stop_threshold  = buffer;
     sw.boundary        = buffer;
@@ -457,11 +460,25 @@ int aud_open(void)
 
     acc = 0;
     xrun_count = 0;
-    if (prime() < 0) {
-        printf("pid351: audio prime: %s\n", strerror(errno));
-        aud_close();
-        return -1;
-    }
+    /* Deliberately not primed here, and this is the whole of the fix for one
+     * xrun on every boot.
+     *
+     * prime() writes exactly start_threshold frames, so calling it from open
+     * *starts the stream* - and open happens under the splash, 1.6 seconds
+     * before anything writes a game frame. 2048 frames is 42.7 ms. The codec
+     * ran dry forty milliseconds later and sat dead for the rest of the
+     * splash, and the loop's first write raised EPIPE and restarted it -
+     * which is the moment the speaker was heard to click.
+     *
+     * Nothing replaces it. The loop writes about 799 frames a frame, so the
+     * threshold is met on its own after three of them, and it is met with
+     * game audio instead of with silence - the same half-full buffer prime()
+     * existed to produce, arrived at fifty milliseconds later and without
+     * inserting 42.7 ms of nothing in front of it.
+     *
+     * prime() itself stays, for recover(): after a real xrun the buffer is
+     * empty, and coming back from empty is how one glitch becomes a series.
+     */
 
     /* Names the node it actually opened. On the handheld there is one card
      * and no sound server, so this is a formality; on a laptop it is the

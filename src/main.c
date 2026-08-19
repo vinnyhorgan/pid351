@@ -1813,7 +1813,17 @@ static int run_game(const char *rom, int as_init)
      *
      * The codec is prepared but not started while we sit here, because ALSA's
      * start threshold is half a buffer and nothing has written a frame yet,
-     * so no underrun accrues. */
+     * so no underrun accrues. That sentence was written as an assumption and
+     * was false for as long as it stood: aud_open primed the buffer with
+     * exactly the threshold, which started the stream here rather than in the
+     * loop, and it ran dry forty milliseconds later. The priming is gone and
+     * the sentence is now true.
+     *
+     * This is also why the silence-priming experiment failed and why its
+     * conclusion should not be trusted: it was feeding a stream that was
+     * already dead, so it bought a second xrun instead of preventing the
+     * first. If the pop survives this commit, that experiment is worth
+     * running again on a stream that is actually alive. */
     tele_boot("core");
     plat_sleep_until(splashed + SPLASH_HOLD_US);
     tele_boot("hold");
