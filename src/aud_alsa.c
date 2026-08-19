@@ -544,6 +544,37 @@ int aud_write(const int16_t *frames, int n)
     return done;
 }
 
+int aud_silence(void)
+{
+    /* aud_due hands out exactly one panel frame's worth per call, which is
+     * right while there is one call per panel frame and wrong the instant the
+     * loop slows down - and fast mode slows it down deliberately. At 29 panel
+     * frames a second that is half the rate the codec drains at, the buffer
+     * runs dry, and a codec running dry clicks. That is the noise fast mode
+     * made.
+     *
+     * Nothing exact is needed here because the content is silence: the only
+     * job is keeping the buffer off empty, so it is filled by level rather
+     * than by rate. Three quarters leaves room for a panel frame far longer
+     * than the ones we have measured, and costs only that much silence to
+     * drain when fast mode ends. */
+    static const int16_t zeros[512 * 2];
+    int lvl = aud_level();
+
+    if (fd < 0 || lvl < 0)
+        return 0;
+
+    int want = (int)buffer * 3 / 4 - lvl, wrote = 0;
+    while (want > 0) {
+        int n = want > 512 ? 512 : want;
+        if (aud_write(zeros, n) < 0)
+            break;
+        wrote += n;
+        want  -= n;
+    }
+    return wrote;
+}
+
 int aud_level(void)
 {
     if (fd < 0)

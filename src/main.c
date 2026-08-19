@@ -1147,30 +1147,22 @@ static int first_rom(const char *dir, char *out, size_t outsz)
     return found;
 }
 
-/* Fast mode, paced by whether the panel is still hitting 60 Hz.
+/* Fast mode: a fixed four emulated frames per panel frame.
  *
- * Two earlier attempts got this wrong in the same way: they decided in
- * advance how much work a frame could hold. A fixed multiplier of four missed
- * the vblank outright, and a fixed 9 ms budget for the extra frames dropped
- * the panel from 60 fps to 41 - and a panel dropping frames is precisely what
- * "choppy" means, so both traded the thing being asked for against itself.
+ * An adaptive version came before this one and was removed on purpose. It
+ * protected the panel's 60 Hz by giving up emulated frames, which is exactly
+ * the wrong trade for what fast mode is for - it made the picture smooth and
+ * the game slower, when the whole point is the game being faster.
  *
- * The measurement that settled it: this machine emulates about 112 NES frames
- * a second at the capped 1008 MHz OPP, whatever the panel is doing. At 60
- * frames on the panel that is a ceiling of roughly 1.8x, and no amount of
- * budgeting invents more.
- *
- * So nothing is budgeted. The panel's own frame period is the signal: longer
- * than one and a half frames means a vblank was missed, and one extra frame
- * comes off immediately. Climbing back is deliberately slow - one frame per
- * FAST_PROBE panel frames - so the common case is a steady multiple rather
- * than an oscillation between two of them, which would itself be the stutter.
- *
- * The blit's cost never has to be known, which is the point: it is inside
- * plat_present along with the vblank wait, and the two cannot be told apart
- * from out here. */
-#define FAST_MAX   15
-#define FAST_PROBE 30
+ * Be clear about what this does and does not buy. The machine emulates about
+ * 115 NES frames a second at the capped 1008 MHz OPP, so wall clock speed
+ * tops out near 1.9x however many frames are asked for; raising the multiple
+ * does not make the game faster, it spends the whole CPU on emulation and
+ * lets the panel fall to whatever is left, around 29 fps. That is a choppier
+ * picture for a real if smaller speed gain, which is the trade that was
+ * asked for. The status line reports the multiple actually achieved so the
+ * difference between four and what the silicon does is never a guess. */
+#define FAST_EXTRA 3
 
 /* Runs one ROM and nothing else: no demo, no sweep, no census.
  *
@@ -1206,8 +1198,7 @@ static int run_game(const char *rom, int as_init)
     unsigned frames = 0, win = 0, emu = 0;
     const char *reason = "?";
     uint32_t was = 0;
-    uint64_t last = start;
-    int fast_n = 1, fast_ok = 0;
+
 
     for (;;) {
         uint32_t held = plat_input();
@@ -1231,13 +1222,10 @@ static int run_game(const char *rom, int as_init)
          * still gets its extra frames instead of silently doing nothing at
          * exactly the moment speed was asked for. */
         if (held & PAD_R2) {
-            for (int i = 0; i < fast_n; i++) {
+            for (int i = 0; i < FAST_EXTRA; i++) {
                 core_skip(held);
                 emu++;
             }
-        } else {
-            fast_n = 1;
-            fast_ok = 0;
         }
 
         int w = 0, h = 0;
@@ -1254,22 +1242,6 @@ static int run_game(const char *rom, int as_init)
         emu++;
         uint64_t now = plat_now_us();
 
-        /* Measured against the previous frame rather than against `next`:
-         * once a frame runs long, plat_sleep_until stops sleeping and `next`
-         * falls permanently behind the wall clock, so it cannot tell us
-         * whether we are keeping up. The gap between two presents can. */
-        if (held & PAD_R2) {
-            if (now - last > FRAME_US + FRAME_US / 2) {
-                if (fast_n > 1)
-                    fast_n--;
-                fast_ok = 0;
-            } else if (++fast_ok >= FAST_PROBE) {
-                fast_ok = 0;
-                if (fast_n < FAST_MAX)
-                    fast_n++;
-            }
-        }
-        last = now;
         if (now - mark >= 5000000) {
             double secs = (double)(now - mark) / 1000000.0;
             /* Emulated frames as well as panel frames: in fast mode they

@@ -181,15 +181,17 @@ static int fmt_agreed;
 static px_t vbuf[PANEL_W * PANEL_H];
 static int vw, vh, vnew;
 
-/* Fast mode. `discard` marks a run whose picture and samples are thrown away
- * rather than shown and heard; `fast_frame` records that this panel frame had
- * any, which is what core_audio silences on. */
-static int discard, fast_frame;
+/* Fast mode. Picture and sound are discarded separately because the frame we
+ * keep still needs its picture - it is the one reaching the panel - while its
+ * samples have to go the same way as the skipped frames'. Anything else
+ * leaves one frame of audio in four to be heard, which is the chopped stutter
+ * that made fast mode unpleasant rather than merely fast. */
+static int discard_v, discard_a, fast_frame;
 
 static void cb_video(const void *data, unsigned width, unsigned height,
                      size_t pitch)
 {
-    if (discard)
+    if (discard_v)
         return;
 
     if (!data || width == 0 || height == 0)
@@ -249,7 +251,7 @@ static unsigned ring_level(void)
 
 static size_t cb_audio_batch(const int16_t *data, size_t frames)
 {
-    if (discard)
+    if (discard_a)
         return frames;
     for (size_t i = 0; i < frames; i++) {
         if (ring_level() >= RING_FRAMES - 2)
@@ -270,6 +272,17 @@ static void cb_audio_sample(int16_t l, int16_t r)
 
 void core_audio(void)
 {
+    /* Fast mode: the resampler is left exactly where it stands - rs_pos,
+     * ring_r and ring_w all frozen - and the codec is fed silence by level
+     * instead. Freezing rather than running it dry is what lets fast mode end
+     * without a click: the ring still holds the samples it held, and the read
+     * position is still somewhere inside it. */
+    if (fast_frame) {
+        aud_silence();
+        fast_frame = 0;
+        return;
+    }
+
     int n = aud_due();
     if (n <= 0 || !cur)
         return;
@@ -318,15 +331,6 @@ void core_audio(void)
         if (ring_r > ring_w)
             ring_r = ring_w;
     }
-
-    /* After the loop, not instead of it: rs_pos and ring_r must advance
-     * exactly as they would at normal speed, or the resampler comes back from
-     * fast mode with its read position somewhere the ring has never been.
-     * Silence rather than the chopped one-in-four audio that keeping the
-     * samples would give, which is worse to listen to than nothing. */
-    if (fast_frame)
-        memset(out, 0, (size_t)n * 2 * sizeof out[0]);
-    fast_frame = 0;
 
     aud_write(out, n);
 }
@@ -663,7 +667,11 @@ const px_t *core_run(uint32_t held, int *w, int *h)
         return NULL;
     pad_held = held;
     vnew = 0;
+    /* The picture is kept; the sound is not, if this frame is one of a fast
+     * mode group. */
+    discard_a = fast_frame;
     cur->run();
+    discard_a = 0;
     if (w) *w = vw;
     if (h) *h = vh;
     return vw && vh ? vbuf : NULL;
@@ -677,9 +685,9 @@ void core_skip(uint32_t held)
      * is the newest, which is what makes fast mode read as fast motion rather
      * than as dropped frames. */
     pad_held = held;
-    discard = 1;
+    discard_v = discard_a = 1;
     cur->run();
-    discard = 0;
+    discard_v = discard_a = 0;
     fast_frame = 1;
 }
 

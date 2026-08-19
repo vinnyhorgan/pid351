@@ -63,6 +63,11 @@ int aud_write(const int16_t *frames, int n);
  * steady - it can only stop us adding error of our own. Watching this number
  * over minutes is how we find out what the real correction term is, and that
  * measurement needs the device. */
+/* Tops the buffer up with silence, by level rather than by rate, and returns
+ * the frames written. For fast mode, where the frame loop is deliberately too
+ * slow for aud_due's one-frame-per-call accounting to keep the codec fed. */
+int aud_silence(void);
+
 int aud_level(void);
 
 /* Times the buffer has run dry since open. A machine with no serial port
