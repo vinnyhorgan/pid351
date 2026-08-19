@@ -764,7 +764,11 @@ static int run_game(const struct ui_rom *game, struct ui_state *ui)
     unsigned emu_total = 0;
     uint32_t blit_hi = 0, scale_hi = 0;
     const char *reason = "?";
-    uint32_t was = 0;
+    /* Seeded, for the same reason ui_list seeds it: A is still held from the
+     * press that launched this game, and so is whatever shoulder was being
+     * used a moment earlier. Zero would make all of them fresh presses on
+     * frame 0 and step the backlight again on the way in. */
+    uint32_t was = plat_input();
     /* Battery and temperature at both ends of the session. The exchange rate
      * in docs/hardware.md was measured with synthetic load; this asks the
      * same question of the workload that actually runs. */

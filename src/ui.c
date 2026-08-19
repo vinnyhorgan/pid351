@@ -394,7 +394,21 @@ int ui_list(px_t *fb, const struct ui_rom *roms, int n, struct ui_state *st)
 {
     uint64_t next = plat_now_us();
     uint64_t bright_until = 0, gauge_at = 0;
-    uint32_t was = 0;
+    /* What the panel is currently showing. Impossible values, so the first
+     * pass through the loop always draws - which it must, because what is on
+     * the panel when the list is entered is a splash or the last frame of a
+     * game. */
+    int drawn_top = -1, drawn_cur = -1, drawn_bright = -1, drawn_pct = -2;
+    int drawn_show = -1;
+    long drawn_ua = -1;
+    /* Seeded with what is held right now rather than with zero. The list is
+     * entered by releasing A, or by START+SELECT out of a game - and that
+     * press is still under the player's thumbs when we get here, a game
+     * teardown being a few milliseconds and a human press a few hundred.
+     * Starting from zero makes every one of those look like a fresh press on
+     * frame 0, which read one START+SELECT as two and powered the machine off
+     * on the way back to the list. */
+    uint32_t was = plat_input();
     int top = 0;
     int pct = -1;
     long ua = 0;
@@ -409,7 +423,12 @@ int ui_list(px_t *fb, const struct ui_rom *roms, int n, struct ui_state *st)
 
         was = held;
 
-        if ((held & PAD_START) && (held & PAD_SELECT))
+        /* Both held, and one of them new. The edge is what makes this a
+         * decision rather than the tail of the press that got here: held
+         * across the entry it never fires, and releasing either one arms it
+         * again. */
+        if ((held & PAD_START) && (held & PAD_SELECT)
+            && (hit & (PAD_START | PAD_SELECT)))
             return -1;
         if (plat_should_quit())
             return -1;
@@ -466,8 +485,29 @@ int ui_list(px_t *fb, const struct ui_rom *roms, int n, struct ui_state *st)
             gauge_at = now + 3000000;
         }
 
-        draw_list(fb, roms, n, st, top, pct, ua, bright_until, now);
-        plat_present(fb, PANEL_W, PANEL_H, NULL);
+        /* Only when the picture would differ. The list is 300 KB of panel
+         * that changes on a keypress and on a gauge read three seconds
+         * apart; drawing and flipping it sixty times a second is the whole
+         * frame's work to show what is already on the screen, and browsing
+         * is a thing people do for minutes at a time.
+         *
+         * Skipping the present also skips the vblank wait, so the loop paces
+         * on the clock instead - still one wakeup a frame to read the pad,
+         * which is what keeps a press felt immediately, and nothing else. */
+        int show = now < bright_until;
+
+        if (top != drawn_top || st->cursor != drawn_cur
+            || st->bright != drawn_bright || show != drawn_show
+            || pct != drawn_pct || ua != drawn_ua) {
+            draw_list(fb, roms, n, st, top, pct, ua, bright_until, now);
+            plat_present(fb, PANEL_W, PANEL_H, NULL);
+            drawn_top = top;
+            drawn_cur = st->cursor;
+            drawn_bright = st->bright;
+            drawn_show = show;
+            drawn_pct = pct;
+            drawn_ua = ua;
+        }
 
         next += FRAME_US;
         plat_sleep_until(next);
