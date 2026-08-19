@@ -147,6 +147,11 @@ static struct {
      * timestamp. It is the one instant in the pipeline we cannot infer: from
      * the queue onwards the clock is the panel's, not ours. */
     uint64_t flip_us;
+    /* The vblank counter the flip was latched at. Its gaps are the only
+     * direct evidence of a frame the panel showed twice: everything else we
+     * measure is our side of the handover, and a flip that misses its vblank
+     * simply goes up one period later with nothing anywhere saying so. */
+    uint32_t flip_seq;
 
     int      pad_fd;
     uint32_t buttons;
@@ -976,6 +981,7 @@ static void wait_flip(void)
                     memcpy(&v, buf + off, sizeof v);
                     g.flip_us = (uint64_t)v.tv_sec * 1000000u
                               + (uint64_t)v.tv_usec;
+                    g.flip_seq = v.sequence;
                 }
                 off += (ssize_t)hdr.length;
             }
@@ -1294,6 +1300,11 @@ int plat_axes(plat_axis_t *out, int max)
 uint64_t plat_flip_us(void)
 {
     return g.flip_us;
+}
+
+uint32_t plat_flip_seq(void)
+{
+    return g.flip_seq;
 }
 
 void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us, uint32_t *scale_us)

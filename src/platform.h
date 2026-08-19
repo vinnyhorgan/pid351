@@ -86,6 +86,12 @@ void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us, uint32_t *scale_us);
  * is not a constant. Returns 0 on a backend that cannot say. */
 uint64_t plat_flip_us(void);
 
+/* The display's own vblank counter for that same flip. Consecutive flips
+ * whose sequence differs by more than one are panel frames we did not fill,
+ * and there is no other way to see them: the loop cannot tell a flip that
+ * went up late from one that went up on time. 0 where unavailable. */
+uint32_t plat_flip_seq(void);
+
 /* Being PID 1. plat_boot_init mounts what an init has to mount and returns
  * non-zero only when we really are PID 1; everything else here is inert
  * otherwise, so the same binary still runs as an ordinary process. On the

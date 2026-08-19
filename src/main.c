@@ -31,6 +31,7 @@
 #include "scale.h"
 #include "aud.h"
 #include "core.h"
+#include "tele.h"
 
 /* The panel's real period, not a console's. cpll runs at 408 MHz and the VOP
  * divides it by exactly 24 for a 17.000000 MHz pixel clock, so 584x485 totals
@@ -980,10 +981,11 @@ static uint32_t hist_pct(const hist_t *h, int pct)
  * moved to make room for it. Neither number then describes anything that
  * actually happens. */
 enum { H_EMU, H_SCALE, H_BLIT, H_BUSY, H_AUD, H_WAIT, H_LAT, H_DEAD,
-       H_FIELDS };
+       H_PERIOD, H_FLIP, H_RING, H_CODEC, H_FIELDS };
 
 static const char *const hist_name[H_FIELDS] = {
-    "emu", "scale", "blit", "busy", "audio", "vblank", "latency", "deadtime"
+    "emu", "scale", "blit", "busy", "audio", "vblank", "latency", "deadtime",
+    "period", "flip", "ring", "codec"
 };
 
 static hist_t hist[2][H_FIELDS];    /* [fast][field] */
@@ -1021,6 +1023,25 @@ static void hist_report(int fast, int field, uint32_t budget)
            hist_name[field], hist_pct(h, 50), hist_pct(h, 90),
            hist_pct(h, 99), h->max,
            (double)hist_pct(h, 50) * 100.0 / (double)budget);
+}
+
+/* A buffer level rather than a duration. Two things change: the interesting
+ * tail is the low one, because the failure it predicts is running out rather
+ * than taking too long, and there is no frame-budget column because an
+ * occupancy is not a fraction of a frame. The bins are the same ones - a
+ * level in frames never leaves the linear part of the histogram. */
+static void hist_report_lo(int field, const char *unit)
+{
+    const hist_t *h = &hist[0][field];
+
+    if (h->n == 0) {
+        printf("pid351:   %-8s never sampled\n", hist_name[field]);
+        return;
+    }
+    printf("pid351:   %-8s min %5u  p1 %5u  p10 %5u  p50 %5u  p90 %5u  "
+           "max %5u %s (n=%u)\n",
+           hist_name[field], hist_pct(h, 0), hist_pct(h, 1), hist_pct(h, 10),
+           hist_pct(h, 50), hist_pct(h, 90), h->max, unit, h->n);
 }
 
 /* ------------------------------------------------------------ power slope */
@@ -1520,6 +1541,17 @@ static int ring_lo = INT32_MAX, ring_hi;
 static int aud_lo = INT32_MAX;   /* codec buffer low water */
 static long temp_hi = -300000;
 static int lat_bounded;          /* latency came from the bound, not the flip */
+/* Frames the core returned no picture for, and frames the panel refreshed
+ * without one of ours. Neither is visible anywhere else in this report: a
+ * null frame still meets its deadline, and a repeated refresh still completes
+ * its flip, so both are silent stutters unless they are counted here. */
+static unsigned null_frames, input_frames;
+static unsigned seq_repeat, seq_same, seq_jump;
+static unsigned pad_press[16], pad_frames[16];
+static const char *const pad_name[16] = {
+    "A", "B", "X", "Y", "up", "down", "left", "right",
+    "L1", "R1", "L2", "R2", "select", "start", "L3", "R3"
+};
 static struct sysinfo_s si_start;
 
 /* The whole session, analysed on the device, at exit.
@@ -1558,6 +1590,8 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
     hist_report(0, H_WAIT,  FRAME_US);
     hist_report(0, H_LAT,   FRAME_US);
     hist_report(0, H_DEAD,  FRAME_US);
+    hist_report(0, H_PERIOD, FRAME_US);
+    hist_report(0, H_FLIP,  FRAME_US);
     /* Spelled out because a latency figure with an unstated boundary is worth
      * nothing and every published one draws it somewhere else. This one runs
      * from the pad read to the vblank that latched the frame, taken from the
@@ -1571,6 +1605,29 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
            "scanned and all of it at the last\n",
            lat_bounded ? " (BOUND - no flip timestamp)" : "",
            (unsigned)FRAME_US);
+    /* Both buffers between us and a speaker, at the two ends of the same
+     * chain: the core's ring is what we have produced and not yet handed
+     * over, the codec's is what the hardware has and not yet played. The
+     * first one to reach zero is the one that clicks. */
+    printf("pid351: buffers:\n");
+    hist_report_lo(H_RING,  "frames");
+    hist_report_lo(H_CODEC, "frames");
+    printf("pid351: frames: %u produced no picture, %u had a control held "
+           "(%.1f%%)\n", null_frames, input_frames,
+           frames ? (double)input_frames * 100.0 / (double)frames : 0.0);
+    printf("pid351: panel: %u refreshes with no new frame, %u flips on one "
+           "vblank, %u sequence jumps\n", seq_repeat, seq_same, seq_jump);
+    {
+        int any = 0;
+
+        printf("pid351: input (presses/frames held):");
+        for (int b = 0; b < 16; b++)
+            if (pad_press[b]) {
+                printf(" %s %u/%u", pad_name[b], pad_press[b], pad_frames[b]);
+                any = 1;
+            }
+        printf("%s\n", any ? "" : " nothing was pressed");
+    }
     if (fast_panel) {
         printf("pid351: fast frames (%u, each runs the core %d times):\n",
                fast_panel, FAST_EXTRA + 1);
@@ -1663,6 +1720,10 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
                si.capacity);
     }
 
+    /* The machine's half of the session, printed before the verdicts so the
+     * verdicts stay the last thing in the log. */
+    tele_report();
+
     /* Thresholds fixed in advance. See the comment above. */
     printf("pid351: verdict:\n");
     printf("pid351:   pacing   %s  (late frames under 0.1%%)\n",
@@ -1687,10 +1748,13 @@ static int run_game(const char *rom, int as_init)
         plat_boot_shutdown(1);
         return 1;
     }
+    tele_boot("display");
     uint64_t splashed = plat_now_us();
     splash("LOADING");
+    tele_boot("splash");
     if (aud_open() != 0)
         printf("pid351: WARN continuing without audio\n");
+    tele_boot(aud_rate() > 0 ? "audio" : "no audio");
     if (core_open(rom) != 0) {
         /* Returning from main as PID 1 is a kernel panic, and panic=5 turns
          * that into a reboot loop - so the one failure where a post-mortem
@@ -1723,7 +1787,9 @@ static int run_game(const char *rom, int as_init)
      * The codec is prepared but not started while we sit here, because ALSA's
      * start threshold is half a buffer and nothing has written a frame yet,
      * so no underrun accrues. */
+    tele_boot("core");
     plat_sleep_until(splashed + SPLASH_HOLD_US);
+    tele_boot("hold");
 
     uint64_t start = plat_now_us(), next = start, mark = start;
     /* A drain curve rather than two endpoints. Over five minutes the gauge
@@ -1734,8 +1800,10 @@ static int run_game(const char *rom, int as_init)
     uint64_t batt_mark = start;
     /* The pad read and the flip queue of the iteration before this one; see
      * where they are used for why latency needs both. */
-    uint64_t prev_f0 = 0, prev_queue = 0, prev_latch = 0;
-    int prev_fast = 0;
+    uint64_t prev_f0 = 0, prev_queue = 0, prev_latch = 0, prev_flip = 0;
+    uint64_t prev_iter = 0;
+    uint32_t prev_seq = 0;
+    int prev_fast = 0, have_seq = 0;
     unsigned frames = 0, win = 0, emu = 0;
     unsigned emu_total = 0;
     uint32_t blit_hi = 0, scale_hi = 0;
@@ -1745,7 +1813,7 @@ static int run_game(const char *rom, int as_init)
      * in docs/hardware.md was measured with synthetic load; this asks the
      * same question of the workload that actually runs. */
     sysinfo_read(&si_start);
-
+    tele_boot("loop");
 
     for (;;) {
         uint32_t held = plat_input();
@@ -1753,6 +1821,20 @@ static int run_game(const char *rom, int as_init)
          * would hammer the card and stutter the game. */
         uint32_t hit = held & ~was;
         was = held;
+
+        /* Which of the sixteen controls the session actually used, as edges
+         * and as frames held. Sixteen tests a frame is nothing next to a
+         * blit, and without it the report cannot say whether a control was
+         * exercised at all - which is the first question asked of every input
+         * bug this machine has had. */
+        for (int b = 0; b < 16; b++) {
+            if (hit & (1u << b))
+                pad_press[b]++;
+            if (held & (1u << b))
+                pad_frames[b]++;
+        }
+        if (held)
+            input_frames++;
 
         if (hit & PAD_L2) {
             printf("pid351: save %s\n", core_state_save() == 0 ? "ok" : "FAILED");
@@ -1787,6 +1869,15 @@ static int run_game(const char *rom, int as_init)
         uint64_t f0 = plat_now_us();
         int fast = (held & PAD_R2) != 0;
 
+        /* Top of frame to top of frame. Every other timing here measures a
+         * piece of the loop; this measures the loop, including the sleep and
+         * anything that happened outside our own brackets, so a period that
+         * does not match the sum of the pieces is time the machine spent
+         * somewhere we are not looking. */
+        if (prev_iter && f0 > prev_iter)
+            hist_add(&hist[fast][H_PERIOD], (uint32_t)(f0 - prev_iter));
+        prev_iter = f0;
+
         if (fast) {
             for (int i = 0; i < FAST_EXTRA; i++) {
                 core_skip(held);
@@ -1815,12 +1906,16 @@ static int run_game(const char *rom, int as_init)
         int al = aud_level();
         if (al >= 0 && frames > 300 && al < aud_lo)
             aud_lo = al;
+        if (al >= 0)
+            hist_add(&hist[0][H_CODEC], (uint32_t)al);
         uint64_t a0 = plat_now_us();
         core_audio();
         tf.aud_us = (uint32_t)(plat_now_us() - a0);
         if (fb) {
             draw_bar(held);
             plat_present(fb, w, h, barbuf);
+        } else {
+            null_frames++;
         }
 
         /* Worst case over the window, not the mean: the question this
@@ -1860,6 +1955,29 @@ static int run_game(const char *rom, int as_init)
          * latency does not land in the normal distribution. */
         uint64_t latch = plat_flip_us();
         if (latch && latch != prev_latch) {
+            uint32_t seq = plat_flip_seq();
+            uint32_t step = seq - prev_seq;   /* wraps correctly at 2^32 */
+
+            /* The panel's own clock, sampled at the only place it is
+             * observable. Two independent readings of the same event: the
+             * interval says how far apart two refreshes were, the sequence
+             * says how many refreshes happened in between. A frame the panel
+             * showed twice moves the second and not the first, which is why
+             * counting the gap is worth the four lines. */
+            if (prev_flip && latch > prev_flip)
+                hist_add(&hist[prev_fast][H_FLIP],
+                         (uint32_t)(latch - prev_flip));
+            prev_flip = latch;
+            if (have_seq) {
+                if (step == 0)
+                    seq_same++;
+                else if (step > 1 && step < 1000)
+                    seq_repeat += step - 1;
+                else if (step >= 1000)
+                    seq_jump++;
+            }
+            prev_seq = seq;
+            have_seq = 1;
             prev_latch = latch;
             if (prev_f0 && latch > prev_f0 && latch - prev_f0 < 500000) {
                 hist_add(&hist[prev_fast][H_LAT],
@@ -1884,6 +2002,7 @@ static int run_game(const char *rom, int as_init)
         if (rl >= 0) {
             if (rl < ring_lo) ring_lo = rl;
             if (rl > ring_hi) ring_hi = rl;
+            hist_add(&hist[0][H_RING], (uint32_t)rl);
         }
         core_state_tick();
 
@@ -1892,6 +2011,10 @@ static int run_game(const char *rom, int as_init)
         emu++;
         emu_total++;
         uint64_t now = plat_now_us();
+        /* Once a frame by contract, once a second in practice - see tele.h.
+         * After the frame's work rather than before, so the reads land in the
+         * part of the period we are about to sleep through anyway. */
+        tele_sample(now);
 
         if (now - mark >= 5000000) {
             double secs = (double)(now - mark) / 1000000.0;
@@ -1933,17 +2056,31 @@ static int run_game(const char *rom, int as_init)
         plat_sleep_until(next);
     }
 
+    tele_boot("exit");
     tele_verdict(reason, frames, emu_total, start);
     fflush(stdout);
+    /* The shutdown is staged for the same reason the boot is: it is the half
+     * of the session nobody watches, it is where the pop and the fbcon flash
+     * both came from, and a stage that hangs here would otherwise be a
+     * machine that simply never powers off. */
     core_close();
+    tele_boot("core out");
     aud_close();
+    tele_boot("audio out");
     /* Before plat_shutdown, which drops DRM master and lets fbcon restore
      * itself onto the panel. Whatever it restores - and it has been the
      * bootloader's leftovers both times anyone looked - is not something to
      * show on the way out. Dark first, then let go. */
     backlight(0);
+    tele_boot("dark");
     plat_shutdown();
+    tele_boot("drm out");
     if (as_init) {
+        /* The last line that can possibly be in the log, since the next call
+         * is the one that copies the ring buffer to the card. Everything
+         * after it - the sync, the poweroff - is only observable by the
+         * machine coming back up. */
+        tele_boot("log");
         plat_boot_save_log("pid351-boot.log");
         plat_boot_shutdown(1);
     }
@@ -1952,9 +2089,17 @@ static int run_game(const char *rom, int as_init)
 
 int main(int argc, char **argv)
 {
+    /* Before anything else, including the mounts - so the clock every later
+     * stage is measured against starts at the first instruction of userspace
+     * rather than at the first one that had somewhere to print. This line
+     * itself goes nowhere as PID 1, which is the price of the origin being
+     * honest; the stage is still in the timeline at exit. */
+    tele_boot("entry");
+
     /* First, because everything below assumes /dev, /proc and /sys exist,
      * and as PID 1 none of them do. No-op when we are not PID 1. */
     int as_init = plat_boot_init();
+    tele_boot(as_init ? "mounts" : "user");
 
     if (as_init)
         printf("pid351: running as PID 1\n");
@@ -1974,9 +2119,11 @@ int main(int argc, char **argv)
     if (as_init) {
         const char *boot = plat_boot_mount();
         char dir[256], rom[512];
+        tele_boot(boot ? "card" : "no card");
         if (boot) {
             snprintf(dir, sizeof dir, "%s/%s", boot, ROM_DIR);
             if (first_rom(dir, rom, sizeof rom) == 0) {
+                tele_boot("rom");
                 printf("pid351: playing %s\n", rom);
                 fflush(stdout);
                 return run_game(rom, as_init);

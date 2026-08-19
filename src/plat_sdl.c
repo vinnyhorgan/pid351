@@ -193,6 +193,11 @@ uint64_t plat_flip_us(void)
     return 0;
 }
 
+uint32_t plat_flip_seq(void)
+{
+    return 0;
+}
+
 void plat_frame_us(uint32_t *blit_us, uint32_t *wait_us, uint32_t *scale_us)
 {
     /* The resampler is the one number that does mean the same thing on both
