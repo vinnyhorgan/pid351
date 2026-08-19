@@ -575,6 +575,10 @@ int aud_silence(void)
 
     if (fd < 0 || lvl < 0)
         return 0;
+    /* A dry stream reads as zero and therefore asks for the whole buffer,
+     * which is what we want: the write fails with EPIPE, aud_write recovers
+     * and primes, and fast mode carries on. Bailing out here instead is what
+     * left the codec dead for the rest of the button press. */
 
     int want = (int)(buffer - period) - lvl, wrote = 0;
     while (want > 0) {
@@ -595,6 +599,14 @@ int aud_level(void)
     memset(&st, 0, sizeof st);
     if (ioctl(fd, SNDRV_PCM_IOCTL_STATUS, &st) < 0)
         return -1;
-    /* avail is room to write, so what is queued is whatever is left. */
-    return (int)buffer - (int)st.avail;
+    /* avail is room to write, so what is queued is whatever is left.
+     *
+     * Floored at zero, which is not cosmetic. A dry stream reports an avail
+     * larger than the buffer, so this used to go negative - and a negative
+     * level made aud_silence give up at exactly the moment it was the thing
+     * that could have fixed it, so one xrun on entering fast mode stayed
+     * unrecovered for the whole ten seconds R2 was held. An empty buffer is
+     * zero frames queued. That it emptied is what aud_xruns counts. */
+    int lvl = (int)buffer - (int)st.avail;
+    return lvl > 0 ? lvl : 0;
 }

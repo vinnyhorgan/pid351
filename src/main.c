@@ -1546,7 +1546,13 @@ static int lat_bounded;          /* latency came from the bound, not the flip */
  * null frame still meets its deadline, and a repeated refresh still completes
  * its flip, so both are silent stutters unless they are counted here. */
 static unsigned null_frames, input_frames;
-static unsigned seq_repeat, seq_same, seq_jump;
+static unsigned seq_repeat[2], seq_same, seq_jump;
+/* Which frames the normal-mode repeats landed on. Eight numbers is enough to
+ * say whether they cluster on the savestates, on the fast-mode boundaries or
+ * nowhere in particular, and that was the one question the last session's
+ * count could not answer about itself. */
+#define NSEQ_WHEN 8
+static unsigned seq_when[NSEQ_WHEN], seq_when_n;
 static unsigned pad_press[16], pad_frames[16];
 static const char *const pad_name[16] = {
     "A", "B", "X", "Y", "up", "down", "left", "right",
@@ -1609,14 +1615,34 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
      * chain: the core's ring is what we have produced and not yet handed
      * over, the codec's is what the hardware has and not yet played. The
      * first one to reach zero is the one that clicks. */
+    /* The margin, rather than the typical gap. deadtime says how long a
+     * finished frame sat waiting for its vblank; the smallest one in the
+     * session is how close the loop came to missing, and it is the number
+     * that says whether the twenty percent of headroom is really there. */
+    if (hist[0][H_DEAD].n)
+        printf("pid351:   closest call %u us of margin before a normal frame "
+               "would have missed its vblank\n",
+               hist_pct(&hist[0][H_DEAD], 0));
     printf("pid351: buffers:\n");
     hist_report_lo(H_RING,  "frames");
     hist_report_lo(H_CODEC, "frames");
     printf("pid351: frames: %u produced no picture, %u had a control held "
            "(%.1f%%)\n", null_frames, input_frames,
            frames ? (double)input_frames * 100.0 / (double)frames : 0.0);
-    printf("pid351: panel: %u refreshes with no new frame, %u flips on one "
-           "vblank, %u sequence jumps\n", seq_repeat, seq_same, seq_jump);
+    printf("pid351: panel: %u refreshes with no new frame in normal play "
+           "(%.3f%% of %u), %u in fast mode (of %u, %.1f expected), %u flips "
+           "on one vblank, %u sequence jumps\n",
+           seq_repeat[0],
+           normal ? (double)seq_repeat[0] * 100.0 / (double)normal : 0.0,
+           normal, seq_repeat[1], fast_panel,
+           (double)fast_us / (double)FRAME_US - (double)fast_panel,
+           seq_same, seq_jump);
+    if (seq_when_n) {
+        printf("pid351: panel: normal-play repeats on frame");
+        for (unsigned i = 0; i < seq_when_n; i++)
+            printf(" %u", seq_when[i]);
+        printf("%s\n", seq_repeat[0] > seq_when_n ? " ..." : "");
+    }
     {
         int any = 0;
 
@@ -1633,8 +1659,9 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
                fast_panel, FAST_EXTRA + 1);
         hist_report(1, H_EMU,  FRAME_US);
         hist_report(1, H_BUSY, FRAME_US);
-        hist_report(1, H_AUD,  FRAME_US);
-        hist_report(1, H_LAT,  FRAME_US);
+        hist_report(1, H_AUD,   FRAME_US);
+        hist_report(1, H_LAT,   FRAME_US);
+        hist_report(1, H_PERIOD, FRAME_US);
     }
 
     printf("pid351: pacing: %u over budget of %u normal frames (%.3f%%), "
@@ -1854,6 +1881,12 @@ static int run_game(const char *rom, int as_init)
             printf("pid351: undo %s\n", core_state_undo() == 0 ? "ok" : "none");
             n_undo++;
         }
+        /* The codec level at the moment fast mode starts is the whole story
+         * of whether it survives the transition, so it is in the log rather
+         * than inferred from a five-second window that straddles it. */
+        if (hit & PAD_R2)
+            printf("pid351: fast on, codec %d frames, ring %d\n",
+                   aud_level(), core_audio_level());
         if ((held & PAD_START) && (held & PAD_SELECT)) { reason = "combo"; break; }
         if (plat_should_quit())                        { reason = "quit";  break; }
 
@@ -1879,6 +1912,18 @@ static int run_game(const char *rom, int as_init)
         prev_iter = f0;
 
         if (fast) {
+            /* Before the six frames, not after them. aud_silence fills the
+             * codec to 74 ms and a fast frame takes 52, so fast mode looked
+             * safe by a wide margin - but it ran from core_audio, at the end
+             * of the frame, and the *first* fast frame therefore started from
+             * whatever normal play had left in the buffer. That is 40 ms at
+             * p50, so entering fast mode ran the codec dry before its own
+             * protection had executed once, and the log shows exactly that:
+             * one xrun at the transition, then fifteen clean seconds.
+             *
+             * The call inside core_audio stays. It is a no-op when the buffer
+             * is already full, and it is what keeps the later frames fed. */
+            aud_silence();
             for (int i = 0; i < FAST_EXTRA; i++) {
                 core_skip(held);
                 emu++;
@@ -1955,30 +2000,50 @@ static int run_game(const char *rom, int as_init)
          * latency does not land in the normal distribution. */
         uint64_t latch = plat_flip_us();
         if (latch && latch != prev_latch) {
-            uint32_t seq = plat_flip_seq();
-            uint32_t step = seq - prev_seq;   /* wraps correctly at 2^32 */
+            prev_latch = latch;
 
             /* The panel's own clock, sampled at the only place it is
              * observable. Two independent readings of the same event: the
              * interval says how far apart two refreshes were, the sequence
              * says how many refreshes happened in between. A frame the panel
              * showed twice moves the second and not the first, which is why
-             * counting the gap is worth the four lines. */
-            if (prev_flip && latch > prev_flip)
-                hist_add(&hist[prev_fast][H_FLIP],
-                         (uint32_t)(latch - prev_flip));
-            prev_flip = latch;
-            if (have_seq) {
-                if (step == 0)
-                    seq_same++;
-                else if (step > 1 && step < 1000)
-                    seq_repeat += step - 1;
-                else if (step >= 1000)
-                    seq_jump++;
+             * counting the gap is worth the lines.
+             *
+             * Not seeded from the flip the loop finds already waiting for it.
+             * That one is the splash's, from before the two-second hold, so
+             * the first interval measured against it spanned the hold: 2.0 s
+             * of flip and a hundred and twenty phantom repeats, which was
+             * sixteen percent of the count. Excluded exactly - by when the
+             * flip happened - rather than by a plausibility threshold, since
+             * a threshold would also throw away the real drops it is there to
+             * find. */
+            if (latch >= start) {
+                uint32_t seq  = plat_flip_seq();
+                uint32_t step = seq - prev_seq;   /* wraps at 2^32 */
+
+                if (have_seq) {
+                    if (latch > prev_flip)
+                        hist_add(&hist[prev_fast][H_FLIP],
+                                 (uint32_t)(latch - prev_flip));
+                    /* Split by mode, because the two are different facts. A
+                     * repeat in fast mode is arithmetic - a 52 ms frame on a
+                     * 16.7 ms panel must repeat twice - and a repeat in
+                     * normal play is a dropped frame. Summed together the
+                     * first buries the second. */
+                    if (step == 0)
+                        seq_same++;
+                    else if (step > 1 && step < 1000) {
+                        seq_repeat[prev_fast ? 1 : 0] += step - 1;
+                        if (!prev_fast && seq_when_n < NSEQ_WHEN)
+                            seq_when[seq_when_n++] = frames;
+                    } else if (step >= 1000) {
+                        seq_jump++;
+                    }
+                }
+                prev_seq  = seq;
+                prev_flip = latch;
+                have_seq  = 1;
             }
-            prev_seq = seq;
-            have_seq = 1;
-            prev_latch = latch;
             if (prev_f0 && latch > prev_f0 && latch - prev_f0 < 500000) {
                 hist_add(&hist[prev_fast][H_LAT],
                          (uint32_t)(latch - prev_f0));

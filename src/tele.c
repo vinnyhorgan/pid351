@@ -119,7 +119,13 @@ struct snap {
     long pgfault, pgmajfault, pgpgin, pgpgout;
 
     /* clocks and heat */
-    long cpu_khz, gpu_hz, ddr_hz;
+    /* No gpu_hz and no ddr_hz. Neither is readable on this machine and
+     * neither ever will be: the Mali has no driver built (we do not use it)
+     * and mainline has no PX30 DMC devfreq driver, so the DDR rate is
+     * whatever U-Boot set and nothing in this kernel can see or change it.
+     * Two fields that printed -1 for a whole session and looked like a
+     * measurement that had failed rather than one that does not exist. */
+    long cpu_khz;
     long zone_mc[NZONE];
 
     /* power */
@@ -227,18 +233,46 @@ static void read_irqs(struct snap *s)
             p = end;
         }
         if (!irq_name[n][0]) {
-            /* The trailing name, which is the useful part: "ff460000.vop"
-             * says more than "27" ever will. Falls back to the number when
-             * the line has no name, as the per-cpu IPI lines do not. */
-            char *name = strrchr(p, ' ');
-            char *nl;
-            if (name && name[1]) {
-                snprintf(irq_name[n], sizeof irq_name[n], "%s", name + 1);
+            /* Two line formats, and taking the last word off both gave four
+             * different lines all called "interrupts": a numbered line ends
+             * in the device ("ff460000.vop"), an IPI line ends in a sentence
+             * ("Rescheduling interrupts") whose only distinguishing part is
+             * at the front, next to a label that is not a number. So key off
+             * the label: digits mean a device, anything else means an IPI and
+             * takes its own label plus the first word of the description. */
+            char *q = line, *nl;
+            int numeric;
+
+            while (*q == ' ')
+                q++;
+            numeric = (*q >= '0' && *q <= '9');
+            if (numeric) {
+                char *name = strrchr(p, ' ');
+                snprintf(irq_name[n], sizeof irq_name[n], "%.31s",
+                         name && name[1] ? name + 1 : q);
             } else {
-                *colon = 0;
-                while (*line == ' ')
-                    memmove(line, line + 1, strlen(line));
-                snprintf(irq_name[n], sizeof irq_name[n], "%s", line);
+                char *desc = p;
+                size_t li = 0;
+                int words = 0;
+
+                while (*desc == ' ')
+                    desc++;
+                while (q < colon && li + 1 < sizeof irq_name[n])
+                    irq_name[n][li++] = *q++;
+                /* Two words of the description. One leaves IPI2 and IPI3
+                 * both reading "CPU"; the label already tells them apart, but
+                 * a name that needs its label read to mean anything is not a
+                 * name. */
+                while (words < 2 && *desc && li + 1 < sizeof irq_name[n]) {
+                    irq_name[n][li++] = ' ';
+                    while (*desc && *desc != ' ' && *desc != '\n' &&
+                           li + 1 < sizeof irq_name[n])
+                        irq_name[n][li++] = *desc++;
+                    while (*desc == ' ')
+                        desc++;
+                    words++;
+                }
+                irq_name[n][li] = 0;
             }
             nl = strchr(irq_name[n], '\n');
             if (nl)
@@ -441,8 +475,6 @@ static void read_freq(struct snap *s)
 {
     s->cpu_khz = read_long(
         "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq", -1);
-    s->gpu_hz  = read_long("/sys/class/devfreq/ff400000.gpu/cur_freq", -1);
-    s->ddr_hz  = read_long("/sys/class/devfreq/dmc/cur_freq", -1);
 }
 
 static void snap_take(struct snap *s, uint64_t now_us)
@@ -542,7 +574,7 @@ static void print_line(void)
         off += snprintf(zones + off, sizeof zones - (size_t)off, "%s%ld",
                         i ? "/" : "", cur.zone_mc[i]);
 
-    printf("pid351: T t=%.1f up=%ld.%02ld cpu=%s%% khz=%ld gpu=%ld ddr=%ld "
+    printf("pid351: T t=%.1f up=%ld.%02ld cpu=%s%% khz=%ld "
            "temp=%s load=%ld ctxt=%ld intr=%ld sirq=%ld run=%ld blk=%ld "
            "rss=%ld free=%ld avail=%ld dirty=%ld wb=%ld slab=%ld "
            "flt=%ld/%ld vctx=%ld nvctx=%ld schedwait=%ld "
@@ -550,7 +582,7 @@ static void print_line(void)
            "mmcr=%ld mmcw=%ld mmcms=%ld\n",
            (double)(cur.at_us - first.at_us) / 1000000.0,
            cur.uptime_cs / 100, cur.uptime_cs % 100,
-           cpus, cur.cpu_khz, cur.gpu_hz, cur.ddr_hz, zones, cur.load_milli,
+           cpus, cur.cpu_khz, zones, cur.load_milli,
            (long)((double)d(prev.ctxt, cur.ctxt) / dt),
            (long)((double)d(prev.intr, cur.intr) / dt),
            (long)((double)d(prev.softirq_total, cur.softirq_total) / dt),
@@ -752,10 +784,27 @@ void tele_report(void)
                peak_zone_mc[i] / 1000, (peak_zone_mc[i] % 1000) / 100);
     printf(" C\n");
 
-    printf("pid351: clocks: cpu %ld kHz (peak %ld), gpu %ld Hz, ddr %ld Hz, "
-           "load %ld milli (peak %ld)\n",
-           last.cpu_khz, peak_cpu_khz, last.gpu_hz, last.ddr_hz,
-           last.load_milli, peak_load_milli);
+    printf("pid351: clocks: cpu %ld kHz (peak %ld), load %ld milli "
+           "(peak %ld)\n",
+           last.cpu_khz, peak_cpu_khz, last.load_milli, peak_load_milli);
+    /* The operating points that exist, printed once, because every power
+     * argument this project makes ends in "and the next OPP down is" and the
+     * list has so far been carried in a document rather than read off the
+     * machine. Costs one file read at exit. */
+    {
+        char buf[256];
+
+        if (read_text("/sys/devices/system/cpu/cpufreq/policy0/"
+                      "scaling_available_frequencies", buf, sizeof buf))
+            printf("pid351: clocks: available kHz %s\n", buf);
+        if (read_text("/sys/devices/system/cpu/cpufreq/policy0/"
+                      "scaling_governor", buf, sizeof buf))
+            printf("pid351: clocks: governor %s, min %ld, max %ld kHz\n", buf,
+                   read_long("/sys/devices/system/cpu/cpufreq/policy0/"
+                             "scaling_min_freq", -1),
+                   read_long("/sys/devices/system/cpu/cpufreq/policy0/"
+                             "scaling_max_freq", -1));
+    }
 
     printf("pid351: card: %ld reads, %ld writes, %ld sectors read, "
            "%ld written, %ld ms of io\n",
