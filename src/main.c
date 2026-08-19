@@ -853,17 +853,10 @@ static void draw_testcard(canvas_t *c, const char *label, unsigned frame)
  * frame. All three were answerable from data the loop already had and threw
  * away.
  *
- * So every frame is kept, not just a rolling window, and the analysis happens
- * on the device at exit. A distribution beats an average and a percentile
- * beats a maximum: one late frame in a session is noise, one in fifty is a
- * defect, and min/med/max cannot tell those apart.
- *
- * 32768 frames is about nine minutes at 60 Hz and 640 KB, which on a machine
- * with a gigabyte and one process is not worth a smaller number. Sessions
- * past that keep the first nine minutes and say so rather than wrapping,
- * because a wrapped buffer silently reports the end of a session as though
- * it were the whole of it. */
-#define TELE_MAX 32768
+ * So every frame is counted, not just a rolling window, and the analysis
+ * happens on the device at exit. A distribution beats an average and a
+ * percentile beats a maximum: one late frame in a session is noise, one in
+ * fifty is a defect, and min/med/max cannot tell those apart. */
 
 struct tele_frame {
     uint32_t emu_us;     /* core_run plus any core_skip in this iteration */
@@ -883,81 +876,140 @@ struct tele_frame {
      * matter how much or how little is being done inside it, so counting
      * frames where work_us overran would report the panel rather than us. */
     uint32_t busy_us;
+    /* Input to the vblank that latches this frame - all of the latency that
+     * belongs to us rather than to the panel.
+     *
+     * The loop reads the pad, emulates, resamples, blocks until the previous
+     * flip retires, blits and queues the next one, so pad to that vblank is
+     * work_us less the blit. Add one whole panel period because a flip queued
+     * during a scan is latched at the end of it. What the panel does after
+     * that - painting the picture down its own scan - is another period and
+     * is deliberately not folded in: it is not a number any code here can
+     * change, and burying it would make our half look worse than it is and
+     * the total look better than it is. */
+    uint32_t lat_us;
     uint32_t fast;       /* 1 if R2 was held, so this frame ran six */
 };
 
-static struct tele_frame tele[TELE_MAX];
-static int tele_n;
-static int tele_lost;            /* frames past the buffer, counted not kept */
+/* Kept as histograms rather than as a log of frames.
+ *
+ * The log came first and had a hard nine minute horizon: 32768 records, past
+ * which a session kept its beginning and dropped the part still being played.
+ * That is backwards for every question these numbers exist to answer, because
+ * the interesting frames - a thermal throttle, a card gone slow, the hour
+ * mark - are all at the far end. Sorting it was also quadratic, which is
+ * tolerable for nine minutes and not for an evening.
+ *
+ * A histogram has no horizon, costs one increment per frame, and gives exact
+ * percentiles in a single pass over its bins. The only thing it gives up is
+ * the order the frames arrived in, and nothing here ever asked for that.
+ *
+ * Two bin widths, because these fields span three orders of magnitude and one
+ * width cannot serve both ends: a top-up of the codec is tens of microseconds
+ * and a fast frame is fifty thousand. Below 8192 us every microsecond is its
+ * own bin, so everything that happens inside a frame budget is exact; above
+ * it the bins are 64 us, which is 0.4% at one frame and finer as a proportion
+ * higher up. The true maximum is tracked outside the bins, so the one number
+ * a saturating top bin could misreport is not taken from them at all. */
+#define HIST_FINE   8192            /* 1 us bins, 0 .. 8191 us */
+#define HIST_SHIFT  6               /* then 64 us bins */
+#define HIST_COARSE 8192            /* .. 532416 us, half a second */
+#define HIST_BINS   (HIST_FINE + HIST_COARSE)
+
+typedef struct {
+    uint32_t bin[HIST_BINS];
+    uint32_t n;
+    uint32_t max;                   /* exact, not a bin */
+    uint32_t over;                  /* samples past the last bin */
+} hist_t;
+
+static void hist_add(hist_t *h, uint32_t us)
+{
+    uint32_t b = us < HIST_FINE
+               ? us
+               : HIST_FINE + ((us - HIST_FINE) >> HIST_SHIFT);
+
+    if (b >= HIST_BINS) {
+        b = HIST_BINS - 1;
+        h->over++;
+    }
+    h->bin[b]++;
+    h->n++;
+    if (us > h->max)
+        h->max = us;
+}
+
+/* The low edge of a bin. Reporting the low edge errs by up to one bin width
+ * in the honest direction - a percentile quoted from the top of its bin would
+ * claim a frame took longer than any frame did. */
+static uint32_t hist_us(uint32_t b)
+{
+    return b < HIST_FINE ? b : HIST_FINE + ((b - HIST_FINE) << HIST_SHIFT);
+}
+
+static uint32_t hist_pct(const hist_t *h, int pct)
+{
+    uint32_t want, seen = 0, b;
+
+    if (h->n == 0)
+        return 0;
+    want = (uint32_t)(((uint64_t)h->n * (uint64_t)pct) / 100u);
+    for (b = 0; b < HIST_BINS; b++) {
+        seen += h->bin[b];
+        if (seen > want)
+            return hist_us(b);
+    }
+    return h->max;
+}
+
+/* Normal and fast frames are counted apart because they are not the same
+ * measurement. A fast frame runs the core six times, so its emu is six frames
+ * of work in one sample; mixed together, the p99 of a session that spent a
+ * seventh of its length in fast mode is just "a fast frame", and the p50 has
+ * moved to make room for it. Neither number then describes anything that
+ * actually happens. */
+enum { H_EMU, H_SCALE, H_BLIT, H_BUSY, H_AUD, H_WAIT, H_LAT, H_FIELDS };
+
+static const char *const hist_name[H_FIELDS] = {
+    "emu", "scale", "blit", "busy", "audio", "vblank", "latency"
+};
+
+static hist_t hist[2][H_FIELDS];    /* [fast][field] */
 
 static void tele_add(const struct tele_frame *f)
 {
-    if (tele_n < TELE_MAX)
-        tele[tele_n++] = *f;
-    else
-        tele_lost++;
+    hist_t *h = hist[f->fast ? 1 : 0];
+
+    hist_add(&h[H_EMU],   f->emu_us);
+    hist_add(&h[H_SCALE], f->scale_us);
+    hist_add(&h[H_BLIT],  f->blit_us);
+    hist_add(&h[H_BUSY],  f->busy_us);
+    hist_add(&h[H_AUD],   f->aud_us);
+    hist_add(&h[H_WAIT],  f->wait_us);
+    hist_add(&h[H_LAT],   f->lat_us);
 }
 
-/* Exact percentiles over the whole session rather than a sampled estimate.
- * Sorting 32768 uint32 at exit costs a few milliseconds on a machine that is
- * about to power off, which is the cheapest measurement in the project. */
-static uint32_t tele_pct(uint32_t *sorted, int n, int pct)
-{
-    int i;
-
-    if (n <= 0)
-        return 0;
-    i = (int)(((long)n * pct) / 100);
-    if (i >= n)
-        i = n - 1;
-    return sorted[i];
-}
-
-/* The median cost of emulating one frame, taken over the frames that
- * emulated exactly one. A fast frame's emu_us holds six of them, so including
- * those would put the median wherever the fast/normal ratio happened to fall
- * and call it the cost of a frame. */
+/* The median cost of emulating one frame, over the frames that emulated
+ * exactly one. Never zero, because it is a divisor. */
 static uint32_t tele_emu_p50(void)
 {
-    static uint32_t tmp[TELE_MAX];
-    int i, n = 0;
-
-    for (i = 0; i < tele_n; i++)
-        if (!tele[i].fast)
-            tmp[n++] = tele[i].emu_us;
-    if (n <= 0)
-        return 1;
-    sort_u32(tmp, n);
-    return tmp[n / 2] ? tmp[n / 2] : 1;
+    uint32_t v = hist_pct(&hist[0][H_EMU], 50);
+    return v ? v : 1;
 }
 
-/* One field of every recorded frame, sorted, as p50/p90/p99/max. The name is
- * padded here rather than at the call site so the columns line up in a log
- * that will be read in a terminal at 80 columns. */
-static void tele_report_field(const char *name, size_t off, uint32_t budget,
-                              int want_fast)
+/* One field as p50/p90/p99/max. The name is padded here rather than at the
+ * call site so the columns line up in a log read at 80 columns. */
+static void hist_report(int fast, int field, uint32_t budget)
 {
-    static uint32_t tmp[TELE_MAX];
-    int i, n = 0;
+    const hist_t *h = &hist[fast][field];
 
-    /* Normal and fast frames are reported apart because they are not the same
-     * measurement. A fast frame runs the core six times, so its emu_us is six
-     * frames of work in one sample; mixed together, the p99 of a session that
-     * used fast mode for a seventh of its length is just "a fast frame" and
-     * the p50 has moved to make room for it. Neither number then describes
-     * anything that happens. */
-    for (i = 0; i < tele_n; i++)
-        if (!tele[i].fast == !want_fast)
-            tmp[n++] = *(const uint32_t *)((const char *)&tele[i] + off);
-    if (n <= 0)
+    if (h->n == 0)
         return;
-    sort_u32(tmp, n);
-
     printf("pid351:   %-8s p50 %6u  p90 %6u  p99 %6u  max %6u us  %5.1f%% "
            "of frame\n",
-           name, tele_pct(tmp, n, 50), tele_pct(tmp, n, 90),
-           tele_pct(tmp, n, 99), tmp[n - 1],
-           (double)tele_pct(tmp, n, 50) * 100.0 / (double)budget);
+           hist_name[field], hist_pct(h, 50), hist_pct(h, 90),
+           hist_pct(h, 99), h->max,
+           (double)hist_pct(h, 50) * 100.0 / (double)budget);
 }
 
 /* ------------------------------------------------------------ power slope */
@@ -1446,24 +1498,28 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
     printf("\npid351: ==== session report ====\n");
     printf("pid351: exit (%s) %.1f s, %u panel frames, %u emulated\n",
            reason, secs, frames, emu);
-    if (tele_lost)
-        printf("pid351: NOTE %d frames past the buffer were not kept\n",
-               tele_lost);
-
-    printf("pid351: normal frames (%d of %d, budget %u us):\n",
-           tele_n - (int)fast_panel, tele_n, (unsigned)FRAME_US);
-    tele_report_field("emu",   offsetof(struct tele_frame, emu_us),   FRAME_US, 0);
-    tele_report_field("scale", offsetof(struct tele_frame, scale_us), FRAME_US, 0);
-    tele_report_field("blit",  offsetof(struct tele_frame, blit_us),  FRAME_US, 0);
-    tele_report_field("busy",  offsetof(struct tele_frame, busy_us),  FRAME_US, 0);
-    tele_report_field("audio",  offsetof(struct tele_frame, aud_us),  FRAME_US, 0);
-    tele_report_field("vblank", offsetof(struct tele_frame, wait_us), FRAME_US, 0);
+    printf("pid351: normal frames (%u of %u, budget %u us):\n",
+           hist[0][H_EMU].n, frames, (unsigned)FRAME_US);
+    hist_report(0, H_EMU,   FRAME_US);
+    hist_report(0, H_SCALE, FRAME_US);
+    hist_report(0, H_BLIT,  FRAME_US);
+    hist_report(0, H_BUSY,  FRAME_US);
+    hist_report(0, H_AUD,   FRAME_US);
+    hist_report(0, H_WAIT,  FRAME_US);
+    hist_report(0, H_LAT,   FRAME_US);
+    /* Spelled out because a latency figure with an unstated boundary is worth
+     * nothing, and every published one disagrees about where the boundary is.
+     * This one starts at the pad read and ends at the vblank that latches the
+     * frame; the panel's own scan is the line after it. */
+    printf("pid351:   latency is pad read to the latching vblank; the panel "
+           "then paints it over %u us more, none of that at the first pixel "
+           "scanned and all of it at the last\n", (unsigned)FRAME_US);
     if (fast_panel) {
         printf("pid351: fast frames (%u, each runs the core %d times):\n",
                fast_panel, FAST_EXTRA + 1);
-        tele_report_field("emu",  offsetof(struct tele_frame, emu_us),  FRAME_US, 1);
-        tele_report_field("busy", offsetof(struct tele_frame, busy_us), FRAME_US, 1);
-        tele_report_field("audio", offsetof(struct tele_frame, aud_us), FRAME_US, 1);
+        hist_report(1, H_EMU,  FRAME_US);
+        hist_report(1, H_BUSY, FRAME_US);
+        hist_report(1, H_AUD,  FRAME_US);
     }
 
     printf("pid351: pacing: %u over budget of %u normal frames (%.3f%%), "
@@ -1489,7 +1545,7 @@ static void tele_verdict(const char *reason, unsigned frames, unsigned emu,
                efps, core_hz > 0 ? efps / core_hz : 0.0);
         printf("pid351:   ceiling is %.2fx - emulation alone is %u us/frame "
                "at p50, so nothing above that is reachable\n",
-               core_hz > 0 && tele_n ? 1000000.0
+               core_hz > 0 ? 1000000.0
                    / (double)tele_emu_p50() / core_hz : 0.0,
                tele_emu_p50());
     } else {
@@ -1574,6 +1630,12 @@ static int run_game(const char *rom, int as_init)
     }
 
     uint64_t start = plat_now_us(), next = start, mark = start;
+    /* A drain curve rather than two endpoints. Over five minutes the gauge
+     * barely moves and the endpoints are all there is; over an hour the shape
+     * is the answer - a rate that climbs is the backlight or the governor,
+     * one that holds flat is the workload, and the difference is invisible
+     * from a start and an end. */
+    uint64_t batt_mark = start;
     unsigned frames = 0, win = 0, emu = 0;
     unsigned emu_total = 0;
     uint32_t blit_hi = 0, scale_hi = 0;
@@ -1676,6 +1738,8 @@ static int run_game(const char *rom, int as_init)
          * this machine actually has to do, and only that can be late. */
         uint32_t idle = tf.wait_us + tf.aud_us;
         tf.busy_us  = tf.work_us > idle ? tf.work_us - idle : 0;
+        tf.lat_us   = (tf.work_us > tf.blit_us ? tf.work_us - tf.blit_us : 0)
+                    + FRAME_US;
         tf.fast = (uint32_t)fast;
         if (fast)
             fast_us += tf.work_us;
@@ -1706,6 +1770,15 @@ static int run_game(const char *rom, int as_init)
             sysinfo_read(&sw);
             if (sw.temp_mc > temp_hi)
                 temp_hi = sw.temp_mc;
+            if (now - batt_mark >= 60000000) {
+                batt_mark = now;
+                printf("pid351: batt t=%.0fs %ld%% %ld uAh %ld uA "
+                       "%ld.%01ld C %ld MHz\n",
+                       (double)(now - start) / 1000000.0, sw.capacity,
+                       sw.charge_uah, sw.current_ua,
+                       sw.temp_mc / 1000, (sw.temp_mc % 1000) / 100,
+                       sw.cpu_khz / 1000);
+            }
             /* Emulated frames as well as panel frames: in fast mode they
              * differ, and the ratio is the only honest answer to how fast
              * fast mode actually is on this machine. */
